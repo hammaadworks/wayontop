@@ -23,7 +23,6 @@ This is also the first deployment of a reusable internal-mapping methodology int
 
 ## 3. Non-Goals (explicitly out of scope for this build)
 
-- No location-tagged user comments/notes (deferred to v2 due to moderation overhead)
 - No true vision-based/SLAM AR (camera-recognized pathways) — out of reach for a 4-day browser build; camera pass-through + UI overlay is the target
 - No native app / app store distribution
 - No BLE beacons (cost + Lalbagh admin may relocate hardware; revisit after 1 year)
@@ -142,10 +141,12 @@ Adding a new stamp later — including ones with no matching POI — is just add
 8. **Offline-first data load** — Graph, POI, and assets cached on first load via Service Worker.
 9. **UI-UX-Performance-100%** — The design must feel the beat and leave a positive impact on the customer, you can use better tools/frameworks but no compromises on the magical ui ux performance. It must feel like Disney level magical fancy experiences.
 
-## 7.5 Revenue Features (Phase 2 — Immediate Follow-up)
-1. **Sponsored Search & Routes:** Searching "Coffee" shows "Sponsored: MTR". Walking past a sponsor triggers "Coffee 30m ahead."
-2. **Digital Coupons:** Proximity-based unlocks (e.g., "Free Coffee - Expires 15 mins") to prove foot-traffic conversions.
-3. **Merchant Dashboard:** Basic reporting for sponsors showing "Arrivals" and "Conversions".
+### 7.2 Non-Functional Requirements (The 100% UX Promise)
+*Where the UI/UX magic happens and devs must not compromise.*
+
+1. **UI-UX-Performance-100% (Disney-Level Magic)** — The design must feel immersive. 60fps animations, frosted glass panels, and the Live POI Cards must exactly mimic the polished aesthetic of Instagram Stories (IG Instants).
+2. **Offline-first Resilience** — Graph, POI, and assets cached on first load via Service Worker. Essential for crowd-day cell congestion.
+3. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
 
 ## 8.5 Analytics Events (three purposeful tiers — no vanity events)
 
@@ -202,17 +203,6 @@ Post-event, a simple weekly Supabase query per tier (Tier 1 for sponsors, Tier 2
 4. Draw edges between nodes, assign real walked distances.
 5. Tag sponsor zone coverage per node.
 6. Export `graph.json`, load into the consumer app, test on-site before go-live.
-
-## 11. The 7-Day "Revenue First" Sequence
-
-**Phase 1: Build (4 Days)**
-- **Day 1:** Field-walk with producer tool. Setup React shell, basic AR arrow, & location permissions.
-- **Day 2:** A* routing, Best Route Previews, and Fallback 2D map.
-- **Day 3:** Intent-Based Search, pre-baked Smart Routes, and Radar mini-map integration.
-- **Day 4:** Treasure Hunt Animations (Framer Motion), Live POI Cards UI, Service Worker offline caching, Intent Graph event logging. (Code Complete)
-
-**Phase 2: Sell (3 Days)**
-- **Day 5-7:** Take the working app to local sponsors. Show them the exact Sponsored Search, Route Injection, and Digital Coupon placements. Close the deals and insert their assets before Aug 2 launch.
 
 ## 12. Open Decisions
 
