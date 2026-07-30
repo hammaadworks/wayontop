@@ -78,8 +78,8 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
 |---|---|---|
 | Base layer | Leaflet.js + Esri World Imagery (free satellite tiles) | No Mapbox/Google Maps billing needed for a one-person internal tool |
 | Editor | Leaflet drawing plugin — drop POI pins, draw path edges, tag names/distances | Lets you snap GPS breadcrumbs to the visible path in the satellite image |
-| Sponsor Management | Admin UI (or direct Supabase table edit) | Allows updating/deleting sponsors mapped to specific location radii/zones and managing their asset creatives dynamically. |
-| Output | Exports a single `graph.json` matching the schema below | This file is the entire handoff between producer and consumer |
+| Sponsor Management | Admin UI (Bird's-Eye Map) | Visual ledger key map for sponsors. View sponsor zones plotted directly on the map. Adjust the radius (e.g., 20m) or change the brand, and the map updates instantly for better spatial planning. |
+| Output (Incremental) | Syncs directly to Supabase | The graph is built incrementally (e.g., map half the park on day 1, the rest on day 2). The Producer app fetches the existing graph from Supabase, merges new nodes/edges, and saves it back. No manual file handoffs. |
 | GPS capture in the field | Any GPS breadcrumb logger (a simple custom page using `watchPosition` is enough) | Raw trail is reference data, not final — you'll clean it against satellite imagery afterward, not use it directly |
 
 ---
@@ -101,7 +101,8 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
     {
       "id": "s1",
       "name": "MTR",
-      "zone_node_ids": ["n1"],
+      "poi_id": "n1",
+      "radius_m": 20,
       "banner_asset": "mtr-banner.png",
       "video_asset": "mtr-ad.mp4"
     }
@@ -110,7 +111,7 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
 ```
 
 - `type: "junction"` nodes exist purely for routing — not shown to the user as a destination, just used by A* to route through the actual path shape.
-- `zone_node_ids` lets a sponsor cover more than one node (e.g., "North Gate area").
+- **Sponsor Zones:** Defined by a central `poi_id` and a `radius_m` (e.g., 20 meters). This creates a geofenced zone. If the user's GPS falls within this radius, the sponsor's brand activates.
 
 **`stamps.json`** (deliberately separate from POIs — a stamp does not have to be a navigable destination, e.g. a hidden "secret spot" with no arrow guiding to it):
 
@@ -140,23 +141,22 @@ Adding a new stamp later — including ones with no matching POI — is just add
 5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "History", "Best photo spot", "How crowded", "Interesting facts".
 6. **Pokémon-Style Gamification & Leaderboard** — The viral loop. 
    - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season).
-   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that jumps to a new random location *every time* someone finds it. **Constraint:** The new coordinates generated must be on a verified walkable path (never inside a lake or restricted zone).
-   - **Gameplay:** Visiting coordinates unlocks beautifully animated stamps with a haptic pulse. Users can share progress mid-hunt or upon completion.
-   - **The Leaderboard (3 Tabs):** To drive massive virality and competition, we will prompt users for their Instagram handle to record them in a public leaderboard featuring three tabs:
+   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that is **never** shown on the map. It is only discovered by chance if the user has their AR camera feed open while walking past its hidden coordinates. It jumps to a new random verified walkable coordinate *only after* a user successfully claims it and syncs to the online leaderboard.
+   - **Gameplay & Offline Sync:** Catching stamps and navigating works perfectly offline. When connectivity is available, the app silently syncs collected stamps to Supabase. 
+   - **The Leaderboard (3 Tabs - Online):** The leaderboard requires internet. To drive virality, we prompt users for their Instagram handle (`@handle`) as a display name (Honor System - no DM/OAuth friction). 
      1. **All Stamps Collected:** Ranked by completion time.
      2. **Most Distance Walked:** Ranked by total km walked.
-     3. **Golden Stamp:** A live feed of who most recently found it ("Golden Stamp last found by @username").
+     3. **Golden Stamp:** A live feed of who most recently found it.
+   - **Anti-Cheat Mechanics:** Basic sanity checks on the client/server to prevent fake GPS location spoofing (e.g., checking realistic movement speed between stamps) and time tampering (using server timestamps for leaderboard syncs).
    - **Reset & Replay:** Users can manually reset their count to restart the hunt.
 
-7. **User Identity, Tags & Geo-Tagged Memories (Supabase UGC)** — The community and authenticity layer. 
-   - **IG Handles as Identity:** We strictly use Instagram handle names instead of random usernames. This is critical: anonymous usernames mean the system is a black box and we could never reach the actual user (e.g., to award prizes). Using IG handles ensures we can reach the users and build real social leverage.
-   - **Tackling Impersonation:** Identity is verified via a one-time IG DM (or OAuth if feasible). This prevents users from claiming someone else's handle to dominate the leaderboard or post inappropriate content under another's name.
-   - **Geo-Tagged Comments & Tags:** Visitors drop comments and tags at *any* specific coordinate (e.g., "Best sunset here!"). Because these are tied to verified IG handles and local `device_uuid` (for self-deletion), the UGC remains high quality and inherently viral as users tag their friends.
-8. **Strava-Style Route Summaries (Live & Geofenced)** — The boast factor. 
-   - **Live Controls:** Users can Restart, Pause, Resume, or Share their map at any point during their walk inside Lalbagh.
-   - **The Card:** The shareable summary plots their walked path, Walk Duration (Time), Distance, Steps, Calories, and vividly highlights the major Official POIs they discovered along the way.
-   - **Viral Watermark:** Every shared element (Strava summary or Stamp screen) programmatically bakes a QR Code and the `lalbagh.top` URL into the image. Followers can scan to instantly join.
-   - **Auto-Trigger:** Generates automatically when detecting a physical exit from the Lalbagh gates.
+7. **Universal Viral Sharing Engine (Strava Maps, Stamps & AR Snaps)** — The boast factor. 
+   - **Universal Social Share Sheet:** ANY shareable moment—whether it's the full Strava-style walked path summary, a specific stamp collection, or just an AR camera snap—invokes the native device Share Sheet.
+   - **Programmatic Branding & Pre-filled Tags:** Tapping 'Share' generates the image asset, programmatically bakes in a `lalbagh.top` watermark, and invokes the Share Sheet with pre-filled text tagging `@lalbagh.top`. This elegantly delegates user verification and marketing to social media itself.
+   - **Strava-Style Route Summaries:** Users can pause/resume their walk. The generated card plots their walked path, Duration, Distance, Steps, Calories, and major POIs discovered.
+   - **Auto-Trigger:** The Route Summary generates automatically when detecting a physical exit from the Lalbagh gates.
+
+*(Note: Geo-Tagged Comments and explicit user authentication have been deferred to v2 to minimize friction).*
 9. **Zone-Based Sponsor Marquee (Revenue)** — A small, elegant sticky footer marquee gracefully displays sponsors relevant to the user's current physical zone (e.g., MTR and Cakewala near the North Gate, Lenskart near the Glass House).
 10. **Opt-in Sponsor Creative Modal** — Tapping the footer marquee opens a clean modal containing the sponsor's creative. This ensures the UX is never compromised, keeping the interface premium and ensuring it does not feel "salesy".
 
@@ -169,6 +169,8 @@ Adding a new stamp later — including ones with no matching POI — is just add
 4. **Offline-first Resilience** — Graph, POI, and assets cached on first load via Service Worker. Essential for crowd-day cell congestion.
 5. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
 6. **Contextual & Seamless Brand Integration** — Brand commercials must be intelligently and seamlessly merged into the app experience based on context. For example, if a user has walked a long distance and the sponsor is Cakewala, the copy shouldn't feel like a disconnected ad, but rather a contextual suggestion: "Hungry after a long walk? Feel the sugar rush @ Cakewala." It must add value as a native companion.
+7. **Intuitive Psychological Design & Magical Copywriting** — The app must have zero friction and require absolutely zero onboarding tutorials. Help information must be embedded directly in the UI where needed. For example, on the Golden Stamp leaderboard, a small contextual hint should explain the mechanic seamlessly: *"Open your cam, take a glance, you might just catch the Golden chance!"*
+   - **Tone of Voice:** The copy across the entire app must blend Disney-level magical wonder, Gen-Z energy (our prime demographic), a touch of playful rhyming, and kid-friendly approachability. It should feel like a whimsical park companion, not a utilitarian maps app.
 
 ## 8. Analytics Events (The 3 Value Pillars)
 
@@ -212,7 +214,7 @@ We do not need to fire explicit events for everything. We can derive highly valu
 | `active_leaderboard_users` | Count of unique IG handles present in the leaderboard | Gives a highly accurate count of highly-engaged, competitive users without needing a specific "active user" event ping. |
 | `stamp_discovery_velocity` | Timestamps between consecutive stamp collections for a user | Shows how fast people are moving through the park and how engaging the gamification loop is. |
 | `zone_dwell_time` | Difference between entry and exit timestamps in a sponsor radius | Proves to sponsors that people are actually lingering in their zone, not just walking past. |
-| `most_social_zones` | Heatmap of where the most geo-tagged comments are dropped | Helps identify organic gathering spots that can be pitched as premium zones to future sponsors. |
+| `golden_stamp_hunt_duration` | Time elapsed between a Golden Stamp location jump and the next successful claim | Measures the intensity and engagement of the most urgent gamification loop. |
 
 ## 9. Key Engineering Caveats (do not skip)
 
@@ -231,7 +233,7 @@ We do not need to fire explicit events for everything. We can derive highly valu
 3. In the producer tool, manually snap breadcrumb points to the actual visible path in the satellite image — this manual correction step is mandatory, not optional.
 4. Draw edges between nodes, assign real walked distances.
 5. Tag sponsor zone coverage per node.
-6. Export `graph.json`, load into the consumer app, test on-site before go-live.
+6. Save/Sync directly to Supabase from the Producer app, then load the consumer app on-site to test navigation before go-live.
 
 ## 11. Open Decisions
 
