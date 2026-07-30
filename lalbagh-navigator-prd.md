@@ -13,6 +13,10 @@ A mobile-web AR wayfinding app for the 240-acre Lalbagh Botanical Garden. Visito
 
 This is also the first deployment of a reusable internal-mapping methodology intended to become the foundation of a future company, **wayon.top**, providing indoor/venue wayfinding for other locations (malls, Wonderla, Cubbon Park, etc.).
 
+### Inspirations & References
+- **AR Mapping Vision:** [Google Map for Indoor Spaces with AR Technology](https://youtube.com/shorts/94r1T_usqaM?si=DA_pcrcg9gMQiDkw)
+  *Note: While the video showcases the core value of AR navigation for retail and indoor spaces, the Lalbagh implementation is structurally superior. It removes native app download friction (runs entirely in the browser), adds Gamification (Golden Stamp viral loops), operates offline under poor canopy/cell coverage, and seamlessly integrates hyper-local zone monetization.*
+
 ## 2. Goals
 
 - Ship a working, reliable AR navigator before the show opens
@@ -49,8 +53,8 @@ This split is deliberate: venue #2 under wayon.top may need a completely differe
 | Styling | Tailwind CSS + shadcn/ui components | Fastest path to a polished, beautiful, consistent UI without hand-rolling CSS — utility-first, highly in-demand, and pragmatic. |
 | Icons | lucide-react | Clean, modern icon set, tiny footprint, pairs naturally with Tailwind/shadcn |
 | Localization | English + Kannada, toggle in-app (i18next or a simple JSON string map) | Lalbagh's own signage is bilingual; a meaningful share of visitors will be more comfortable in Kannada. All POI names, UI labels, and onboarding text need both languages from day one — retrofitting i18n later is far more expensive than building it in from the start |
-| AR rendering | Raw camera feed via `getUserMedia` + Canvas/CSS overlay | **Not WebXR** — iOS Safari does not support the WebXR Device API at all. True cross-browser AR here means: video element as background, arrow drawn on a canvas/DOM layer on top, positioned using compass + GPS math. This is "camera pass-through AR," not spatial AR. |
-| Orientation | `DeviceOrientationEvent` (iOS requires explicit `requestPermission()` behind a user tap; Android/Chrome does not) | Two code paths required — test on real devices, not emulators |
+| AR rendering | Raw camera feed via `getUserMedia` + Canvas/CSS overlay | **Not WebXR** — iOS Safari does not support the WebXR Device API at all. True cross-browser AR here means: video element as background (MUST include `playsinline` attribute for iOS Safari to avoid fullscreen takeover), arrow and 3D-like stamps drawn on a canvas/DOM layer on top, positioned using compass + GPS math. This is "camera pass-through AR," Pokémon Go style. |
+| Orientation | Two split paths: iOS vs Android | **iOS Safari**: Uses `DeviceOrientationEvent` + `webkitCompassHeading` (requires explicit `requestPermission()` behind a user tap). **Android Chrome**: Must use the `deviceorientationabsolute` event to get true North, as standard `deviceorientation` will only yield relative gyroscope data. |
 | Location | `navigator.geolocation.watchPosition()` | Continuous GPS stream, smoothed with a moving average |
 | Pathfinding | Client-side A* over the graph JSON | Runs instantly at this graph size, no backend round-trip needed |
 | Offline resilience | Service Worker (Workbox) + Cache API | Graph JSON, POI data, and sponsor creatives cached on first load — critical given crowd-day network congestion |
@@ -89,9 +93,9 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
 ```json
 {
   "nodes": [
-    { "id": "n1", "name": "North Gate", "lat": 12.9500, "lng": 77.5850, "type": "gate" },
-    { "id": "n2", "name": "Glass House", "lat": 12.9495, "lng": 77.5847, "type": "poi" },
-    { "id": "n3", "name": "Path Junction A", "lat": 12.9497, "lng": 77.5849, "type": "junction" }
+    { "id": "n1", "name": "North Gate", "lat": 12.9500, "lng": 77.5850, "type": "gate", "tags": ["entrance", "exit", "parking"] },
+    { "id": "n2", "name": "Glass House", "lat": 12.9495, "lng": 77.5847, "type": "poi", "tags": ["flower show", "famous", "glass"] },
+    { "id": "n3", "name": "Path Junction A", "lat": 12.9497, "lng": 77.5849, "type": "junction", "tags": [] }
   ],
   "edges": [
     { "from": "n1", "to": "n3", "distance_m": 85 },
@@ -135,25 +139,26 @@ Adding a new stamp later — including ones with no matching POI — is just add
 *Ordered by critical user journey, 10x UX and 10x Revenue opportunities.*
 
 1. **Search + AI Intent-Based Fuzzy Search** — The entry point. Instead of a plain list of POIs, users type "Roses", "Kids area", or "Sunset". A local fuzzy-search maps intent to POIs instantly. A list is also provided incase users want to search manually.
-2. **Smart Route Optimisation & Previews** — The core function. The routes and distances are already mapped. If user wants to go from pointA to pointB, then the app offers shortest path routing with multipath available, just like Google Maps navigations. The AR arrow points the path, the UI shows: "You'll pass: Lotus Pond, Restroom, Coffee (ETA: 12 mins)".
-3. **Premium AR View & Radar** — The actual navigation. Live camera feed with a buttery-smooth directional arrow overlay (powered by dual-source compass fusion) and a dynamic Radar mini-map.
+2. **Smart Route Optimisation & Previews** — The core function. The routes and distances are already mapped. If a user wants to go from A to B, the app offers shortest-path routing (via A*). The AR arrow points correctly along the physical path segment by segment (updating bearing at each junction based on the graph data), not just a straight line to the destination. UI shows: "You'll pass: Lotus Pond, Restroom, Coffee (ETA: 12 mins)".
+3. **Premium AR View, 2D Map Toggle & Radar** — The actual navigation. Live camera feed with a buttery-smooth directional arrow overlay that dynamically tilts and adjusts pitch/roll as the user points their phone up or down (powered by dual-source compass and gyroscope fusion). A prominent UI toggle allows users to seamlessly switch between the AR Camera feed and a top-down 2D Map feed. Includes a dynamic Radar mini-map in AR mode.
 4. **Photo Spots & Facilities Quick-filters** — Fast discovery. One-tap buttons for "Instagram Spots" (sunset, macros) and "Facilities" (Washroom, Water, Exit).
 5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "History", "Best photo spot", "How crowded", "Interesting facts".
 6. **Pokémon-Style Gamification & Leaderboard** — The viral loop. 
    - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season). Normal stamps (excluding Golden) are visible on the 2D map and radar.
    - **Stamp UX & Magical Celebrations:** Think Pokémon Go style simplicity—when a user walks near a stamp with the AR camera open, the stamp graphic appears on their phone screen overlay along with a "Claim" button. Tapping the button claims it, triggering a rich, Disney-like magical celebration with confetti, audio feedback, and an animated stamp count update.
-   - **The Golden Stamp (High Urgency - Online Only):** A special 1-of-1 stamp that is **never** shown on the map. No two people can claim it simultaneously; the first to claim and enter the leaderboard wins. Upon claiming, it immediately jumps to a new random verified walkable coordinate. *(Note: Do not overcomplicate network handling here. Lalbagh has strong internet coverage, so we don't need to aggressively optimize for edge-case network paradoxes on this specific feature).*
-   - **Gameplay & Offline Sync:** Catching normal stamps and navigating works perfectly offline. When connectivity is available, the app silently syncs collected stamps to Supabase. 
-   - **In-App Browser Blocker (Critical):** On load, if the app detects an in-app browser user agent (e.g., Instagram/Facebook), the UI must hard-block and instruct the user to tap "Open in Safari/Chrome" before they can start. This guarantees we do not lose `localStorage` session state if they switch apps.
+   - **The Golden Stamp (High Urgency - Online Only):** A special 1-of-1 stamp that is **never** shown on the map. No two people can claim it simultaneously; the Supabase backend MUST use a row-level atomic lock (transaction) so that if multiple people try to claim it at the exact same moment, only the first transaction succeeds and the rest get a "Too late!" message. Upon claiming, it immediately jumps to a new random verified walkable coordinate.
+   - **Gameplay & Offline Sync:** Catching normal stamps and navigating works perfectly offline. When connectivity is available, the app silently syncs the **total count** of collected stamps to Supabase to maintain the leaderboard. Do NOT sync the detailed array of which specific stamps were collected—that stays entirely in `localStorage` as it offers no business value to centralize.
+   - **In-App Browser Blocker (Critical):** On load, if the app detects an in-app browser user agent (e.g., Instagram/Facebook), the UI must hard-block. It cannot automatically force a redirect; instead, it must visually instruct the user exactly *how* to exit (e.g., "Tap the 3 dots in the top right and select 'Open in System Browser'"). This guarantees we do not lose `localStorage` session state.
    - **User Identity & The Leaderboard (3 Tabs - Online):** On first load, the app generates a persistent, hidden `device_uuid` in `localStorage`. All backend records and analytics tie strictly to this UUID. To drive virality, we prompt users for their Instagram handle (`@handle`), which is treated purely as an editable display name on the leaderboard. 
      1. **All Stamps Collected:** Ranked by completion time.
      2. **Most Distance Walked:** Ranked by total km walked.
      3. **Golden Stamp:** A live feed of who most recently found it.
-   - **Anti-Cheat Mechanics:** Scoped down to basic client-side timestamp and distance sanity checks for v1 (to avoid heavy server-side processing for a 3-day MVP).
+   - **Anti-Cheat Mechanics:** To claim a stamp, the user must have their AR camera active, and the 3D stamp asset must be visibly rendered on their screen (proving they are physically at the correct GPS coordinates and pointing the camera correctly) before the "Claim" button appears.
    - **Reset & Replay:** Users can manually reset their count to restart the hunt.
 
-7. **Universal Viral Sharing Engine (Strava Maps, Stamps & AR Snaps)** — The boast factor. 
-   - **Universal Social Share Sheet:** ANY shareable moment—whether it's the full Strava-style walked path summary, a specific stamp collection, or just an AR camera snap—invokes the native device Share Sheet.
+7. **Universal Viral Sharing Engine & In-App Capture** — The boast factor. 
+   - **In-App Capture Button:** Since the camera is already active for AR navigation, the main UI features a prominent "Capture" button. Users can snap clean photos or screenshots of their AR view (including the navigation arrow, sponsor marquee, and Pokémon Go-style stamps). *(Note: Screen-recording video of the DOM overlay is dropped for V1 to ensure 100% performance; photo/screenshot captures are the focus).*
+   - **Universal Social Share Sheet:** ANY shareable moment—whether it's an AR camera snap, a recorded video, the full Strava-style walked path summary, or a specific stamp collection—invokes the native device Share Sheet.
    - **Programmatic Branding & Pre-filled Tags:** Tapping 'Share' generates the image asset, programmatically bakes in a `lalbagh.top` watermark, and invokes the Share Sheet with pre-filled text tagging `@lalbagh.top`. This elegantly delegates user verification and marketing to social media itself.
    - **Strava-Style Route Summaries:** Users can pause/resume their walk. The generated card plots their walked path, Duration, Distance, Steps, Calories, and major POIs discovered.
    - **Auto-Trigger:** The Route Summary generates automatically when detecting a physical exit from the Lalbagh gates.
@@ -167,13 +172,17 @@ Adding a new stamp later — including ones with no matching POI — is just add
 
 1. **Mobile-First Design** — The entire application is built exclusively for mobile devices. All tap targets, swipe gestures, and layouts must be optimized for thumb-reach and one-handed outdoor usage.
 2. **UI-UX-Performance-100% (Disney-Level Magic)** — The design must feel immersive. 60fps animations, frosted glass panels, and the Live POI Cards must exactly mimic the polished aesthetic of Instagram Stories (IG Instants).
-3. **Dopamine-Timed PWA Install** — The "Add to Home Screen" prompt must not be shown on first load. It must be precisely timed to trigger only after the user experiences high engagement (e.g., right after discovering their 3rd stamp).
+3. **Explicit Fallback UX for Major Components** — The app must gracefully handle device or browser limitations without breaking the experience. For instance, if the native Web Share API fails, it must fallback to rendering a shareable image on-screen with a "Long press to save" instruction. Every high-risk feature (Camera access, compass calibration, internet connectivity) must have an explicitly designed fallback state.
 4. **Offline-first Resilience** — Graph, POI, and assets cached on first load via Service Worker. Essential for crowd-day cell congestion.
 5. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
 6. **Contextual & Seamless Brand Integration** — Brand commercials must be intelligently and seamlessly merged into the app experience based on context. For example, if a user has walked a long distance and the sponsor is Cakewala, the copy shouldn't feel like a disconnected ad, but rather a contextual suggestion: "Hungry after a long walk? Feel the sugar rush @ Cakewala." It must add value as a native companion.
 7. **Intuitive Psychological Design & Magical Copywriting** — The app must have zero friction and require absolutely zero onboarding tutorials. Help information must be embedded directly in the UI where needed. For example, on the Golden Stamp leaderboard, a small contextual hint should explain the mechanic seamlessly: *"Open your cam, take a glance, you might just catch the Golden chance!"*
    - **Tone of Voice:** The copy across the entire app must blend Disney-level magical wonder, Gen-Z energy (our prime demographic), a touch of playful rhyming, and kid-friendly approachability. It should feel like a whimsical park companion, not a utilitarian maps app.
-8. **Explicit Fallback UX for Major Components** — The app must gracefully handle device or browser limitations without breaking the experience. For instance, if the native Web Share API fails, it must fallback to rendering a shareable image on-screen with a "Long press to save" instruction. Every high-risk feature (Camera access, compass calibration, internet connectivity) must have an explicitly designed fallback state.
+8. **Platform Tweaks & Quirks (Mobile OS Parity)** — Codebase must explicitly handle iOS Safari vs. Android Chrome differences (e.g., iOS `playsinline` video requirement, iOS gesture requirements for `DeviceOrientationEvent` vs. Android `deviceorientationabsolute`, and iOS bottom-bar/notch CSS safe areas). 
+9. **Screen Wake Lock** — Use the `navigator.wakeLock.request('screen')` API when navigation starts. The screen must not auto-sleep while the user is actively holding their phone and walking.
+10. **Graceful Permission Fallbacks** — If a user hits "Deny" for Camera access, gracefully degrade directly to the 2D Map Mode without a blank screen or loop. If Location is denied, the app becomes a browseable digital brochure with an unobtrusive prompt to enable location for routing.
+11. **Figure 8 Calibration Tooltips** — Provide a small tooltip or UI button in the AR view instructing users to wave their phone in a "Figure 8" if they notice the arrow drifting, enabling them to recalibrate their hardware compass easily.
+12. **Service Worker Cache Traps** — The Service Worker must use a `NetworkFirst` strategy for the main HTML document (or provide an explicit "Update Available - Reload" UI prompt). In a 3-day build, users must not get stuck on a cached, buggy Day-1 version.
 
 ## 8. Analytics Events (The 3 Value Pillars)
 
@@ -223,7 +232,10 @@ We do not need to fire explicit events for everything. We can derive highly valu
 
 ## 9. Key Engineering Caveats (do not skip)
 
-- **iOS Safari ≠ Android Chrome** for both orientation and camera permission flows. Build and test both paths from day one, on real devices.
+- **iOS Safari ≠ Android Chrome API Quirks**: 
+  - *Orientation:* iOS requires `requestPermission()` behind a tap and uses `webkitCompassHeading`. Android Chrome uses `deviceorientationabsolute`. Using the wrong one means getting relative gyroscope spin instead of true North.
+  - *Camera Feed:* iOS Safari requires the `playsinline` attribute on the `<video>` element. Without it, the camera feed takes over the screen in the native video player, destroying the AR overlay.
+- **Golden Stamp Concurrency**: Must use Postgres atomic updates/row-level locking to prevent race conditions when multiple users claim it simultaneously.
 - **GPS accuracy degrades significantly under Lalbagh's dense canopy** (multipath + attenuation error, potentially 15–50m off). The fallback 2D map and junction-node routing exist specifically to make this survivable.
 - **Compass drifts near metal** (gates, railings) — this is why dual-source fusion is in scope, not optional polish.
 - **Raw GPS breadcrumbs from field walking are noisy** — always clean/snap against satellite imagery in the producer tool before exporting `graph.json`. Never ship raw walked coordinates directly.
@@ -245,3 +257,7 @@ We do not need to fire explicit events for everything. We can derive highly valu
 - Sponsor sales: which zones/businesses are confirmed, and by when — this gates how many sponsor slots exist at launch
 - Final POI list (how many destinations to support in v1)
 - Analytics dashboard: raw Supabase queries are fine for v1, no need for a built UI yet
+- Default Ad ideas:
+  - PWA Install
+  - Donate Micropayments
+  - More on hammaadworks
