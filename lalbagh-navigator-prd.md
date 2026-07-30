@@ -18,7 +18,7 @@ This is also the first deployment of a reusable internal-mapping methodology int
 - Ship a working, reliable AR navigator before the show opens
 - Cross-browser: iOS Safari + Android Chrome, mobile only
 - Fully anonymous, no login/signup friction
-- Sponsor monetization live from day one
+- Sponsor monetization live from day one (Goal: Onboard 20 sponsors with 5K investment each or hit 100K monetary target via manual 'jugaad' workflows for now)
 - Path data collection process documented as a reusable SOP for wayon.top
 
 ## 3. Non-Goals (explicitly out of scope for this build)
@@ -129,26 +129,40 @@ Adding a new stamp later — including ones with no matching POI — is just add
 
 ## 7. Core Features (Phase 1 MVP — 4-Day Build)
 
-*Focus entirely on 10x UX and 10x Revenue opportunities.*
+### 7.1 Functional Requirements (The Navigation Engine)
+*Ordered by critical user journey, 10x UX and 10x Revenue opportunities.*
 
-1. **"AI" Intent-Based Search** — Instead of a plain list of POIs, users type "Roses", "Kids area", or "Sunset". A local fuzzy-search maps intent to POIs instantly. Feels magical.
-2. **Best Route Preview** — Instead of just "Go to Glass House", the UI shows "You'll pass: Lotus Pond, Restroom, Coffee (ETA: 12 mins)".
-3. **Live POI Cards** — Expand POIs with real value: "Why it's famous", "Best photo spot", "How crowded", "Interesting facts".
-4. **Smart Route Optimisation** — Pre-baked thematic routes like "Best 60-minute walk", hitting the highlights efficiently.
-5. **Photo Spots & Facilities Quick-filters** — One-tap buttons for "Instagram Spots" (sunset, macros) and "Facilities" (Washroom, Water, Exit).
-6. **Premium AR View & Radar** — Live camera feed with a buttery-smooth directional arrow overlay (powered by dual-source compass fusion to prevent jitter) and a dynamic Radar mini-map in the corner. This "glitter" is non-negotiable for the 100% UX goal.
-7. **Treasure Hunt & Stamp Animations** — Gamification loop where visiting POIs unlocks beautifully animated stamps (using Framer Motion). This creates the dopamine hit necessary for the viral social-share loop.
-8. **Offline-first data load** — Graph, POI, and assets cached on first load via Service Worker.
-9. **UI-UX-Performance-100%** — The design must feel the beat and leave a positive impact on the customer, you can use better tools/frameworks but no compromises on the magical ui ux performance. It must feel like Disney level magical fancy experiences.
+1. **Search + AI Intent-Based Fuzzy Search** — The entry point. Instead of a plain list of POIs, users type "Roses", "Kids area", or "Sunset". A local fuzzy-search maps intent to POIs instantly. A list is also provided incase users want to search manually.
+2. **Smart Route Optimisation & Previews** — The core function. The routes and distances are already mapped. If user wants to go from pointA to pointB, then the app offers shortest path routing with multipath available, just like Google Maps navigations. The AR arrow points the path, the UI shows: "You'll pass: Lotus Pond, Restroom, Coffee (ETA: 12 mins)".
+3. **Premium AR View & Radar** — The actual navigation. Live camera feed with a buttery-smooth directional arrow overlay (powered by dual-source compass fusion) and a dynamic Radar mini-map.
+4. **Photo Spots & Facilities Quick-filters** — Fast discovery. One-tap buttons for "Instagram Spots" (sunset, macros) and "Facilities" (Washroom, Water, Exit).
+5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "History", "Best photo spot", "How crowded", "Interesting facts".
+6. **Pokémon-Style Gamification (Treasure Hunt & Leaderboard)** — The viral loop. 
+   - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season, e.g., Flower Show specials).
+   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that jumps to a new random location *every time* someone finds it. The leaderboard broadcasts: "Golden Stamp last found by @username". **Constraint:** The new coordinates generated must be on a verified walkable path (never randomly inside a lake or restricted zone).
+   - **Gameplay:** Visiting coordinates unlocks beautifully animated stamps (Framer Motion) with a haptic pulse. Users can share progress mid-hunt or upon completion.
+   - **Reset & Replay:** Users can manually reset their count to 0 to restart the hunt.
+   - **Leaderboard:** A competitive leaderboard ranking users by total stamps collected and shortest completion time to drive massive virality.
+7. **Geo-Tagged Memories (Supabase UGC)** — The community layer. Visitors drop comments at *any* coordinate, saved to Supabase (tied to local `device_uuid` for self-deletion). Verified via a one-time IG DM to prevent impersonation.
+8. **Strava-Style Route Summaries (Live & Geofenced)** — The boast factor. 
+   - **Live Controls:** Users can Restart, Pause, Resume, or Share their map at any point during their walk inside Lalbagh.
+   - **The Card:** The shareable summary plots their walked path, Walk Duration (Time), Distance, Steps, Calories, and vividly highlights the major Official POIs they discovered along the way.
+   - **Viral Watermark:** Every shared element (Strava summary or Stamp screen) programmatically bakes a QR Code and the `lalbagh.top` URL into the image. Followers can scan to instantly join.
+   - **Auto-Trigger:** Generates automatically when detecting a physical exit from the Lalbagh gates.
+9. **Zone-Based Sponsor Marquee (Revenue)** — A small, elegant sticky footer marquee gracefully displays sponsors relevant to the user's current physical zone (e.g., MTR and Cakewala near the North Gate, Lenskart near the Glass House).
+10. **Opt-in Sponsor Creative Modal** — Tapping the footer marquee opens a clean modal containing the sponsor's creative. This ensures the UX is never compromised, keeping the interface premium and ensuring it does not feel "salesy".
 
 ### 7.2 Non-Functional Requirements (The 100% UX Promise)
 *Where the UI/UX magic happens and devs must not compromise.*
 
-1. **UI-UX-Performance-100% (Disney-Level Magic)** — The design must feel immersive. 60fps animations, frosted glass panels, and the Live POI Cards must exactly mimic the polished aesthetic of Instagram Stories (IG Instants).
-2. **Offline-first Resilience** — Graph, POI, and assets cached on first load via Service Worker. Essential for crowd-day cell congestion.
-3. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
+1. **Mobile-First Design** — The entire application is built exclusively for mobile devices. All tap targets, swipe gestures, and layouts must be optimized for thumb-reach and one-handed outdoor usage.
+2. **UI-UX-Performance-100% (Disney-Level Magic)** — The design must feel immersive. 60fps animations, frosted glass panels, and the Live POI Cards must exactly mimic the polished aesthetic of Instagram Stories (IG Instants).
+3. **Dopamine-Timed PWA Install** — The "Add to Home Screen" prompt must not be shown on first load. It must be precisely timed to trigger only after the user experiences high engagement (e.g., right after discovering their 3rd stamp).
+4. **Offline-first Resilience** — Graph, POI, and assets cached on first load via Service Worker. Essential for crowd-day cell congestion.
+5. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
+6. **Contextual & Seamless Brand Integration** — Brand commercials must be intelligently and seamlessly merged into the app experience based on context. For example, if a user has walked a long distance and the sponsor is Cakewala, the copy shouldn't feel like a disconnected ad, but rather a contextual suggestion: "Hungry after a long walk? Feel the sugar rush @ Cakewala." It must add value as a native companion.
 
-## 8.5 Analytics Events (three purposeful tiers — no vanity events)
+## 8. Analytics Events (three purposeful tiers — no vanity events)
 
 **Tier 1 — Sponsor-facing** (proves ad value, drives renewals)
 
@@ -178,7 +192,6 @@ Don't just record *where* people walked. Record *why*. This is the core data moa
 |---|---|---|
 | `search_intent` | Raw search queries mapped to selected destinations | "People looking for flowers usually visit Bonsai next" |
 | `route_divergence` | Did they follow the route or wander off to coffee? | Maps real human behavior against optimal paths |
-| `coupon_conversion` | GPS-confirmed arrival after viewing a digital coupon | Proves undeniable, trackable ROI for sponsors |
 | `session_start` | Day-over-day session growth & retention | Proves organic pull and sticky product value |
 
 Post-event, a simple weekly Supabase query per tier (Tier 1 for sponsors, Tier 2 for your own marketing, Tier 3 for any investor conversation) is your entire reporting deliverable — no dashboard UI needed for v1, raw query output is enough.
