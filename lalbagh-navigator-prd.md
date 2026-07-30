@@ -32,7 +32,7 @@ This is also the first deployment of a reusable internal-mapping methodology int
 
 Two decoupled systems, connected only by a shared JSON data format:
 
-**A. Producer (internal mapping tool)** — used only by wayon.top core team before launch, to generate the path graph and POI/sponsor data.
+**A. Producer (internal mapping tool)** — used only by wayon.top core team before launch, to generate the path graph and POI/sponsor data. It includes full management capabilities to successfully onboard sponsors to specific zones or location radii, including the ability to instantly update or delete sponsor details and asset creatives.
 
 **B. Consumer (public AR navigator)** — what visitors use. Loads the graph JSON, renders the camera-based AR overlay, computes routes client-side.
 
@@ -67,7 +67,7 @@ This split is deliberate: venue #2 under wayon.top may need a completely differe
 
 Since this is one venue with a handful of sponsors, don't build infrastructure sized for wayon.top yet — that generalization is a deliberate v2 refactor once the model is proven, not a day-1 requirement:
 
-- **Sponsor creative management via a shared Google Drive folder**, not an admin dashboard/CMS. You manually drop updated banner/video assets in, rebuild, redeploy. Building a proper sponsor content-management UI for a handful of sponsors is days of work saved for zero benefit at this scale.
+- **Sponsor Management via Supabase UI / Basic Producer Admin**, avoiding heavy CMS development but still providing full CRUD (Create, Read, Update, Delete). This ensures we have all measures taken to successfully onboard a sponsor to a specific zone/location radius, and we can seamlessly update or delete their details and creatives on the fly without a code rebuild.
 - **No multi-tenant database design.** One venue, one `graph.json`. Multi-venue architecture is a real engineering problem worth solving properly later, with real data from this launch informing the design — not guessed at now under a 7-day deadline.
 - **Manual sponsor invoicing/payment** (UPI/bank transfer, tracked in a spreadsheet) instead of building any payment integration. Nobody needs a checkout flow for 4-6 local sponsor deals.
 
@@ -78,6 +78,7 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
 |---|---|---|
 | Base layer | Leaflet.js + Esri World Imagery (free satellite tiles) | No Mapbox/Google Maps billing needed for a one-person internal tool |
 | Editor | Leaflet drawing plugin — drop POI pins, draw path edges, tag names/distances | Lets you snap GPS breadcrumbs to the visible path in the satellite image |
+| Sponsor Management | Admin UI (or direct Supabase table edit) | Allows updating/deleting sponsors mapped to specific location radii/zones and managing their asset creatives dynamically. |
 | Output | Exports a single `graph.json` matching the schema below | This file is the entire handoff between producer and consumer |
 | GPS capture in the field | Any GPS breadcrumb logger (a simple custom page using `watchPosition` is enough) | Raw trail is reference data, not final — you'll clean it against satellite imagery afterward, not use it directly |
 
@@ -141,12 +142,16 @@ Adding a new stamp later — including ones with no matching POI — is just add
    - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season).
    - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that jumps to a new random location *every time* someone finds it. **Constraint:** The new coordinates generated must be on a verified walkable path (never inside a lake or restricted zone).
    - **Gameplay:** Visiting coordinates unlocks beautifully animated stamps with a haptic pulse. Users can share progress mid-hunt or upon completion.
-   - **The Leaderboard (3 Tabs):** To drive massive virality and competition, we will prompt users for an optional username to record them in a public leaderboard featuring three tabs:
+   - **The Leaderboard (3 Tabs):** To drive massive virality and competition, we will prompt users for their Instagram handle to record them in a public leaderboard featuring three tabs:
      1. **All Stamps Collected:** Ranked by completion time.
      2. **Most Distance Walked:** Ranked by total km walked.
      3. **Golden Stamp:** A live feed of who most recently found it ("Golden Stamp last found by @username").
    - **Reset & Replay:** Users can manually reset their count to restart the hunt.
-7. **Geo-Tagged Memories (Supabase UGC)** — The community layer. Visitors drop comments at *any* coordinate, saved to Supabase (tied to local `device_uuid` for self-deletion). Verified via a one-time IG DM to prevent impersonation.
+
+7. **User Identity, Tags & Geo-Tagged Memories (Supabase UGC)** — The community and authenticity layer. 
+   - **IG Handles as Identity:** We strictly use Instagram handle names instead of random usernames. This is critical: anonymous usernames mean the system is a black box and we could never reach the actual user (e.g., to award prizes). Using IG handles ensures we can reach the users and build real social leverage.
+   - **Tackling Impersonation:** Identity is verified via a one-time IG DM (or OAuth if feasible). This prevents users from claiming someone else's handle to dominate the leaderboard or post inappropriate content under another's name.
+   - **Geo-Tagged Comments & Tags:** Visitors drop comments and tags at *any* specific coordinate (e.g., "Best sunset here!"). Because these are tied to verified IG handles and local `device_uuid` (for self-deletion), the UGC remains high quality and inherently viral as users tag their friends.
 8. **Strava-Style Route Summaries (Live & Geofenced)** — The boast factor. 
    - **Live Controls:** Users can Restart, Pause, Resume, or Share their map at any point during their walk inside Lalbagh.
    - **The Card:** The shareable summary plots their walked path, Walk Duration (Time), Distance, Steps, Calories, and vividly highlights the major Official POIs they discovered along the way.
@@ -197,6 +202,17 @@ To ensure there are no open loopholes for development and that every data point 
 | `session_duration` | Time spent active in the app | Proves it's a true companion app, not just a quick glance. |
 | `return_visitor` | Same device, different day | Proves the app is sticky enough for repeat use. |
 | `feature_usage` | AR view vs. Map vs. Leaderboard | Shows what features actually drive engagement. |
+
+**Tier 4 — Derived / Hidden Metrics (Data Exhaust)**
+
+We do not need to fire explicit events for everything. We can derive highly valuable hidden metrics directly from our existing database state:
+
+| Metric | Derived From | Why it matters commercially |
+|---|---|---|
+| `active_leaderboard_users` | Count of unique IG handles present in the leaderboard | Gives a highly accurate count of highly-engaged, competitive users without needing a specific "active user" event ping. |
+| `stamp_discovery_velocity` | Timestamps between consecutive stamp collections for a user | Shows how fast people are moving through the park and how engaging the gamification loop is. |
+| `zone_dwell_time` | Difference between entry and exit timestamps in a sponsor radius | Proves to sponsors that people are actually lingering in their zone, not just walking past. |
+| `most_social_zones` | Heatmap of where the most geo-tagged comments are dropped | Helps identify organic gathering spots that can be pitched as premium zones to future sponsors. |
 
 ## 9. Key Engineering Caveats (do not skip)
 
