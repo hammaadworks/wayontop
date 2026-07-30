@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-A mobile-web AR wayfinding app for the 240-acre Lalbagh Botanical Garden. Visitors open a link in their phone browser (no app install), point their camera, and see a directional arrow guiding them to a chosen point of interest (POI) via the shortest walkable path. Monetized through zone-based local business sponsorships. Basically an explore app companion for Lalbagh (and other vernues of wayon.top).
+A mobile-web AR wayfinding app for the 240-acre Lalbagh Botanical Garden. Visitors open a link in their phone browser (no app install), point their camera, and see a directional arrow guiding them to a chosen point of interest (POI) via the shortest walkable path. Monetized through zone-based local business sponsorships. Basically an explore app companion for Lalbagh (and other venues of wayon.top).
 
 This is also the first deployment of a reusable internal-mapping methodology intended to become the foundation of a future company, **wayon.top**, providing indoor/venue wayfinding for other locations (malls, Wonderla, Cubbon Park, etc.).
 
@@ -137,12 +137,15 @@ Adding a new stamp later — including ones with no matching POI — is just add
 3. **Premium AR View & Radar** — The actual navigation. Live camera feed with a buttery-smooth directional arrow overlay (powered by dual-source compass fusion) and a dynamic Radar mini-map.
 4. **Photo Spots & Facilities Quick-filters** — Fast discovery. One-tap buttons for "Instagram Spots" (sunset, macros) and "Facilities" (Washroom, Water, Exit).
 5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "History", "Best photo spot", "How crowded", "Interesting facts".
-6. **Pokémon-Style Gamification (Treasure Hunt & Leaderboard)** — The viral loop. 
-   - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season, e.g., Flower Show specials).
-   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that jumps to a new random location *every time* someone finds it. The leaderboard broadcasts: "Golden Stamp last found by @username". **Constraint:** The new coordinates generated must be on a verified walkable path (never randomly inside a lake or restricted zone).
-   - **Gameplay:** Visiting coordinates unlocks beautifully animated stamps (Framer Motion) with a haptic pulse. Users can share progress mid-hunt or upon completion.
-   - **Reset & Replay:** Users can manually reset their count to 0 to restart the hunt.
-   - **Leaderboard:** A competitive leaderboard ranking users by total stamps collected and shortest completion time to drive massive virality.
+6. **Pokémon-Style Gamification & Leaderboard** — The viral loop. 
+   - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season).
+   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that jumps to a new random location *every time* someone finds it. **Constraint:** The new coordinates generated must be on a verified walkable path (never inside a lake or restricted zone).
+   - **Gameplay:** Visiting coordinates unlocks beautifully animated stamps with a haptic pulse. Users can share progress mid-hunt or upon completion.
+   - **The Leaderboard (3 Tabs):** To drive massive virality and competition, we will prompt users for an optional username to record them in a public leaderboard featuring three tabs:
+     1. **All Stamps Collected:** Ranked by completion time.
+     2. **Most Distance Walked:** Ranked by total km walked.
+     3. **Golden Stamp:** A live feed of who most recently found it ("Golden Stamp last found by @username").
+   - **Reset & Replay:** Users can manually reset their count to restart the hunt.
 7. **Geo-Tagged Memories (Supabase UGC)** — The community layer. Visitors drop comments at *any* coordinate, saved to Supabase (tied to local `device_uuid` for self-deletion). Verified via a one-time IG DM to prevent impersonation.
 8. **Strava-Style Route Summaries (Live & Geofenced)** — The boast factor. 
    - **Live Controls:** Users can Restart, Pause, Resume, or Share their map at any point during their walk inside Lalbagh.
@@ -162,41 +165,38 @@ Adding a new stamp later — including ones with no matching POI — is just add
 5. **Battery & Thermal Efficiency** — Continuous camera + GPS + orientation sensors is heavy. The app must fallback gracefully to a beautifully designed 2D map if GPS is poor or thermal throttling occurs.
 6. **Contextual & Seamless Brand Integration** — Brand commercials must be intelligently and seamlessly merged into the app experience based on context. For example, if a user has walked a long distance and the sponsor is Cakewala, the copy shouldn't feel like a disconnected ad, but rather a contextual suggestion: "Hungry after a long walk? Feel the sugar rush @ Cakewala." It must add value as a native companion.
 
-## 8. Analytics Events (three purposeful tiers — no vanity events)
+## 8. Analytics Events (The 3 Value Pillars)
 
-**Tier 1 — Sponsor-facing** (proves ad value, drives renewals)
+To ensure there are no open loopholes for development and that every data point serves a commercial purpose, analytics are explicitly split into four tiers.
+
+**Tier 1 — Prove Value to Sponsors** (Drives revenue and renewals)
 
 | Event | Captures | Why it matters commercially |
 |---|---|---|
-| `session_start` | New visitor session begins | Total reach — the denominator every sponsor stat is measured against ("your zone reached X% of Y total visitors") |
-| `sponsor_impression` | Sponsor's footer marquee slot is shown on screen | Baseline visibility count, standard ad-metric sponsors already understand |
-| `sponsor_tap` | User taps the footer banner to open the ad modal | Active interest, not just passive display |
-| `sponsor_ad_watch_duration` | Time spent with the modal open (video/creative) | Distinguishes a real look from an instant close — this is your strongest "engagement," not just "impression," metric |
-| `sponsor_zone_arrived` | GPS-proximity-confirmed physical arrival at a sponsor's node | **Your single most valuable data point** — verified real-world foot traffic at a sponsor's location, something no billboard or generic ad can prove |
-| `route_selected_to_sponsor_zone` | User picked a sponsor zone as their destination | Signals the navigator itself is driving intentional traffic toward a sponsor |
+| `session_start` | New visitor session begins | Total reach — the denominator every sponsor stat is measured against. |
+| `sponsor_impression` | Marquee is shown on screen | Baseline visibility count, standard metric sponsors understand. |
+| `sponsor_tap` | User taps footer to open modal | Active interest, not just passive display. |
+| `sponsor_ad_watch_duration` | Time spent with modal open | Your strongest "engagement" metric. |
+| `sponsor_zone_arrived` | Physical arrival at sponsor node | **Most valuable data point** — verified real-world foot traffic. |
+| `route_selected_to_sponsor_zone` | User picked a sponsor zone | Signals the app is driving intentional traffic toward a sponsor. |
 
-**Tier 2 — Boast factor** (what you post, screenshot, and show off)
+**Tier 2 — Prove Value & Boast on Instagram** (Drives virality and organic growth)
 
 | Event | Captures | Why it's boast-worthy |
 |---|---|---|
-| `stamp_collected` | Each individual stamp unlock | Rolls up into "X,XXX stamps discovered across all visitors" — a real, quotable number |
-| `all_stamps_collected` | Full "Lalbagh Explorer" completion | "XXX visitors fully explored all 22 spots of Lalbagh" — strong press-line material |
-| `cumulative_distance_walked` | Sum of route distances per session | "Visitors collectively walked XXX km through Lalbagh this week" — the kind of number that's fun, real, and shareable |
-| `share_button_tapped` | User taps "share" on the completion screen | Raw count of people proud enough of the app to want to show someone |
+| `stamp_collected` | Each individual stamp unlock | "X,XXX stamps discovered" — a real, quotable vanity metric. |
+| `all_stamps_collected` | Full completion | "XXX visitors fully explored all 22 spots" — strong press-line material. |
+| `cumulative_distance_walked` | Sum of route distances | "Visitors collectively walked XXX km" — fun, shareable data. |
+| `share_button_tapped` | User taps "share" | Raw count of people proud enough to post it. |
 
-**Tier 3 — Investor-facing (The Intent Graph)**
+**Tier 3 — Prove Product-Market Fit (PMF)** (App health and user stickiness)
 
-Don't just record *where* people walked. Record *why*. This is the core data moat for wayon.top as a physical decision engine.
-
-| Event | Captures | Why this is the honest "pour money in" case |
+| Event | Captures | Why it proves PMF |
 |---|---|---|
-| `search_intent` | Raw search queries mapped to selected destinations | "People looking for flowers usually visit Bonsai next" |
-| `route_divergence` | Did they follow the route or wander off to coffee? | Maps real human behavior against optimal paths |
-| `session_start` | Day-over-day session growth & retention | Proves organic pull and sticky product value |
-
-Post-event, a simple weekly Supabase query per tier (Tier 1 for sponsors, Tier 2 for your own marketing, Tier 3 for any investor conversation) is your entire reporting deliverable — no dashboard UI needed for v1, raw query output is enough.
-
-**One honest caveat:** Tier 3 numbers only mean something with more than one data point over time — a single flower show's numbers are a snapshot, not a trend. If you're serious about the investor angle, the real ask is running this again at the next event (or a second venue) so you have a *repeat* to point to, not just one strong week.
+| `daily_active_users` (DAU) | Unique device sessions per day | Shows the raw scale of adoption and value during the event. |
+| `session_duration` | Time spent active in the app | Proves it's a true companion app, not just a quick glance. |
+| `return_visitor` | Same device, different day | Proves the app is sticky enough for repeat use. |
+| `feature_usage` | AR view vs. Map vs. Leaderboard | Shows what features actually drive engagement. |
 
 ## 9. Key Engineering Caveats (do not skip)
 
@@ -217,7 +217,7 @@ Post-event, a simple weekly Supabase query per tier (Tier 1 for sponsors, Tier 2
 5. Tag sponsor zone coverage per node.
 6. Export `graph.json`, load into the consumer app, test on-site before go-live.
 
-## 12. Open Decisions
+## 11. Open Decisions
 
 - Sponsor sales: which zones/businesses are confirmed, and by when — this gates how many sponsor slots exist at launch
 - Final POI list (how many destinations to support in v1)
