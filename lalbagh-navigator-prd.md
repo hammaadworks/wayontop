@@ -46,7 +46,7 @@ This split is deliberate: venue #2 under wayon.top may need a completely differe
 | Layer | Choice | Why |
 |---|---|---|
 | Framework | React + Vite (TypeScript) | Fast dev loop, small bundle, the most in-demand modern web stack right now, and the one AI coding agents handle most reliably |
-| Styling | Tailwind CSS + shadcn/ui components | Fastest path to a polished, beautiful, consistent UI without hand-rolling CSS — utility-first, highly in-demand, and pragmatic for a solo builder on a 7-day clock |
+| Styling | Tailwind CSS + shadcn/ui components | Fastest path to a polished, beautiful, consistent UI without hand-rolling CSS — utility-first, highly in-demand, and pragmatic. |
 | Icons | lucide-react | Clean, modern icon set, tiny footprint, pairs naturally with Tailwind/shadcn |
 | Localization | English + Kannada, toggle in-app (i18next or a simple JSON string map) | Lalbagh's own signage is bilingual; a meaningful share of visitors will be more comfortable in Kannada. All POI names, UI labels, and onboarding text need both languages from day one — retrofitting i18n later is far more expensive than building it in from the start |
 | AR rendering | Raw camera feed via `getUserMedia` + Canvas/CSS overlay | **Not WebXR** — iOS Safari does not support the WebXR Device API at all. True cross-browser AR here means: video element as background, arrow drawn on a canvas/DOM layer on top, positioned using compass + GPS math. This is "camera pass-through AR," not spatial AR. |
@@ -68,7 +68,7 @@ This split is deliberate: venue #2 under wayon.top may need a completely differe
 Since this is one venue with a handful of sponsors, don't build infrastructure sized for wayon.top yet — that generalization is a deliberate v2 refactor once the model is proven, not a day-1 requirement:
 
 - **Sponsor Management via Supabase UI / Basic Producer Admin**, avoiding heavy CMS development but still providing full CRUD (Create, Read, Update, Delete). This ensures we have all measures taken to successfully onboard a sponsor to a specific zone/location radius, and we can seamlessly update or delete their details and creatives on the fly without a code rebuild.
-- **No multi-tenant database design.** One venue, one `graph.json`. Multi-venue architecture is a real engineering problem worth solving properly later, with real data from this launch informing the design — not guessed at now under a 7-day deadline.
+- **No multi-tenant database design.** One venue lalbagh, the producer stores the mapping data in the Supabase.
 - **Manual sponsor invoicing/payment** (UPI/bank transfer, tracked in a spreadsheet) instead of building any payment integration. Nobody needs a checkout flow for 4-6 local sponsor deals.
 
 Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monetary target.
@@ -129,7 +129,7 @@ Adding a new stamp later — including ones with no matching POI — is just add
 
 ---
 
-## 7. Core Features (Phase 1 MVP — 4-Day Build)
+## 7. Core Features (Phase 1 MVP — 3-Day Build)
 
 ### 7.1 Functional Requirements (The Navigation Engine)
 *Ordered by critical user journey, 10x UX and 10x Revenue opportunities.*
@@ -140,14 +140,16 @@ Adding a new stamp later — including ones with no matching POI — is just add
 4. **Photo Spots & Facilities Quick-filters** — Fast discovery. One-tap buttons for "Instagram Spots" (sunset, macros) and "Facilities" (Washroom, Water, Exit).
 5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "History", "Best photo spot", "How crowded", "Interesting facts".
 6. **Pokémon-Style Gamification & Leaderboard** — The viral loop. 
-   - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season).
-   - **The Golden Stamp (High Urgency):** A special 1-of-1 stamp that is **never** shown on the map. It is only discovered by chance if the user has their AR camera feed open while walking past its hidden coordinates. It jumps to a new random verified walkable coordinate *only after* a user successfully claims it and syncs to the online leaderboard.
-   - **Gameplay & Offline Sync:** Catching stamps and navigating works perfectly offline. When connectivity is available, the app silently syncs collected stamps to Supabase. 
-   - **The Leaderboard (3 Tabs - Online):** The leaderboard requires internet. To drive virality, we prompt users for their Instagram handle (`@handle`) as a display name (Honor System - no DM/OAuth friction). 
+   - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal Collectibles" (trendy, hidden spots updated per season). Normal stamps (excluding Golden) are visible on the 2D map and radar.
+   - **Stamp UX & Magical Celebrations:** Think Pokémon Go style simplicity—when a user walks near a stamp with the AR camera open, the stamp graphic appears on their phone screen overlay along with a "Claim" button. Tapping the button claims it, triggering a rich, Disney-like magical celebration with confetti, audio feedback, and an animated stamp count update.
+   - **The Golden Stamp (High Urgency - Online Only):** A special 1-of-1 stamp that is **never** shown on the map. No two people can claim it simultaneously; the first to claim and enter the leaderboard wins. Upon claiming, it immediately jumps to a new random verified walkable coordinate. *(Note: Do not overcomplicate network handling here. Lalbagh has strong internet coverage, so we don't need to aggressively optimize for edge-case network paradoxes on this specific feature).*
+   - **Gameplay & Offline Sync:** Catching normal stamps and navigating works perfectly offline. When connectivity is available, the app silently syncs collected stamps to Supabase. 
+   - **In-App Browser Blocker (Critical):** On load, if the app detects an in-app browser user agent (e.g., Instagram/Facebook), the UI must hard-block and instruct the user to tap "Open in Safari/Chrome" before they can start. This guarantees we do not lose `localStorage` session state if they switch apps.
+   - **User Identity & The Leaderboard (3 Tabs - Online):** On first load, the app generates a persistent, hidden `device_uuid` in `localStorage`. All backend records and analytics tie strictly to this UUID. To drive virality, we prompt users for their Instagram handle (`@handle`), which is treated purely as an editable display name on the leaderboard. 
      1. **All Stamps Collected:** Ranked by completion time.
      2. **Most Distance Walked:** Ranked by total km walked.
      3. **Golden Stamp:** A live feed of who most recently found it.
-   - **Anti-Cheat Mechanics:** Basic sanity checks on the client/server to prevent fake GPS location spoofing (e.g., checking realistic movement speed between stamps) and time tampering (using server timestamps for leaderboard syncs).
+   - **Anti-Cheat Mechanics:** Scoped down to basic client-side timestamp and distance sanity checks for v1 (to avoid heavy server-side processing for a 3-day MVP).
    - **Reset & Replay:** Users can manually reset their count to restart the hunt.
 
 7. **Universal Viral Sharing Engine (Strava Maps, Stamps & AR Snaps)** — The boast factor. 
@@ -157,8 +159,8 @@ Adding a new stamp later — including ones with no matching POI — is just add
    - **Auto-Trigger:** The Route Summary generates automatically when detecting a physical exit from the Lalbagh gates.
 
 *(Note: Geo-Tagged Comments and explicit user authentication have been deferred to v2 to minimize friction).*
-9. **Zone-Based Sponsor Marquee (Revenue)** — A small, elegant sticky footer marquee gracefully displays sponsors relevant to the user's current physical zone (e.g., MTR and Cakewala near the North Gate, Lenskart near the Glass House).
-10. **Opt-in Sponsor Creative Modal** — Tapping the footer marquee opens a clean modal containing the sponsor's creative. This ensures the UX is never compromised, keeping the interface premium and ensuring it does not feel "salesy".
+9. **Sticky Sponsor Marquee (Revenue)** — An aesthetic, rounded, constantly visible sticky marquee that overlays the AR camera feed and 2D map (like a mobile OS menu bar). We expect to onboard 20+ sponsors covering many zones, so the marquee will dynamically update based on the user's current physical zone. **If the user is in an area with no sponsor zone coverage, it will fallback to playing a default ad (provided in the DB).** It loops tagline and brand logos with a smooth swipe-left animation (2s delay). Example for Cadbury: *[Logo] Feeling lost?* -> *swipes left* -> *[Logo] Grab a 5-star.*
+10. **Opt-in Sponsor Creative Modal** — Tapping the sticky marquee opens a clean modal containing the sponsor's creative. This ensures the full ad experience is opt-in and doesn't interrupt navigation.
 
 ### 7.2 Non-Functional Requirements (The 100% UX Promise)
 *Where the UI/UX magic happens and devs must not compromise.*
@@ -171,10 +173,13 @@ Adding a new stamp later — including ones with no matching POI — is just add
 6. **Contextual & Seamless Brand Integration** — Brand commercials must be intelligently and seamlessly merged into the app experience based on context. For example, if a user has walked a long distance and the sponsor is Cakewala, the copy shouldn't feel like a disconnected ad, but rather a contextual suggestion: "Hungry after a long walk? Feel the sugar rush @ Cakewala." It must add value as a native companion.
 7. **Intuitive Psychological Design & Magical Copywriting** — The app must have zero friction and require absolutely zero onboarding tutorials. Help information must be embedded directly in the UI where needed. For example, on the Golden Stamp leaderboard, a small contextual hint should explain the mechanic seamlessly: *"Open your cam, take a glance, you might just catch the Golden chance!"*
    - **Tone of Voice:** The copy across the entire app must blend Disney-level magical wonder, Gen-Z energy (our prime demographic), a touch of playful rhyming, and kid-friendly approachability. It should feel like a whimsical park companion, not a utilitarian maps app.
+8. **Explicit Fallback UX for Major Components** — The app must gracefully handle device or browser limitations without breaking the experience. For instance, if the native Web Share API fails, it must fallback to rendering a shareable image on-screen with a "Long press to save" instruction. Every high-risk feature (Camera access, compass calibration, internet connectivity) must have an explicitly designed fallback state.
 
 ## 8. Analytics Events (The 3 Value Pillars)
 
 To ensure there are no open loopholes for development and that every data point serves a commercial purpose, analytics are explicitly split into four tiers.
+
+*Critical Dev Requirement: All analytics events must be written to an offline queue (e.g., `IndexedDB` or `localStorage`) when the device is disconnected. The queue must automatically flush to Supabase the moment connectivity is restored. Losing sponsor analytics due to Lalbagh's poor cell coverage is unacceptable.*
 
 **Tier 1 — Prove Value to Sponsors** (Drives revenue and renewals)
 
@@ -222,7 +227,7 @@ We do not need to fire explicit events for everything. We can derive highly valu
 - **GPS accuracy degrades significantly under Lalbagh's dense canopy** (multipath + attenuation error, potentially 15–50m off). The fallback 2D map and junction-node routing exist specifically to make this survivable.
 - **Compass drifts near metal** (gates, railings) — this is why dual-source fusion is in scope, not optional polish.
 - **Raw GPS breadcrumbs from field walking are noisy** — always clean/snap against satellite imagery in the producer tool before exporting `graph.json`. Never ship raw walked coordinates directly.
-- **Cell congestion on show days is expected** — nothing user-facing should depend on a live network call after first load.
+- **Cell coverage is generally strong at Lalbagh** — while offline caching of assets is still required for speed, don't over-engineer network fallback logic. We expect reliable connectivity for core events like Golden Stamp claims and syncing.
 - **Battery/heat** — continuous camera + GPS + orientation sensors is heavy; test for thermal throttling during a real multi-hour outdoor session, not just a quick desk test.
 - **Sponsor modal must be tap-to-open only** — never auto-play, to protect the walking-navigation UX that's the actual product.
 
