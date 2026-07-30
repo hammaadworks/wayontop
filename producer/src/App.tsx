@@ -532,7 +532,7 @@ export default function App() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Location (Node ID)</Label>
-                        <Select value={sponsorForm.poi_id} onValueChange={v => setSponsorForm(s => ({ ...s, poi_id: v }))}>
+                        <Select value={sponsorForm.poi_id} onValueChange={v => setSponsorForm(s => ({ ...s, poi_id: v || undefined }))}>
                           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select a Node..." /></SelectTrigger>
                           <SelectContent>
                             {data.nodes.map(n => <SelectItem key={n.id} value={n.id}>{n.name || n.id} ({n.type})</SelectItem>)}
