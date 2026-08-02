@@ -65,24 +65,24 @@ This split is deliberate: venue #2 under wayon.top may need a completely differe
 | Layer | Choice | Why |
 |---|---|---|
 | Analytics + sponsor event logging | Supabase (Postgres + edge functions) | Fast to stand up, generous free tier, handles sponsor impression/tap/visit logging without you managing a server |
-| Graph, POI, and sponsor *content* data | Supabase Postgres, stored as `jsonb` blobs in a single `content_blobs` table (`key`, `data jsonb`, `version int`, `updated_at`) — keys: `graph`, `stamps`, `sponsors` | Fully customizable post-launch: edit directly via the Supabase table editor or API, no file re-upload, no redeploy, no code change. The Producer tool (Agent 3 below) writes directly to this table via the Supabase client instead of exporting a file. App fetches by key at runtime and caches locally; bumping `version` tells the Service Worker to re-fetch |
+| Graph, POI, and sponsor *content* data | Supabase Postgres, utilizing a venue-oriented schema (`venues` table for primary entity, `venue_content` for `jsonb` blobs keyed by `venue_key` and `content_type`). | Fully customizable post-launch: edit directly via the Supabase table editor or API, no file re-upload, no redeploy, no code change. The Producer tool writes directly to this table via the Supabase client. App fetches by venue key at runtime and caches locally; bumping `version` tells the Service Worker to re-fetch |
 
 ### Pragmatic shortcuts (single-venue jugaad — intentional, not laziness)
 
 Since this is one venue with a handful of sponsors, don't build infrastructure sized for wayon.top yet — that generalization is a deliberate v2 refactor once the model is proven, not a day-1 requirement:
 
-- **Sponsor Management via Supabase UI / Basic Producer Admin**, avoiding heavy CMS development but still providing full CRUD (Create, Read, Update, Delete). This ensures we have all measures taken to successfully onboard a sponsor to a specific zone/location radius, and we can seamlessly update or delete their details and creatives on the fly without a code rebuild.
-- **No multi-tenant database design.** One venue lalbagh, the producer stores the mapping data in the Supabase.
-- **Manual sponsor invoicing/payment** (UPI/bank transfer, tracked in a spreadsheet) instead of building any payment integration. Nobody needs a checkout flow for 4-6 local sponsor deals.
+- **Sponsor Management via Supabase UI / Basic Producer Admin**, avoiding heavy CMS development but still providing full CRUD.
+- **Multi-tenant data architecture (prepared).** The schema explicitly supports multiple venues (via `venue_key`), though the first deployment focuses strictly on lalbagh. The producer manages multiple venues.
+- **Manual sponsor invoicing/payment** (UPI/bank transfer, tracked in a spreadsheet) instead of building any payment integration.
 
 Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monetary target.
 
 ### Producer app (internal mapping tool)
 | Layer | Choice | Why |
 |---|---|---|
-| Base layer | Leaflet.js + Esri World Imagery (free satellite tiles) | No Mapbox/Google Maps billing needed for a one-person internal tool |
-| Editor | Leaflet drawing plugin — drop POI pins, draw path edges, tag names/distances | Lets you snap GPS breadcrumbs to the visible path in the satellite image |
-| Sponsor Management | Admin UI (Bird's-Eye Map) | Visual ledger key map for sponsors. View sponsor zones plotted directly on the map. Adjust the radius (e.g., 20m) or change the brand, and the map updates instantly for better spatial planning. |
+| Base layer | MapLibre GL JS | Performant, WebGL-based vector maps, ensuring consistency and best-in-class tech stack across both producer and consumer. |
+| Editor | MapLibre drawing interactions — drop POI pins, draw path edges, tag names/distances | Lets you click the map to place nodes and connect them with edges for routing. |
+| Sponsor Management | Admin UI (Bird's-Eye Map) | Visual ledger key map for sponsors. View sponsor zones plotted directly on the map. |
 | Output (Incremental) | Syncs directly to Supabase | The graph is built incrementally (e.g., map half the park on day 1, the rest on day 2). The Producer app fetches the existing graph from Supabase, merges new nodes/edges, and saves it back. No manual file handoffs. |
 | GPS capture in the field | Any GPS breadcrumb logger (a simple custom page using `watchPosition` is enough) | Raw trail is reference data, not final — you'll clean it against satellite imagery afterward, not use it directly |
 
@@ -183,7 +183,9 @@ Adding a new stamp later — including ones with no matching POI — is just add
 10. **Graceful Permission Fallbacks** — If a user hits "Deny" for Camera access, gracefully degrade directly to the 2D Map Mode without a blank screen or loop. If Location is denied, the app becomes a browseable digital brochure with an unobtrusive prompt to enable location for routing.
 11. **Figure 8 Calibration Tooltips** — Provide a small tooltip or UI button in the AR view instructing users to wave their phone in a "Figure 8" if they notice the arrow drifting, enabling them to recalibrate their hardware compass easily.
 12. **Service Worker Cache Traps** — The Service Worker must use a `NetworkFirst` strategy for the main HTML document (or provide an explicit "Update Available - Reload" UI prompt). In a 3-day build, users must not get stuck on a cached, buggy Day-1 version.
-
+13. **No Native Dialogs** — Never use native JS alerts, confirms, or prompt boxes. Always use app-style modals.
+14. **Consistent Design Language** — Use consistent UI/UX components and experience across the app (both Producer and Consumer). They must look consistent in design such that one team has designed it. Share the design system (utilizing available skills).
+15. **Prioritize UI/UX & Performance** — Always aim for superior UI/UX performance. Utilize the amazing list of UI components available in skills and MCP servers to build high-quality, performant interfaces.
 ## 8. Analytics Events (The 3 Value Pillars)
 
 To ensure there are no open loopholes for development and that every data point serves a commercial purpose, analytics are explicitly split into four tiers.

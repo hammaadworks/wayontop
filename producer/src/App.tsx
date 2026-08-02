@@ -1,48 +1,28 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './lib/supabase';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, CircleMarker, useMap, Circle } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import * as turf from '@turf/turf';
+import type * as GeoJSON from 'geojson';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './components/ui/card';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Label } from './components/ui/label';
-import { MapPin, ArrowRight, Save, Trash2, Play, Square, LocateFixed, Megaphone, MousePointer2, Route, X, ChevronRight, Plus, Camera, Layers, Eraser } from 'lucide-react';
+import { MapPin, ArrowRight, Save, Trash2, Play, Square, LocateFixed, Megaphone, MousePointer2, Route, X, Plus, Camera, Layers, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from './components/ui/sheet';
 import { CameraView } from './components/CameraView';
 
-const createNodeIcon = (type: string, isSelected: boolean) => {
-  const color = type === 'poi' ? 'bg-amber-500' : type === 'stamp' ? 'bg-fuchsia-500' : 'bg-indigo-500';
-  const glow = type === 'poi' ? 'shadow-amber-500/50' : type === 'stamp' ? 'shadow-fuchsia-500/50' : 'shadow-indigo-500/50';
-  const scale = isSelected ? 'scale-125' : 'scale-100';
-  const border = isSelected ? 'border-[3px] border-white' : 'border-2 border-white/90';
-  
-  return L.divIcon({
-    className: 'bg-transparent border-0',
-    html: `<div class="relative flex items-center justify-center w-10 h-10 -ml-1 -mt-1">
-            <div class="absolute inset-0 rounded-full ${color} opacity-20 animate-pulse"></div>
-            <div class="relative w-4 h-4 rounded-full ${color} ${border} shadow-lg ${glow} ${scale} transition-all duration-300"></div>
-           </div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-  });
-};
-
-// Fix for default Leaflet icons in Vite
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// MapLibre icons are handled via HTML inside Marker
 
 export type NodeType = 'gate' | 'poi' | 'junction' | 'stamp';
 
 export interface Venue {
   id: string;
   name: string;
+  key: string;
   lat: number;
   lng: number;
   zoom: number;
@@ -80,37 +60,6 @@ export interface GraphData {
   sponsors: SponsorZone[];
 }
 
-function MapClickHandler({ onClick }: { onClick: (latlng: L.LatLng) => void }) {
-  useMapEvents({
-    click: (e) => onClick(e.latlng),
-  });
-  return null;
-}
-
-function MapController({ center, trigger, initialCenter, initialZoom }: { center: L.LatLng | null, trigger: number, initialCenter: L.LatLngExpression, initialZoom: number }) {
-  const map = useMap();
-  const [initialCentered, setInitialCentered] = useState(false);
-
-  useEffect(() => {
-    map.setView(initialCenter, initialZoom);
-  }, [initialCenter, initialZoom, map]);
-
-  useEffect(() => {
-    if (center && !initialCentered) {
-      map.flyTo(center, 18, { animate: true });
-      setInitialCentered(true);
-    }
-  }, [center, initialCentered, map]);
-
-  useEffect(() => {
-    if (center && trigger > 0) {
-      map.flyTo(center, 18, { animate: true });
-    }
-  }, [trigger, center, map]); 
-
-  return null;
-}
-
 function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3;
   const p1 = lat1 * Math.PI / 180;
@@ -127,11 +76,15 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
 }
 
 export default function App() {
+  const mapRef = useRef<any>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
+
+
   const [currentVenue, setCurrentVenue] = useState<Venue | null>(null);
   const [loadingVenues, setLoadingVenues] = useState(true);
   const [showNewVenue, setShowNewVenue] = useState(false);
   const [newVenueForm, setNewVenueForm] = useState<Partial<Venue>>({ zoom: 16 });
+  const [venueToDelete, setVenueToDelete] = useState<string | null>(null);
 
   const [data, setData] = useState<GraphData>({ nodes: [], edges: [], sponsors: [] });
   const [loadingGraph, setLoadingGraph] = useState(false);
@@ -154,10 +107,11 @@ export default function App() {
     sponsors: true,
     trace: true,
   });
+  const [mapSkin, setMapSkin] = useState<'satellite' | 'animated'>('satellite');
 
   // Geolocation & Recording State
-  const [currentLocation, setCurrentLocation] = useState<L.LatLng | null>(null);
-  const [rawTrace, setRawTrace] = useState<L.LatLng[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [rawTrace, setRawTrace] = useState<{lat: number, lng: number}[]>([]);
   const [recording, setRecording] = useState(false);
   const [locateTrigger, setLocateTrigger] = useState(0);
   const lastRecordedNodeRef = useRef<GraphNode | null>(null);
@@ -166,6 +120,19 @@ export default function App() {
   const [newNodeName, setNewNodeName] = useState('');
   const [newNodeType, setNewNodeType] = useState<NodeType>('poi');
   const [testingStamp, setTestingStamp] = useState<GraphNode | null>(null);
+
+  useEffect(() => {
+    if (mapRef.current && currentVenue) {
+      mapRef.current.flyTo({ center: [currentVenue.lng, currentVenue.lat], zoom: currentVenue.zoom, essential: true });
+    }
+  }, [currentVenue]);
+
+  useEffect(() => {
+    if (mapRef.current && currentLocation && locateTrigger > 0) {
+      mapRef.current.flyTo({ center: [currentLocation.lng, currentLocation.lat], zoom: 18, essential: true });
+    }
+  }, [locateTrigger]);
+
 
   useEffect(() => {
     loadVenues();
@@ -180,7 +147,7 @@ export default function App() {
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const pos = new L.LatLng(position.coords.latitude, position.coords.longitude);
+        const pos = {lat: position.coords.latitude, lng: position.coords.longitude};
         setCurrentLocation(pos);
         if (recording) {
           setRawTrace(prev => [...prev, pos]);
@@ -247,12 +214,14 @@ export default function App() {
   }
 
   async function createVenue() {
-    if (!newVenueForm.name || !newVenueForm.lat || !newVenueForm.lng) {
-      toast.error('Name and coordinates are required');
-      return;
-    }
-    const { data, error } = await supabase.from('venues').insert([{
+    if (!newVenueForm.name || !newVenueForm.key || !newVenueForm.lat || !newVenueForm.lng) return toast.error('Name, Key and coordinates required');
+    
+    const validKey = /^[a-z0-9]+$/.test(newVenueForm.key);
+    if (!validKey) return toast.error('Key must be lowercase alphanumeric, one word only');
+
+    const { data: vdata, error } = await supabase.from('venues').insert([{
       name: newVenueForm.name,
+      key: newVenueForm.key,
       lat: newVenueForm.lat,
       lng: newVenueForm.lng,
       zoom: newVenueForm.zoom || 16
@@ -260,31 +229,37 @@ export default function App() {
 
     if (error) {
       toast.error('Failed to create venue: ' + error.message);
-    } else if (data) {
+    } else if (vdata) {
       toast.success('Venue created!');
-      setVenues([data, ...venues]);
-      setCurrentVenue(data);
+      setVenues([vdata, ...venues]);
+      setCurrentVenue(vdata);
       setShowNewVenue(false);
       setNewVenueForm({ zoom: 16 });
+    }
+  }
+
+  async function deleteVenue(venueId: string) {
+    // venue_content is deleted by cascade
+    const { error } = await supabase.from('venues').delete().eq('id', venueId);
+    if (error) {
+      toast.error('Failed to delete venue: ' + error.message);
+    } else {
+      toast.success('Venue deleted');
+      setVenues(venues.filter(v => v.id !== venueId));
+      if (currentVenue?.id === venueId) setCurrentVenue(null);
     }
   }
 
   async function loadGraph() {
     if (!currentVenue) return;
     setLoadingGraph(true);
-    const graphKey = `graph_${currentVenue.id}`;
-    
-    const { data: row, error } = await supabase
-      .from('content_blobs')
-      .select('data')
-      .eq('key', graphKey)
-      .single();
-
-    if (error) {
-      console.log('No existing graph found for venue, starting fresh.');
+    const { data: blob, error } = await supabase.from('venue_content').select('data').eq('venue_key', currentVenue.key).eq('content_type', 'graph').single();
+    if (error && error.code !== 'PGRST116') {
+      toast.error('Failed to load graph: ' + error.message);
+    } else if (blob && blob.data) {
+      setData(blob.data as GraphData);
+    } else {
       setData({ nodes: [], edges: [], sponsors: [] });
-    } else if (row && row.data) {
-      setData(row.data as GraphData);
     }
     setLoadingGraph(false);
   }
@@ -292,16 +267,13 @@ export default function App() {
   async function saveGraph() {
     if (!currentVenue) return;
     setSaving(true);
-    const graphKey = `graph_${currentVenue.id}`;
-    
-    const { error } = await supabase
-      .from('content_blobs')
-      .upsert({ 
-        key: graphKey, 
-        data: data, 
-        version: Math.floor(Date.now() / 1000), 
-        updated_at: new Date().toISOString() 
-      });
+    const { error } = await supabase.from('venue_content').upsert({ 
+      venue_key: currentVenue.key, 
+      content_type: 'graph',
+      data: data, 
+      version: Math.floor(Date.now() / 1000), 
+      updated_at: new Date().toISOString() 
+    });
 
     if (error) {
       toast.error('Error saving graph: ' + error.message);
@@ -340,7 +312,7 @@ export default function App() {
     }));
   };
 
-  const handleMapClick = (latlng: L.LatLng) => {
+  const handleMapClick = (latlng: {lat: number, lng: number}) => {
     if (mode === 'add_node') {
       const newNode: GraphNode = {
         id: `n_${Date.now()}`,
@@ -389,13 +361,7 @@ export default function App() {
     }
   };
 
-  const handleEdgeClick = (edge: GraphEdge) => {
-    if (mode === 'view') {
-      setSelectedEdge(edge);
-      setSelectedNode(null);
-    }
-  };
-
+  
   const deleteNode = (id: string) => {
     setData(prev => ({
       ...prev,
@@ -466,10 +432,8 @@ export default function App() {
                 <CardDescription>Setup a new park, mall, or event space</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2">
-                  <Label>Venue Name</Label>
-                  <Input placeholder="e.g. Central Park" value={newVenueForm.name || ''} onChange={e => setNewVenueForm(s => ({ ...s, name: e.target.value }))} />
-                </div>
+                <div className="space-y-2"><Label>Venue Name</Label><Input placeholder="Venue Name" value={newVenueForm.name || ''} onChange={e => setNewVenueForm(s => ({ ...s, name: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Venue Key (e.g. lalbagh)</Label><Input placeholder="Venue Key" value={newVenueForm.key || ''} onChange={e => setNewVenueForm(s => ({ ...s, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))} /></div>
                 
                 <div className="flex justify-between items-center pt-2">
                   <Label>Center Coordinates</Label>
@@ -529,18 +493,14 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="grid gap-1">
-                    {venues.map(venue => (
-                      <button
-                        key={venue.id}
-                        onClick={() => setCurrentVenue(venue)}
-                        className="flex items-center justify-between p-4 rounded-lg hover:bg-indigo-50 transition-colors text-left group"
-                      >
-                        <div>
-                          <div className="font-semibold text-slate-900 group-hover:text-indigo-700 transition-colors">{venue.name}</div>
-                          <div className="text-xs text-slate-500 mt-1 font-mono">{venue.lat.toFixed(4)}, {venue.lng.toFixed(4)}</div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                      </button>
+                    {venues.map(v => (
+                      <div key={v.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100 group">
+                        <button onClick={() => setCurrentVenue(v)} className="flex-1 text-left">
+                          <div className="font-semibold text-slate-900 group-hover:text-indigo-700">{v.name}</div>
+                          <div className="text-xs text-slate-500 mt-1">{v.key} • {v.lat.toFixed(4)}, {v.lng.toFixed(4)}</div>
+                        </button>
+                        <Button variant="ghost" size="icon" onClick={() => setVenueToDelete(v.id)} className="text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -552,6 +512,22 @@ export default function App() {
               </div>
             </Card>
           )}
+
+          {/* Delete Venue Alert Dialog */}
+          <AlertDialog open={!!venueToDelete} onOpenChange={(open: boolean) => !open && setVenueToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this venue and all its mapped nodes, edges, and sponsors. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { if (venueToDelete) deleteVenue(venueToDelete); setVenueToDelete(null); }} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     );
@@ -571,107 +547,211 @@ export default function App() {
           </div>
         ) : null}
         
-        <MapContainer center={[currentVenue.lat, currentVenue.lng]} zoom={currentVenue.zoom} className="w-full h-full z-0" zoomControl={false}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          />
-          <MapController center={currentLocation} trigger={locateTrigger} initialCenter={[currentVenue.lat, currentVenue.lng]} initialZoom={currentVenue.zoom} />
-          <MapClickHandler onClick={handleMapClick} />
-          
+        <Map
+          ref={mapRef}
+          initialViewState={{
+            longitude: currentVenue.lng,
+            latitude: currentVenue.lat,
+            zoom: currentVenue.zoom,
+            pitch: 0,
+            bearing: 0
+          }}
+          mapStyle={mapSkin === 'satellite' ? {
+            version: 8,
+            sources: {
+              'osm': {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: '&copy; Esri',
+                maxzoom: 19
+              }
+            },
+            layers: [
+              {
+                id: 'osm-layer',
+                type: 'raster',
+                source: 'osm',
+                minzoom: 0
+              }
+            ]
+          } : {
+            version: 8,
+            sources: {
+              'osm': {
+                type: 'raster',
+                tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: '&copy; OpenStreetMap Contributors',
+                maxzoom: 19
+              }
+            },
+            layers: [
+              {
+                id: 'osm-layer',
+                type: 'raster',
+                source: 'osm',
+                minzoom: 0,
+                maxzoom: 19
+              }
+            ]
+          }}
+          style={{ width: '100%', height: '100%', zIndex: 0 }}
+          pitchWithRotate={true}
+          dragRotate={true}
+          maxPitch={85}
+          maxZoom={22}
+          onClick={(e) => handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
+        >
           {currentLocation && (
-            <CircleMarker 
-              center={currentLocation}
-              radius={7}
-              pathOptions={{ color: 'white', fillColor: '#3b82f6', fillOpacity: 1, weight: 3 }}
-            >
-              <Popup>Your Location</Popup>
-            </CircleMarker>
+            <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
+              <div className="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md">
+                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-50"></div>
+              </div>
+            </Marker>
           )}
-          
-          {layers.paths && data.nodes.map(node => (
-            <Marker 
-              key={node.id} 
-              position={[node.lat, node.lng]}
-              icon={createNodeIcon(node.type, selectedNode?.id === node.id)}
-              draggable={mode === 'view'}
-              eventHandlers={{
-                click: () => handleNodeClick(node),
-                dragend: (e) => {
-                  const marker = e.target;
-                  const position = marker.getLatLng();
-                  updateNodePosition(node.id, position.lat, position.lng);
+
+          {layers.paths && data.nodes.map(node => {
+            const isSelected = selectedNode?.id === node.id;
+            const color = node.type === 'poi' ? 'bg-amber-500' : node.type === 'stamp' ? 'bg-fuchsia-500' : 'bg-indigo-500';
+            const glow = node.type === 'poi' ? 'shadow-amber-500/50' : node.type === 'stamp' ? 'shadow-fuchsia-500/50' : 'shadow-indigo-500/50';
+            const scale = isSelected ? 'scale-125' : 'scale-100';
+            const border = isSelected ? 'border-[3px] border-white' : 'border-2 border-white/90';
+            const opacity = mode === 'add_edge' && edgeStartNode?.id === node.id ? 'opacity-50' : 'opacity-100';
+            
+            return (
+              <Marker 
+                key={node.id} 
+                longitude={node.lng} 
+                latitude={node.lat} 
+                anchor="center"
+                draggable={mode === 'view'}
+                onDragEnd={(e) => updateNodePosition(node.id, e.lngLat.lat, e.lngLat.lng)}
+                onClick={(e) => { e.originalEvent.stopPropagation(); handleNodeClick(node); }}
+              >
+                <div className={`relative flex items-center justify-center w-10 h-10 -ml-1 -mt-1 cursor-pointer ${opacity}`}>
+                  <div className={`absolute inset-0 rounded-full ${color} opacity-20 animate-pulse`}></div>
+                  <div className={`relative w-4 h-4 rounded-full ${color} ${border} shadow-lg ${glow} ${scale} transition-all duration-300`}></div>
+                </div>
+              </Marker>
+            );
+          })}
+
+          {layers.paths && data.edges.length > 0 && (
+            <Source 
+              id="edges-source" 
+              type="geojson" 
+              data={{
+                type: 'FeatureCollection',
+                features: data.edges.map(edge => {
+                  const start = data.nodes.find(n => n.id === edge.from);
+                  const end = data.nodes.find(n => n.id === edge.to);
+                  if (!start || !end) return null;
+                  const isSelected = selectedEdge?.from === edge.from && selectedEdge?.to === edge.to;
+                  return {
+                    type: 'Feature',
+                    properties: { ...edge, isSelected },
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: [[start.lng, start.lat], [end.lng, end.lat]]
+                    }
+                  };
+                }).filter(Boolean) as GeoJSON.Feature[]
+              }}
+            >
+              <Layer
+                id="edges-glow"
+                type="line"
+                paint={{
+                  'line-color': '#6366f1',
+                  'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 16, 12],
+                  'line-opacity': ['case', ['boolean', ['get', 'isSelected'], false], 0.3, 0.15]
+                }}
+                layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              />
+              <Layer
+                id="edges-core"
+                type="line"
+                paint={{
+                  'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#f59e0b', '#6366f1'],
+                  'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 6, 4],
+                  'line-dasharray': mode === 'view' ? [1] : [2, 2]
+                }}
+                layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+              />
+            </Source>
+          )}
+
+          {layers.sponsors && data.sponsors.length > 0 && (
+            <Source
+              id="sponsors-source"
+              type="geojson"
+              data={{
+                type: 'FeatureCollection',
+                features: data.sponsors.map(sponsor => {
+                  const node = data.nodes.find(n => n.id === sponsor.poi_id);
+                  if (!node) return null;
+                  return turf.circle([node.lng, node.lat], sponsor.radius_m, { steps: 64, units: 'meters' });
+                }).filter(Boolean) as GeoJSON.Feature[]
+              }}
+            >
+              <Layer
+                id="sponsors-layer"
+                type="fill"
+                paint={{
+                  'fill-color': '#22c55e',
+                  'fill-opacity': 0.25
+                }}
+              />
+              <Layer
+                id="sponsors-outline"
+                type="line"
+                paint={{
+                  'line-color': '#22c55e',
+                  'line-width': 2
+                }}
+              />
+            </Source>
+          )}
+
+          {layers.trace && rawTrace.length > 1 && (
+            <Source
+              id="trace-source"
+              type="geojson"
+              data={{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: rawTrace.map(t => [t.lng, t.lat])
                 }
               }}
-              opacity={mode === 'add_edge' && edgeStartNode?.id === node.id ? 0.5 : 1}
             >
-            </Marker>
-          ))}
-
-          {layers.sponsors && data.sponsors.map(sponsor => {
-            const node = data.nodes.find(n => n.id === sponsor.poi_id);
-            if (!node) return null;
-            return (
-              <Circle 
-                key={`s_${sponsor.id}`} 
-                center={[node.lat, node.lng]} 
-                radius={sponsor.radius_m}
-                pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.25, weight: 2 }}
+              <Layer
+                id="trace-layer-glow"
+                type="line"
+                paint={{
+                  'line-color': '#ef4444',
+                  'line-width': 8,
+                  'line-opacity': 0.2,
+                  'line-dasharray': [0.1, 1]
+                }}
+                layout={{ 'line-cap': 'round', 'line-join': 'round' }}
               />
-            );
-          })}
-
-          {layers.paths && data.edges.map(edge => {
-            const start = data.nodes.find(n => n.id === edge.from);
-            const end = data.nodes.find(n => n.id === edge.to);
-            if (!start || !end) return null;
-            const isSelected = selectedEdge?.from === edge.from && selectedEdge?.to === edge.to;
-            return (
-              <div key={`${edge.from}-${edge.to}`}>
-                {/* Glow layer */}
-                <Polyline 
-                  positions={[[start.lat, start.lng], [end.lat, end.lng]]}
-                  color="#6366f1"
-                  weight={isSelected ? 16 : 12}
-                  opacity={isSelected ? 0.3 : 0.15}
-                  lineCap="round"
-                  eventHandlers={{ click: () => handleEdgeClick(edge) }}
-                />
-                {/* Core layer */}
-                <Polyline 
-                  positions={[[start.lat, start.lng], [end.lat, end.lng]]}
-                  color={isSelected ? "#f59e0b" : "#6366f1"}
-                  weight={isSelected ? 6 : 4}
-                  opacity={1}
-                  lineCap="round"
-                  dashArray={mode === 'view' ? undefined : '8, 8'}
-                  eventHandlers={{ click: () => handleEdgeClick(edge) }}
-                />
-              </div>
-            );
-          })}
-          
-          {layers.trace && rawTrace.length > 1 && (
-            <div key="trace-layer">
-              <Polyline 
-                positions={rawTrace} 
-                color="#ef4444" 
-                weight={8} 
-                opacity={0.2} 
-                lineCap="round"
-                dashArray="1, 8"
+              <Layer
+                id="trace-layer-core"
+                type="line"
+                paint={{
+                  'line-color': '#ef4444',
+                  'line-width': 3,
+                  'line-opacity': 0.8,
+                  'line-dasharray': [1, 2]
+                }}
+                layout={{ 'line-cap': 'round', 'line-join': 'round' }}
               />
-              <Polyline 
-                positions={rawTrace} 
-                color="#ef4444" 
-                weight={3} 
-                opacity={0.8} 
-                lineCap="round"
-                dashArray="4, 6"
-              />
-            </div>
+            </Source>
           )}
-        </MapContainer>
+        </Map>
       </div>
 
       {/* Top Navigation Bar - Floating */}
@@ -717,6 +797,22 @@ export default function App() {
               <input type="checkbox" checked={layers.trace} onChange={e => setLayers(l => ({ ...l, trace: e.target.checked }))} className="w-3 h-3 text-red-500 rounded" />
               <span className="text-xs font-medium">GPS Trace</span>
             </label>
+            
+            <div className="border-t border-slate-100 my-1"></div>
+            <div className="px-2 flex items-center justify-between gap-2">
+              <button
+                onClick={() => setMapSkin('satellite')}
+                className={`flex-1 text-xs py-1 rounded font-medium transition-colors ${mapSkin === 'satellite' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                Sat
+              </button>
+              <button
+                onClick={() => setMapSkin('animated')}
+                className={`flex-1 text-xs py-1 rounded font-medium transition-colors ${mapSkin === 'animated' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                Map
+              </button>
+            </div>
           </div>
 
           {/* Sponsors Sheet */}
