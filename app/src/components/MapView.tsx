@@ -45,42 +45,61 @@ export function MapView({ graph, activeRoute, stamps = [], isRadar = false }: Ma
 
   const animatedStyle = {
     version: 8,
+    name: "Lalbagh Map",
+    metadata: { app: "wayon.top Consumer", theme: "animated" },
     sources: {
       'osm': {
         type: 'raster',
         tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
         attribution: '&copy; OpenStreetMap Contributors',
-        maxzoom: 19
+        maxzoom: 18,
+        scheme: "xyz"
       }
     },
     layers: [
       {
-        id: 'osm-layer',
+        id: 'osm-base',
         type: 'raster',
         source: 'osm',
-        minzoom: 0
+        layout: { visibility: "visible" },
+        paint: {
+          "raster-opacity": 1,
+          "raster-saturation": -0.2,
+          "raster-contrast": 0.05,
+          "raster-fade-duration": 300
+        }
       }
     ]
   };
 
   const satelliteStyle = {
     version: 8,
+    name: "Lalbagh Satellite",
+    metadata: { app: "wayon.top Consumer", theme: "satellite" },
     sources: {
-      'osm': {
+      'satellite': {
         type: 'raster',
         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
         tileSize: 256,
         attribution: '&copy; Esri',
-        maxzoom: 19
+        maxzoom: 19,
+        scheme: "xyz"
       }
     },
     layers: [
       {
-        id: 'osm-layer',
+        id: 'satellite-base',
         type: 'raster',
-        source: 'osm',
-        minzoom: 0
+        source: 'satellite',
+        layout: { visibility: "visible" },
+        paint: {
+          "raster-opacity": 1,
+          "raster-contrast": 0.15,
+          "raster-saturation": 0.2,
+          "raster-brightness-min": 0.05,
+          "raster-fade-duration": 300
+        }
       }
     ]
   };

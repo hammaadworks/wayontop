@@ -92,7 +92,14 @@ function MainApp() {
   useEffect(() => {
     const handler = (e: any) => setAlertMessage(e.detail);
     window.addEventListener('app-alert', handler);
-    return () => window.removeEventListener('app-alert', handler);
+    
+    const switchHandler = (e: any) => setMode(e.detail.view);
+    window.addEventListener('switch-view', switchHandler);
+    
+    return () => {
+      window.removeEventListener('app-alert', handler);
+      window.removeEventListener('switch-view', switchHandler);
+    };
   }, []);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { ZoomIn, ZoomOut, CameraOff, Settings, Map } from 'lucide-react';
 
 interface CameraFeedProps {
   className?: string;
@@ -120,8 +120,48 @@ export function CameraFeed({ className = '' }: CameraFeedProps) {
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-slate-900 text-white p-4 text-center ${className}`}>
-        <p className="text-red-400">{error}</p>
+      <div className={`flex flex-col items-center justify-center bg-slate-900 text-white p-8 pb-32 text-center ${className} z-50`}>
+        <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6">
+          <CameraOff className="w-10 h-10 text-slate-400" />
+        </div>
+        
+        <h3 className="text-2xl font-bold mb-3 tracking-tight">Camera Unavailable</h3>
+        <p className="text-slate-400 mb-8 max-w-sm">
+          You can still navigate Lalbagh without AR! Use the Map view, or follow the steps below to enable the camera.
+        </p>
+
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 text-left max-w-md w-full mb-8">
+          <h4 className="text-amber-400 font-bold mb-4 flex items-center gap-2">
+            <Settings className="w-5 h-5" /> How to Enable Camera
+          </h4>
+          
+          <div className="space-y-4 text-sm text-slate-300">
+            <div>
+              <p className="font-bold text-white mb-1">1. Browser Level (Site Settings)</p>
+              <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
+                <li><span className="text-white">iOS:</span> Tap the <strong>aA</strong> icon in the address bar → Website Settings → Camera → Allow</li>
+                <li><span className="text-white">Android:</span> Tap the lock icon near the URL → Permissions → Camera → Allow</li>
+              </ul>
+            </div>
+            
+            <div>
+              <p className="font-bold text-white mb-1">2. OS Level (Device Settings)</p>
+              <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
+                <li><span className="text-white">iOS:</span> Settings → Safari/Chrome → Camera → Allow</li>
+                <li><span className="text-white">Android:</span> Settings → Apps → Chrome → Permissions → Camera → Allow</li>
+              </ul>
+            </div>
+          </div>
+          
+          <p className="mt-5 text-xs text-slate-500">After changing settings, refresh the page.</p>
+        </div>
+
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-view', { detail: { view: 'map' } }))}
+          className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-8 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-all"
+        >
+          <Map className="w-5 h-5" /> Switch to Map View
+        </button>
       </div>
     );
   }
