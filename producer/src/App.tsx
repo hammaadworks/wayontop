@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from './components/ui/sheet';
 import { CameraView } from './components/CameraView';
+import { PermissionGate } from './components/PermissionGate';
 
 // MapLibre icons are handled via HTML inside Marker
 
@@ -75,7 +76,7 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
   return Math.round(R * c);
 }
 
-export default function App() {
+function MainApp() {
   const mapRef = useRef<any>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
 
@@ -1114,5 +1115,13 @@ export default function App() {
         <CameraView stampName={testingStamp.name || 'Unknown Stamp'} onClose={() => setTestingStamp(null)} />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <PermissionGate>
+      <MainApp />
+    </PermissionGate>
   );
 }
