@@ -1,7 +1,7 @@
 import { X, Info, Camera, Users, BookOpen } from 'lucide-react';
 import type { GraphNode } from '@wayontop/ui/lib/types';
 import { useTranslation } from 'react-i18next';
-import { Button } from './ui/button';
+import { Button } from '@wayontop/ui/components/ui/button';
 
 interface POICardProps {
   poi: GraphNode;

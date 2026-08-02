@@ -1,5 +1,5 @@
 import { getDeviceUUID } from './device';
-import { supabase } from './supabase';
+import { supabase } from '@wayontop/ui/lib/supabase';
 
 export interface AnalyticsEvent {
   device_uuid: string;

@@ -12,11 +12,11 @@
   "iconLibrary": "lucide",
   "rtl": false,
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@wayontop/ui/components",
+    "utils": "@wayontop/ui/lib/utils",
+    "ui": "@wayontop/ui/components/ui",
+    "lib": "@wayontop/ui/lib",
+    "hooks": "@wayontop/ui/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

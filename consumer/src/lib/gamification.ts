@@ -1,5 +1,5 @@
 import { getDeviceUUID } from './device';
-import { supabase } from './supabase';
+import { supabase } from '@wayontop/ui/lib/supabase';
 import { Analytics } from './analytics';
 
 const STAMPS_KEY = 'wayontop_collected_stamps';

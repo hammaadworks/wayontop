@@ -1,24 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from './lib/supabase';
+import { supabase } from '@wayontop/ui/lib/supabase';
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { Label } from './components/ui/label';
+import { Button } from '@wayontop/ui/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@wayontop/ui/components/ui/card';
+import { Input } from '@wayontop/ui/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@wayontop/ui/components/ui/select';
+import { Label } from '@wayontop/ui/components/ui/label';
 import { MapPin, ArrowRight, Save, Trash2, Play, Square, LocateFixed, Megaphone, MousePointer2, Route, X, Plus, Camera, Layers, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from './components/ui/sheet';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@wayontop/ui/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@wayontop/ui/components/ui/sheet';
 import { CameraView } from './components/CameraView';
-import { PermissionGate } from './components/PermissionGate';
+import { PermissionGate } from '@wayontop/ui/components/PermissionGate';
 
 // MapLibre icons are handled via HTML inside Marker
 
-export type NodeType = 'gate' | 'poi' | 'junction' | 'stamp';
+import type { NodeType, GraphNode, GraphEdge, SponsorZone, GraphData } from '@wayontop/ui/lib/types';
+import { distanceInMeters } from '@wayontop/ui/lib/routing';
 
 export interface Venue {
   id: string;
@@ -27,53 +28,6 @@ export interface Venue {
   lat: number;
   lng: number;
   zoom: number;
-}
-
-export interface GraphNode {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  type: NodeType;
-  tags: string[];
-}
-
-export interface GraphEdge {
-  from: string;
-  to: string;
-  distance_m: number;
-}
-
-export interface SponsorZone {
-  id: string;
-  name: string;
-  poi_id: string;
-  radius_m: number;
-  banner_asset: string;
-  video_asset: string;
-  tagline?: string;
-  logo_asset?: string;
-}
-
-export interface GraphData {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  sponsors: SponsorZone[];
-}
-
-function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3;
-  const p1 = lat1 * Math.PI / 180;
-  const p2 = lat2 * Math.PI / 180;
-  const dp = (lat2 - lat1) * Math.PI / 180;
-  const dl = (lon2 - lon1) * Math.PI / 180;
-
-  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(dl / 2) * Math.sin(dl / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return Math.round(R * c);
 }
 
 function MainApp() {
@@ -433,8 +387,8 @@ function MainApp() {
                 <CardDescription className="text-slate-300">Setup a new park, mall, or event space</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2"><Label>Venue Name</Label><Input placeholder="Venue Name" value={newVenueForm.name || ''} onChange={e => setNewVenueForm(s => ({ ...s, name: e.target.value }))} /></div>
-                <div className="space-y-2"><Label>Venue Key (e.g. lalbagh)</Label><Input placeholder="Venue Key" value={newVenueForm.key || ''} onChange={e => setNewVenueForm(s => ({ ...s, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))} /></div>
+                <div className="space-y-2"><Label>Venue Name</Label><Input placeholder="Venue Name" value={newVenueForm.name || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, name: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Venue Key (e.g. lalbagh)</Label><Input placeholder="Venue Key" value={newVenueForm.key || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))} /></div>
                 
                 <div className="flex justify-between items-center pt-2">
                   <Label>Center Coordinates</Label>
@@ -444,10 +398,10 @@ function MainApp() {
                     className="text-xs h-7"
                     onClick={() => {
                       if (currentLocation) {
-                        setNewVenueForm(s => ({ ...s, lat: currentLocation.lat, lng: currentLocation.lng }));
+                        setNewVenueForm((s: Partial<Venue>) => ({ ...s, lat: currentLocation.lat, lng: currentLocation.lng }));
                       } else {
                         navigator.geolocation.getCurrentPosition(
-                          pos => setNewVenueForm(s => ({ ...s, lat: pos.coords.latitude, lng: pos.coords.longitude })),
+                          pos => setNewVenueForm((s: Partial<Venue>) => ({ ...s, lat: pos.coords.latitude, lng: pos.coords.longitude })),
                           () => toast.error("Could not get location")
                         );
                       }
@@ -460,21 +414,21 @@ function MainApp() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Latitude</Label>
-                    <Input type="number" step="any" placeholder="12.9500" value={newVenueForm.lat || ''} onChange={e => setNewVenueForm(s => ({ ...s, lat: Number(e.target.value) }))} />
+                    <Input type="number" step="any" placeholder="12.9500" value={newVenueForm.lat || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, lat: Number(e.target.value) }))} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Longitude</Label>
-                    <Input type="number" step="any" placeholder="77.5850" value={newVenueForm.lng || ''} onChange={e => setNewVenueForm(s => ({ ...s, lng: Number(e.target.value) }))} />
+                    <Input type="number" step="any" placeholder="77.5850" value={newVenueForm.lng || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, lng: Number(e.target.value) }))} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-500">Initial Zoom Level</Label>
-                  <Input type="number" placeholder="16" value={newVenueForm.zoom || ''} onChange={e => setNewVenueForm(s => ({ ...s, zoom: Number(e.target.value) }))} />
+                  <Input type="number" placeholder="16" value={newVenueForm.zoom || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, zoom: Number(e.target.value) }))} />
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={createVenue}>Create Venue</Button>
+                  <Button variant="default" size="default" className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={createVenue}>Create Venue</Button>
                   <Button variant="ghost" onClick={() => setShowNewVenue(false)}>Cancel</Button>
                 </div>
               </CardContent>

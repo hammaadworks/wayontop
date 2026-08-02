@@ -12,7 +12,8 @@
     "jsx": "react-jsx",
     "strict": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@wayontop/ui/*": ["./src/*"]
     }
   },
   "include": ["src"]

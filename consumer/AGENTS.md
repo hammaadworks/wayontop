@@ -23,4 +23,5 @@ You **MUST** adhere to the root Design System (`../docs/design-system.md`). The 
 ### 4. Workflow & Tooling
 - **Skills & MCP Servers**: You **MUST** actively use your available MCP servers and skills to build features efficiently. Rely on the `shadcn` server for UI generation and strictly adhere to its documentation.
 - **Installing New UI Components (CRITICAL)**: If you need a new component, you must step out of the consumer app. Run `cd ../packages/ui && npx shadcn-ui@latest add <component>`. Then import it via `@wayontop/ui`.
+- **Business Logic & Types**: Core data types, Supabase clients, and algorithms (like routing) reside in `@wayontop/ui/lib/*`. Do not duplicate logic locally if it can be shared.
 - **Best Practices**: You represent the core product. Never take shortcuts. Always write high-performance, strictly-typed, and robust code.

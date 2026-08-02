@@ -5,13 +5,13 @@ import Fuse from 'fuse.js';
 import html2canvas from 'html2canvas';
 import { ARView } from './components/ARView';
 import { MapView } from './components/MapView';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './components/ui/sheet';
-import { Input } from './components/ui/input';
-import { Button } from './components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@wayontop/ui/components/ui/sheet';
+import { Input } from '@wayontop/ui/components/ui/input';
+import { Button } from '@wayontop/ui/components/ui/button';
 import { supabase } from '@wayontop/ui/lib/supabase';
 import { findShortestPath } from '@wayontop/ui/lib/routing';
 import { useLocation } from './hooks/useLocation';
-import { PermissionGate } from './components/PermissionGate';
+import { PermissionGate } from '@wayontop/ui/components/PermissionGate';
 import { InAppBrowserBlocker } from './components/InAppBrowserBlocker';
 import { SponsorMarquee } from './components/SponsorMarquee';
 import { RouteSummary } from './components/RouteSummary';
@@ -20,7 +20,7 @@ import { ViralSharing } from './lib/sharing';
 import { FEATURE_FLAGS } from './lib/featureFlags';
 import { showAlert } from './lib/events';
 
-import type { NodeType, GraphNode, GraphEdge, SponsorZone, GraphData, Stamp } from '@wayontop/ui/lib/types';
+import type { GraphNode, GraphData, Stamp } from '@wayontop/ui/lib/types';
 
 function MainApp() {
   const [venueKey, setVenueKey] = useState(() => {

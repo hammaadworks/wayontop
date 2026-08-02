@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, X, CheckCircle2 } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@wayontop/ui/components/ui/button';
 
 export function CameraView({ stampName, onClose }: { stampName: string; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);

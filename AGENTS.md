@@ -7,8 +7,8 @@ WayOnTop is an AR wayfinding platform for large venues (currently Lalbagh Botani
 
 ### 1. Strictly Follow the Design System
 You **MUST** adhere to the [Design System](docs/design-system.md) for all coding. 
-- **Shared Packages Architecture:** All `shadcn/ui` components (buttons, cards, etc.), custom shared components (like `PermissionGate.tsx`), and the `utils.ts` file have been centralized in the `packages/ui/src/` workspace. 
-- **Imports:** You MUST import these from the shared package rather than creating local copies. For example: `import { Button } from '@wayontop/ui/components/ui/button'` or `import { PermissionGate } from '@wayontop/ui/components/PermissionGate'`.
+- **Shared Packages Architecture:** All `shadcn/ui` components (buttons, cards, etc.), custom shared components (like `PermissionGate.tsx`), and core business logic (`lib/routing.ts`, `lib/supabase.ts`, `lib/types.ts`, `lib/utils.ts`) have been centralized in the `packages/ui/src/` workspace. 
+- **Imports:** You MUST import these from the shared package rather than creating local copies. For example: `import { Button } from '@wayontop/ui/components/ui/button'`, `import { supabase } from '@wayontop/ui/lib/supabase'`, or `import type { GraphNode } from '@wayontop/ui/lib/types'`.
 - **Styles:** The `consumer` and `producer` apps both import `@wayontop/ui/styles/shared.css`.
 - **Aesthetic:** Dark mode by default (Dark Mesh) with vibrant Emerald Green accents. Heavy use of translucent glassmorphism (`backdrop-blur-xl`, `bg-black/40`).
 - **Never** use generic utility colors (like `bg-white` or `blue-500`) for primary elements.

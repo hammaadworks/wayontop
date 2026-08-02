@@ -22,4 +22,5 @@ Even as an internal tool, it **MUST** maintain the premium glassmorphism aesthet
 ### 4. Workflow & Tooling
 - **Skills & MCP Servers**: You **MUST** leverage available MCP servers (like `shadcn`) and your built-in skills to generate and manage components. Do not reinvent the wheel.
 - **Installing New UI Components (CRITICAL)**: If you need a new component, you must step out of the producer app. Run `cd ../packages/ui && npx shadcn-ui@latest add <component>`. Then import it via `@wayontop/ui`.
+- **Business Logic & Types**: Core data types, Supabase clients, and algorithms (like routing) reside in `@wayontop/ui/lib/*`. Do not duplicate logic locally if it can be shared.
 - **Best Practices**: Always write clean, scalable code. Implement the highest industry standards for React and state management.

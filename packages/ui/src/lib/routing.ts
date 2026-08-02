@@ -29,68 +29,135 @@ export function getBearing(lat1: number, lon1: number, lat2: number, lon2: numbe
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
-// Client-Side A* Pathfinding over GraphData
+// WeakMap caching to ensure O(1) adjacency list and node map generation 
+// across repeated routing requests on the same graph instance.
+const adjListCache = new WeakMap<GraphData, Map<string, { to: string; dist: number }[]>>();
+const nodeMapCache = new WeakMap<GraphData, Map<string, GraphNode>>();
+
+function getGraphContext(graph: GraphData) {
+  if (adjListCache.has(graph) && nodeMapCache.has(graph)) {
+    return { adjList: adjListCache.get(graph)!, nodeMap: nodeMapCache.get(graph)! };
+  }
+
+  const nodeMap = new Map<string, GraphNode>();
+  const adjList = new Map<string, { to: string; dist: number }[]>();
+
+  graph.nodes.forEach(n => {
+    nodeMap.set(n.id, n);
+    adjList.set(n.id, []);
+  });
+
+  graph.edges.forEach(e => {
+    adjList.get(e.from)?.push({ to: e.to, dist: e.distance_m });
+    // Assume undirected graph for walkways
+    adjList.get(e.to)?.push({ to: e.from, dist: e.distance_m });
+  });
+
+  nodeMapCache.set(graph, nodeMap);
+  adjListCache.set(graph, adjList);
+
+  return { adjList, nodeMap };
+}
+
+// Optimized Priority Queue (Min-Heap) for O(log V) A* node popping
+class MinHeap<T> {
+  private heap: { node: T; score: number }[] = [];
+
+  push(node: T, score: number) {
+    this.heap.push({ node, score });
+    this.bubbleUp(this.heap.length - 1);
+  }
+
+  pop(): T | undefined {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0].node;
+    const bottom = this.heap.pop();
+    if (this.heap.length > 0 && bottom) {
+      this.heap[0] = bottom;
+      this.sinkDown(0);
+    }
+    return top;
+  }
+
+  isEmpty() {
+    return this.heap.length === 0;
+  }
+
+  private bubbleUp(index: number) {
+    const element = this.heap[index];
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2);
+      const parent = this.heap[parentIndex];
+      if (element.score >= parent.score) break;
+      this.heap[index] = parent;
+      this.heap[parentIndex] = element;
+      index = parentIndex;
+    }
+  }
+
+  private sinkDown(index: number) {
+    const length = this.heap.length;
+    const element = this.heap[index];
+    while (true) {
+      const leftChildIdx = 2 * index + 1;
+      const rightChildIdx = 2 * index + 2;
+      let swapIdx = -1;
+
+      if (leftChildIdx < length) {
+        if (this.heap[leftChildIdx].score < element.score) {
+          swapIdx = leftChildIdx;
+        }
+      }
+      
+      if (rightChildIdx < length) {
+        if (
+          (swapIdx === -1 && this.heap[rightChildIdx].score < element.score) || 
+          (swapIdx !== -1 && this.heap[rightChildIdx].score < this.heap[leftChildIdx].score)
+        ) {
+          swapIdx = rightChildIdx;
+        }
+      }
+      
+      if (swapIdx === -1) break;
+      this.heap[index] = this.heap[swapIdx];
+      this.heap[swapIdx] = element;
+      index = swapIdx;
+    }
+  }
+}
+
+// Highly Optimized Client-Side A* Pathfinding
 export function findShortestPath(
   graph: GraphData,
   startNodeId: string,
   targetNodeId: string
 ): { path: GraphNode[]; totalDistance: number } | null {
-  const { nodes, edges } = graph;
-  
-  // Quick lookup maps
-  const nodeMap = new Map<string, GraphNode>();
-  nodes.forEach(n => nodeMap.set(n.id, n));
+  const { adjList, nodeMap } = getGraphContext(graph);
 
   if (!nodeMap.has(startNodeId) || !nodeMap.has(targetNodeId)) {
     return null;
   }
 
-  // Adjacency list
-  const adjList = new Map<string, { to: string; dist: number }[]>();
-  nodes.forEach(n => adjList.set(n.id, []));
+    const targetNode = nodeMap.get(targetNodeId)!;
 
-  edges.forEach(e => {
-    adjList.get(e.from)?.push({ to: e.to, dist: e.distance_m });
-    // Assuming undirected graph for walkways
-    adjList.get(e.to)?.push({ to: e.from, dist: e.distance_m });
-  });
-
-  // A* structures
-  const openSet = new Set<string>();
-  openSet.add(startNodeId);
-
+  const minHeap = new MinHeap<string>();
   const cameFrom = new Map<string, string>();
-
-  // gScore: cheapest path from start to node
   const gScore = new Map<string, number>();
-  nodes.forEach(n => gScore.set(n.id, Infinity));
-  gScore.set(startNodeId, 0);
+  
+  // Track nodes already fully processed to prevent infinite loops / redundant checks
+  const closedSet = new Set<string>();
 
-  // fScore: gScore + heuristic
-  const fScore = new Map<string, number>();
-  nodes.forEach(n => fScore.set(n.id, Infinity));
-  
-  const targetNode = nodeMap.get(targetNodeId)!;
-  
   // Heuristic function: straight line distance
   const heuristic = (nId: string) => {
     const node = nodeMap.get(nId)!;
     return distanceInMeters(node.lat, node.lng, targetNode.lat, targetNode.lng);
   };
 
-  fScore.set(startNodeId, heuristic(startNodeId));
+  gScore.set(startNodeId, 0);
+  minHeap.push(startNodeId, heuristic(startNodeId));
 
-  while (openSet.size > 0) {
-    // Get node in openSet with lowest fScore
-    let current = '';
-    let lowestF = Infinity;
-    openSet.forEach(nodeId => {
-      const f = fScore.get(nodeId)!;
-      if (f < lowestF) {
-        lowestF = f;
-        current = nodeId;
-      }
-    });
+  while (!minHeap.isEmpty()) {
+    const current = minHeap.pop()!;
 
     if (current === targetNodeId) {
       // Reconstruct path
@@ -103,19 +170,24 @@ export function findShortestPath(
       return { path, totalDistance: gScore.get(targetNodeId)! };
     }
 
-    openSet.delete(current);
+    if (closedSet.has(current)) continue; // Lazy deletion from priority queue
+    closedSet.add(current);
 
     const neighbors = adjList.get(current) || [];
     for (const neighbor of neighbors) {
-      const tentative_gScore = gScore.get(current)! + neighbor.dist;
+      if (closedSet.has(neighbor.to)) continue;
 
-      if (tentative_gScore < gScore.get(neighbor.to)!) {
+      const currentGScore = gScore.get(current)!;
+      const tentativeGScore = currentGScore + neighbor.dist;
+      const neighborGScore = gScore.get(neighbor.to) ?? Infinity;
+
+      if (tentativeGScore < neighborGScore) {
         cameFrom.set(neighbor.to, current);
-        gScore.set(neighbor.to, tentative_gScore);
-        fScore.set(neighbor.to, tentative_gScore + heuristic(neighbor.to));
-        if (!openSet.has(neighbor.to)) {
-          openSet.add(neighbor.to);
-        }
+        gScore.set(neighbor.to, tentativeGScore);
+        
+        // Push updated score to the min-heap
+        const fScore = tentativeGScore + heuristic(neighbor.to);
+        minHeap.push(neighbor.to, fScore);
       }
     }
   }
