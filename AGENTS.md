@@ -1,0 +1,31 @@
+# WayOnTop Monorepo - AI Agent Guidelines
+
+## Project Context
+WayOnTop is an AR wayfinding platform for large venues (currently Lalbagh Botanical Garden). The system is split into a **Consumer** mobile web app (AR navigation, gamification, offline resilience) and a **Producer** internal admin tool (MapLibre graph mapping, sponsor management). Both apps share components via the **packages/ui** workspace.
+
+## Core Rules for AI Agents
+
+### 1. Strictly Follow the Design System
+You **MUST** adhere to the [Design System](docs/design-system.md) for all coding. 
+- **Shared Packages Architecture:** All `shadcn/ui` components (buttons, cards, etc.), custom shared components (like `PermissionGate.tsx`), and the `utils.ts` file have been centralized in the `packages/ui/src/` workspace. 
+- **Imports:** You MUST import these from the shared package rather than creating local copies. For example: `import { Button } from '@wayontop/ui/components/ui/button'` or `import { PermissionGate } from '@wayontop/ui/components/PermissionGate'`.
+- **Styles:** The `consumer` and `producer` apps both import `@wayontop/ui/styles/shared.css`.
+- **Aesthetic:** Dark mode by default (Dark Mesh) with vibrant Emerald Green accents. Heavy use of translucent glassmorphism (`backdrop-blur-xl`, `bg-black/40`).
+- **Never** use generic utility colors (like `bg-white` or `blue-500`) for primary elements.
+
+### 2. Documentation Maintenance
+- You **MUST** read the `docs/` folder (especially `lalbagh-navigator-prd.md`) before making architectural or feature changes.
+- You **MUST** actively update the `docs/` folder in your working directory whenever you implement new patterns or significant features. Keep the source of truth updated.
+
+### 3. Tech Stack
+- **Frontend**: React 19, Vite, Tailwind CSS v4, shadcn/ui.
+- **Maps**: MapLibre GL JS (`react-map-gl`).
+- **Monorepo**: NPM Workspaces.
+- **Backend**: Supabase (Postgres).
+
+### 4. Workflow & Tooling
+- **Skills & MCP Servers**: You **MUST** actively utilize the skills and MCP servers (like `shadcn`, `playwright`, etc.) at your disposal. Do not manually rewrite boilerplate if a tool can do it perfectly.
+- **Installing New UI Components (CRITICAL)**: If you need a new shadcn component, you MUST navigate into the shared package to install it: `cd packages/ui && npx shadcn-ui@latest add <component>`. Do NOT run the add command from inside the consumer or producer apps.
+- **Best Practices Only**: Never compromise on code quality. Always implement industry-standard best practices, robust error handling, and scalable architectures. 
+
+*Read `consumer/AGENTS.md` and `producer/AGENTS.md` for app-specific context.*
