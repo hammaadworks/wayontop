@@ -1,2 +1,0 @@
-INSERT INTO venues (name, key, lat, lng, zoom) VALUES ('Lalbagh Botanical Garden', 'lalbagh', 12.9480, 77.5830, 16) ON CONFLICT DO NOTHING;
-INSERT INTO venue_content (venue_key, content_type, data) VALUES ('lalbagh', 'graph', '{"nodes": [{"id": "n1", "name": "Glass House", "type": "poi", "lat": 12.948, "lng": 77.583}], "edges": [], "sponsors": []}') ON CONFLICT (venue_key, content_type) DO UPDATE SET data = EXCLUDED.data;

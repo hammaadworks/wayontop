@@ -35,3 +35,9 @@ We introduced a global `PermissionGate` (`src/components/PermissionGate.tsx`) co
 ### 5. PWA-Specific Considerations
 - Avoid `#` based navigation for AR views on iOS PWAs; it can reset camera access.
 - Avoid full-page reloads (`location.href = ...`) inside the AR flow as this forces iOS to re-prompt for camera and compass.
+
+### 6. Distinguishing Site vs OS Level Denials
+When a permission is denied (e.g., `NotAllowedError`), it is difficult to programmatically distinguish whether the user denied it at the browser's site-level prompt or if the entire browser application lacks OS-level permission. To provide the best UX, the `PermissionGate` component dynamically detects the operating system (iOS or Android) and the browser (Safari or Chrome). It then presents exact instructions to fix permissions for both scenarios:
+- **iOS Safari**: Instructions for `aA` icon (Site Level) and iOS Settings → Safari (OS Level).
+- **iOS Chrome**: Instructions for Settings → Chrome (OS Level) and browser settings.
+- **Android (Chrome & Others)**: Instructions for the lock/tune icon (Site Level) and Settings → Apps → Browser (OS Level).

@@ -27,4 +27,16 @@ Stuck?!!
 - created a unified permissions modal, but how to guide the user?
 - it's so easy to miss details while building the app but at the same time as user 
 so strict. need to be super empathtic to the user, how he feels how can he use it, how will he use it.
-- 
+
+2. vercel vs cloudflare
+- while vercel devx is amazing sometimes considering this is a gift
+- https://www.youtube.com/watch?v=ihnGot4nUS4
+- so moving to cloudflare entirely, coz i know this is gonna stay for long, In Sha Allah
+- see supabase alts now
+
+3. accessibility
+- kannada
+- color - renderign in the dev tools adn see adn fix
+- coverage - see what is bloated and reduce your website size
+- css overview and fix it
+- webvitals and unlighthouse for performance

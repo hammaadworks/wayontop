@@ -1,32 +1,14 @@
-# React + TypeScript + Vite
+# 🗺️ WayOnTop Producer
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The **Producer App** is the internal command center for the WayOnTop platform. It is the admin-facing tool used to map physical venues, configure gamification, and manage sponsor campaigns.
 
-Currently, two official plugins are available:
+## ✨ Core Capabilities
+- **Venue Mapping:** Visual MapLibre GL JS interface to plot nodes (POIs, gates, junctions) and connect walkable edges. This generates the A* routing graph used by the Consumer app.
+- **Sponsor Management:** Visually define geofenced sponsor zones (radius-based). Upload sponsor assets (banners, videos) that activate when users walk into the zone.
+- **Gamification Control:** Manage the deployment of "Stamps," including the highly-coveted 1-of-1 Golden Stamp.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 🛠️ Tech Stack
+- **React + Vite**
+- **MapLibre GL JS** (for high-performance vector map editing)
+- **Tailwind CSS + shadcn/ui** (Premium Dark Mode UI via the shared `@wayontop/ui` package)
+- **Supabase** (Direct DB mutations)
