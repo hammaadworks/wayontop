@@ -1,0 +1,38 @@
+{
+  "name": "wayontop",
+  "version": "1.0.0",
+  "description": "WayOnTop AR Navigation Monorepo",
+  "main": "index.js",
+  "private": true,
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev:consumer": "npm run dev --workspace=consumer",
+    "dev:producer": "npm run dev --workspace=producer",
+    "build:consumer": "npm run build --workspace=consumer",
+    "build:producer": "npm run build --workspace=producer",
+    "lint": "npm run lint --workspaces"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hammaadworks/wayontop.git"
+  },
+  "keywords": [
+    "ar",
+    "navigation",
+    "monorepo"
+  ],
+  "author": "Hammaad",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hammaadworks/wayontop/issues"
+  },
+  "homepage": "https://github.com/hammaadworks/wayontop#readme",
+  "workspaces": [
+    "consumer",
+    "producer",
+    "packages/*"
+  ]
+}
