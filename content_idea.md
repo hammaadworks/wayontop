@@ -15,3 +15,16 @@ how to get started
 Vid 1: Problem intro
 Vid 2: Project setup
 Vid 3: 
+
+
+---
+
+Stuck?!!
+
+1. permissions:
+- pwa
+- twa?
+- created a unified permissions modal, but how to guide the user?
+- it's so easy to miss details while building the app but at the same time as user 
+so strict. need to be super empathtic to the user, how he feels how can he use it, how will he use it.
+- 

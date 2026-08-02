@@ -59,8 +59,7 @@ export function MapView({ graph, activeRoute, stamps = [], isRadar = false }: Ma
         id: 'osm-layer',
         type: 'raster',
         source: 'osm',
-        minzoom: 0,
-        maxzoom: 19
+        minzoom: 0
       }
     ]
   };
