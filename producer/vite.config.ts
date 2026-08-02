@@ -17,6 +17,7 @@ export default defineConfig({
   },
   plugins: [basicSsl(), react(), tailwindcss()],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
