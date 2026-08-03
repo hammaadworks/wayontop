@@ -88,64 +88,42 @@ export function ARView({ targetNode, stamps = [] }: ARViewProps) {
     <div className="absolute inset-0 h-full w-full bg-black flex flex-col items-center justify-center overflow-hidden">
       <CameraFeed className="absolute inset-0 w-full h-full" />
       
-      {/* AR Overlay (3D Perspective) */}
-      <div className="z-10 flex flex-col items-center pointer-events-none mt-20" style={{ perspective: '800px' }}>
-        <div className="relative flex items-center justify-center h-64 w-64">
-          {/* Floor glow */}
-          <div 
-             className="absolute bg-emerald-500/20 rounded-full blur-[40px] animate-pulse-ring w-48 h-48"
-             style={{ transform: 'rotateX(70deg)' }}
-          ></div>
-          
-          <div 
-            className="transition-transform duration-[400ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] relative z-10"
-            style={{ 
-              transformStyle: 'preserve-3d',
-              transform: `rotateX(65deg) rotateZ(${rotation}deg)` 
-            }}
-          >
-            {/* 3D Arrow Layering */}
-            <Navigation 
-              className="w-48 h-48 text-emerald-400 opacity-90 drop-shadow-[0_20px_30px_rgba(16,185,129,0.8)]" 
-              strokeWidth={1.5} 
-              fill="url(#emerald-gradient)"
-            />
-            {/* SVG Gradient Definition */}
-            <svg width="0" height="0" className="absolute">
-              <defs>
-                <linearGradient id="emerald-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="rgba(52,211,153,1)" />
-                  <stop offset="100%" stopColor="rgba(4,120,87,0.4)" />
-                </linearGradient>
-              </defs>
-            </svg>
+      {/* AR Overlay (3D Perspective) - Only show if navigating */}
+      {targetNode ? (
+        <div className="z-10 flex flex-col items-center pointer-events-none mt-20" style={{ perspective: '800px' }}>
+          <div className="relative flex items-center justify-center h-64 w-64">
+            {/* Floor glow */}
+            <div 
+               className="absolute bg-emerald-500/20 rounded-full blur-[40px] animate-pulse-ring w-48 h-48"
+               style={{ transform: 'rotateX(70deg)' }}
+            ></div>
+            
+            <div 
+              className="transition-transform duration-[400ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] relative z-10"
+              style={{ 
+                transformStyle: 'preserve-3d',
+                transform: `rotateX(65deg) rotateZ(${rotation}deg)` 
+              }}
+            >
+              {/* 3D Arrow Layering */}
+              <Navigation 
+                className="w-48 h-48 text-emerald-400 opacity-90 drop-shadow-[0_20px_30px_rgba(16,185,129,0.8)]" 
+                strokeWidth={1.5} 
+                fill="url(#emerald-gradient)"
+              />
+              {/* SVG Gradient Definition */}
+              <svg width="0" height="0" className="absolute">
+                <defs>
+                  <linearGradient id="emerald-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(52,211,153,1)" />
+                    <stop offset="100%" stopColor="rgba(4,120,87,0.4)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
           </div>
         </div>
-        
-        <div className="mt-4 flex flex-col items-center">
-          <p className="font-extrabold text-[40px] tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,1)]">
-            {heading !== null ? `${Math.round(heading)}°` : t('calibrating')}
-          </p>
-          <div className="mt-1 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-5 py-2 flex items-center gap-2 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,1)] animate-pulse"></span>
-            <span className="text-sm font-semibold text-white/90 tracking-wide">
-              {location ? t('accuracy', { acc: Math.round(location.accuracy) }) : t('connecting_gps')}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Stamp Counter UI */}
-      <div className="absolute top-24 left-4 z-40 pointer-events-none">
-        <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-inner shadow-white/40">
-            <Sparkles className="w-3 h-3 text-white" />
-          </div>
-          <span className="font-bold text-white tracking-wide">
-            {collectedStampIds.length} <span className="text-white/60 text-sm font-medium ml-1">Stamps</span>
-          </span>
-        </div>
-      </div>
+      ) : null}
 
       {/* Figure 8 Calibration Tooltip */}
       <div className="absolute top-32 left-1/2 -translate-x-1/2 glass-pill px-5 py-2.5 pointer-events-none flex items-center z-10 animate-pulse">

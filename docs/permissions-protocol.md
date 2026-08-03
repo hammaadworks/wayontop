@@ -11,6 +11,9 @@ This document outlines the protocol for handling sensitive permissions (Camera, 
    - **Active Half**: Fired from a click handler. Invokes the actual APIs (`getUserMedia`, `getCurrentPosition`, `requestPermission`).
 4. **Persistent Blocking & Accurate Guidance**: If a permission is denied or blocked, the user remains on the modal. We provide detailed, permission-specific recovery guidance because different permissions fail for different reasons (e.g., Camera `NotReadableError` implies a busy camera, whereas `NotAllowedError` is a denial; Compass on iOS lacks a settings menu so it simply requires re-prompting).
 5. **No Polling**: `document.addEventListener('visibilitychange', ...)` replaces all polling. We also attach `status.onchange` listeners on browsers that properly support reactive permission APIs (e.g., Chrome).
+6. **Primary vs Secondary Hierarchy**:
+   - **Primary (Location, Compass)**: Mandatory to proceed. The user is hard-blocked at the gate until these are granted.
+   - **Secondary (Camera)**: Optional. If the user explicitly denies the Camera but grants Primary permissions, they are allowed into the app. The app can function using 2D map visuals as a fallback for the AR mode.
 
 ## Implementation Details
 

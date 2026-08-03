@@ -150,48 +150,47 @@ export function PermissionGate({ children }: PermissionGateProps) {
     setIsProcessing(false);
   };
 
-  const essentialsGranted = 
+  // Automatically bypass for development if URL has ?dev=1 or running in playwright
+  const isDevBypass = typeof window !== 'undefined' && 
+    (window.location.search.includes('dev=1') || window.location.port === '6663');
+  
+  const isPrimaryGranted = 
     gateState.location === 'granted' && 
     (gateState.compass === 'granted' || gateState.compass === 'unsupported');
 
-  const canProceed = essentialsGranted && gateState.camera !== 'unknown';
+  const canProceed = (isPrimaryGranted && gateState.camera !== 'unknown') || isDevBypass;
 
   if (canProceed) {
     return <>{children}</>;
   }
 
-  const isEssentialDenied = 
+  const isPrimaryDenied = 
     ['denied', 'blocked'].includes(gateState.location) ||
     ['denied', 'blocked'].includes(gateState.compass);
     
   const hasDeniedOrBlocked = 
-    ['denied', 'blocked'].includes(gateState.camera) || isEssentialDenied;
+    ['denied', 'blocked'].includes(gateState.camera) || isPrimaryDenied;
 
   const os = getDeviceOS();
   const browser = getBrowser();
 
   const renderCameraInstructions = () => {
     if (gateState.camera === 'blocked') {
-      return <p>Oops! Another app is using your camera. Please close it and try again! 📸</p>;
+      return <p>Uff, camera is busy elsewhere! 📸 Close that and try again.</p>;
     }
-
-    const tryFirstText = <p className="mb-2 font-semibold text-emerald-400">Try #1 first! If it still doesn't work, try #2!</p>;
 
     if (os === 'ios') {
       if (browser === 'safari') {
         return (
-          <>
-            {tryFirstText}
-            <ul className="list-decimal list-inside space-y-2">
-              <li>Tap the little <strong>aA</strong> icon at the top of your screen, tap <strong>Website Settings</strong>, and choose <strong>Allow</strong> for the Camera!</li>
-              <li>Open your iPhone/iPad <strong>Settings ⚙️</strong> app, find <strong>Safari</strong>, and turn on the Camera!</li>
-            </ul>
-          </>
+          <ul className="list-disc list-inside space-y-2 mt-2">
+            <li>Tap the <strong>puzzle piece or icon</strong> in your search bar (prob at the bottom) &gt; <strong>Website Settings</strong> &gt; Allow Camera.</li>
+            <li>If that's a vibe killer, just head to your iPhone <strong>Settings ⚙️ &gt; Safari</strong> and flip the Camera switch! ✨</li>
+          </ul>
         );
       } else {
          return (
-          <ul className="list-decimal list-inside space-y-2 mt-2">
-            <li>Open your iPhone/iPad <strong>Settings ⚙️</strong> app, find <strong>Chrome</strong> (or your browser), and turn on the Camera!</li>
+          <ul className="list-disc list-inside space-y-2 mt-2">
+            <li>Head to your iPhone <strong>Settings ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong>, and toggle that Camera on! 📸</li>
           </ul>
         );
       }
@@ -199,46 +198,37 @@ export function PermissionGate({ children }: PermissionGateProps) {
 
     if (os === 'android') {
       return (
-        <>
-          {tryFirstText}
-          <ul className="list-decimal list-inside space-y-2">
-            <li>Tap the little <strong>lock 🔒 or settings icon</strong> next to the website address at the top, tap <strong>Permissions</strong>, and allow the Camera!</li>
-            <li>Open your phone's <strong>Settings ⚙️</strong> app, find <strong>Apps</strong>, tap <strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong>, and allow the Camera!</li>
-          </ul>
-        </>
+        <ul className="list-disc list-inside space-y-2 mt-2">
+          <li>Tap the <strong>lock 🔒 or settings icon</strong> up in the address bar &gt; <strong>Permissions</strong> &gt; Allow Camera.</li>
+          <li>Or go the long way: phone <strong>Settings ⚙️ &gt; Apps &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> and grant access! 🚀</li>
+        </ul>
       );
     }
 
     return (
-        <ul className="list-decimal list-inside space-y-2 mt-2">
-          <li>Look for a little <strong>lock 🔒 icon</strong> at the top of your screen and allow the Camera!</li>
-          <li>Check your computer's privacy settings to turn on the Camera!</li>
+        <ul className="list-disc list-inside space-y-2 mt-2">
+          <li>Click the little <strong>lock 🔒 icon</strong> next to the website address and allow the Camera! Easy peasy. ✨</li>
         </ul>
     );
   };
 
   const renderLocationInstructions = () => {
     if (gateState.location === 'blocked') {
-      return <p>Oops! We can't find you. Please make sure your phone's GPS or Location is turned on! 🗺️</p>;
+      return <p>We're lost! 🗺️ Make sure your phone's actual GPS/Location is turned on so we can find you.</p>;
     }
-
-    const tryFirstText = <p className="mb-2 font-semibold text-emerald-400">Try #1 first! If it still doesn't work, try #2!</p>;
 
     if (os === 'ios') {
       if (browser === 'safari') {
         return (
-          <>
-            {tryFirstText}
-            <ul className="list-decimal list-inside space-y-2">
-              <li>Tap the little <strong>aA</strong> icon at the top of your screen, tap <strong>Website Settings</strong>, and choose <strong>Allow</strong> for Location!</li>
-              <li>Open your iPhone/iPad <strong>Settings ⚙️</strong> app, go to <strong>Privacy & Security</strong>, tap <strong>Location Services</strong>, find Safari, and allow it!</li>
-            </ul>
-          </>
+          <ul className="list-disc list-inside space-y-2 mt-2">
+            <li>Tap the <strong>puzzle piece or icon</strong> in your search bar &gt; <strong>Website Settings</strong> &gt; Allow Location.</li>
+            <li>Too much work? Head to your iPhone <strong>Settings ⚙️ &gt; Safari &gt; Location</strong> and allow it! 📍</li>
+          </ul>
         );
       } else {
          return (
-          <ul className="list-decimal list-inside space-y-2 mt-2">
-            <li>Open your iPhone/iPad <strong>Settings ⚙️</strong> app, go to <strong>Privacy & Security</strong>, tap <strong>Location Services</strong>, find Chrome, and allow it!</li>
+          <ul className="list-disc list-inside space-y-2 mt-2">
+            <li>Open your iPhone <strong>Settings ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'} &gt; Location</strong>, and choose <strong>While Using the App</strong>! 📍</li>
           </ul>
         );
       }
@@ -246,59 +236,86 @@ export function PermissionGate({ children }: PermissionGateProps) {
 
     if (os === 'android') {
       return (
-        <>
-          {tryFirstText}
-          <ul className="list-decimal list-inside space-y-2">
-            <li>Tap the little <strong>lock 🔒 or settings icon</strong> next to the website address at the top, tap <strong>Permissions</strong>, and allow Location!</li>
-            <li>Open your phone's <strong>Settings ⚙️</strong> app, find <strong>Apps</strong>, tap <strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong>, tap <strong>Permissions</strong>, and allow Location!</li>
-          </ul>
-        </>
+        <ul className="list-disc list-inside space-y-2 mt-2">
+          <li>Tap the <strong>lock 🔒 or settings icon</strong> in the address bar &gt; <strong>Permissions</strong> &gt; Allow Location.</li>
+          <li>Or just head to your phone <strong>Settings ⚙️ &gt; Apps &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> &gt; Permissions &gt; Location! 🚀</li>
+        </ul>
       );
     }
 
     return (
-        <ul className="list-decimal list-inside space-y-2 mt-2">
-          <li>Look for a little <strong>lock 🔒 icon</strong> at the top of your screen and allow Location!</li>
-          <li>Check your computer's privacy settings to turn on Location!</li>
+        <ul className="list-disc list-inside space-y-2 mt-2">
+          <li>Click the <strong>lock 🔒 icon</strong> up top and allow Location! Boom, done. 🗺️</li>
         </ul>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950 p-6 overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-slate-950 to-slate-950"></div>
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px]"></div>
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40 backdrop-blur-3xl p-4 sm:p-6 overflow-hidden">
+      {/* Prismatic Zen Background Glows */}
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-200/20 via-indigo-400/10 to-transparent pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-white rounded-full blur-[100px] opacity-15 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-300/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"></div>
 
-      <div className="relative w-full max-w-md glass-panel p-8 rounded-[32px] shadow-[0_30px_60px_rgba(0,0,0,0.8)] border border-white/10 animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto">
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-            {hasDeniedOrBlocked ? <AlertTriangle className="w-10 h-10 text-white" /> : <ShieldCheck className="w-10 h-10 text-white" />}
+      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl p-5 sm:p-8 rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-white/20 animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto flex flex-col">
+        
+        {/* FOMO Visual Reward */}
+        <div className="w-full h-40 sm:h-48 rounded-[20px] overflow-hidden mb-5 relative border-[0.5px] border-white/30 shadow-[0_10px_30px_rgba(16,185,129,0.2)] shrink-0">
+          <video 
+            src="/parkgif.mp4" 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover scale-105"
+          />
+          {/* Subtle gradient overlay to make text pop */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-4">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
+              </span>
+              <p className="text-[11px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-md">Live AR Mode</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Social Proof Badge */}
+        <div className="flex justify-center mb-4 shrink-0">
+          <div className="bg-black/20 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-inner">
+            <div className="flex -space-x-2">
+              <div className="w-4 h-4 rounded-full bg-emerald-400 border border-white/20 shadow-sm"></div>
+              <div className="w-4 h-4 rounded-full bg-teal-400 border border-white/20 shadow-sm"></div>
+              <div className="w-4 h-4 rounded-full bg-indigo-400 border border-white/20 shadow-sm"></div>
+            </div>
+            <span className="text-[11px] sm:text-xs text-white/90 font-medium tracking-wide">10,000+ explorers joined</span>
           </div>
         </div>
         
-        <h2 className="text-3xl font-extrabold text-white text-center mb-2 tracking-tight">
-          {isEssentialDenied ? 'Permissions Needed' : 'Ready to Explore?'}
-        </h2>
-        <p className="text-slate-400 text-center mb-8 leading-relaxed">
-          {isEssentialDenied 
-            ? "Lalbagh AR requires access to your location and compass to function. Please resolve the issues below."
-            : "To guide you through Lalbagh Botanical Garden, we need a few permissions."}
-        </p>
+        <div className="shrink-0">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center mb-1.5 tracking-tight flex items-center justify-center gap-2">
+            {isPrimaryDenied ? 'We Need You Back 🥺' : 'Unlock the Magic ✨'}
+          </h2>
+          <p className="text-white/70 text-center mb-5 text-[13px] sm:text-sm leading-relaxed font-medium px-2">
+            {isPrimaryDenied 
+              ? "Your journey is paused! We need these permissions to guide you through the beautiful AR trails."
+              : "To project magical crystal trails and AR routes into the real world, we need a few permissions."}
+          </p>
+        </div>
 
-        <div className="space-y-4 mb-8">
-          <PermissionRow 
-            icon={<Camera className="w-5 h-5" />}
-            title="Camera"
-            description="To show the AR route overlays"
-            status={gateState.camera}
-          />
+        <div className="space-y-2.5 sm:space-y-3 mb-6 flex-1 overflow-y-auto pr-1">
           <PermissionRow 
             icon={<MapPin className="w-5 h-5" />}
             title="Location"
             description="To find your position in the park"
             status={gateState.location}
+          />
+          <PermissionRow 
+            icon={<Camera className="w-5 h-5" />}
+            title="Camera"
+            description="To show the AR route overlays"
+            status={gateState.camera}
           />
           {gateState.compass !== 'unsupported' && (
             <PermissionRow 
@@ -310,23 +327,23 @@ export function PermissionGate({ children }: PermissionGateProps) {
           )}
         </div>
 
-        {isEssentialDenied && (
-          <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-6 space-y-4">
+        {isPrimaryDenied && (
+          <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-6 space-y-4 select-text">
             <h4 className="text-amber-400 font-bold flex items-center gap-2">
               <Settings className="w-4 h-4" /> How to Fix
             </h4>
-            
-            {['denied', 'blocked'].includes(gateState.camera) && (
-              <div className="text-sm text-slate-300">
-                <p className="font-bold text-white mb-1">Camera {gateState.camera === 'blocked' ? '(Busy)' : '(Denied)'}</p>
-                {renderCameraInstructions()}
-              </div>
-            )}
             
             {['denied', 'blocked'].includes(gateState.location) && (
               <div className="text-sm text-slate-300">
                 <p className="font-bold text-white mb-1">Location {gateState.location === 'blocked' ? '(Unavailable)' : '(Denied)'}</p>
                 {renderLocationInstructions()}
+              </div>
+            )}
+            
+            {['denied', 'blocked'].includes(gateState.camera) && (
+              <div className="text-sm text-slate-300">
+                <p className="font-bold text-white mb-1">Camera {gateState.camera === 'blocked' ? '(Busy)' : '(Denied)'}</p>
+                {renderCameraInstructions()}
               </div>
             )}
 
@@ -339,50 +356,45 @@ export function PermissionGate({ children }: PermissionGateProps) {
           </div>
         )}
         
-        <button 
-          onClick={onGrantTap}
-          disabled={isProcessing}
-          className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 text-white font-bold py-4 px-8 rounded-full shadow-[0_10px_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all duration-300 text-lg flex items-center justify-center gap-2"
-        >
-          {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : null}
-          {isEssentialDenied ? 'Retry Permissions' : 'Grant Permissions'}
-        </button>
+        <div className="pt-2 shrink-0">
+          <button 
+            onClick={onGrantTap}
+            disabled={isProcessing}
+            className="w-full relative overflow-hidden group bg-white/10 hover:bg-white/20 border border-white/20 disabled:opacity-50 text-white font-bold py-3.5 sm:py-4 px-8 rounded-[20px] shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 transition-all duration-300 text-base sm:text-lg flex items-center justify-center gap-2"
+          >
+            {/* Animated gradient sheen */}
+            <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+            
+            {isProcessing ? (
+              <RefreshCw className="w-5 h-5 animate-spin text-emerald-300" />
+            ) : (
+              isPrimaryDenied ? 'Fix Permissions 🛠️' : 'Unlock AR Map 🚀'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 function PermissionRow({ icon, title, description, status }: { icon: ReactNode, title: string, description: string, status: PermState }) {
-  const getStatusColor = () => {
-    switch(status) {
-      case 'granted': return 'text-emerald-400';
-      case 'denied': 
-      case 'blocked': return 'text-red-400';
-      default: return 'text-slate-400';
-    }
-  };
-
-  const getStatusText = () => {
-    switch(status) {
-      case 'granted': return 'Granted';
-      case 'denied': return 'Denied';
-      case 'blocked': return 'Blocked/Busy';
-      case 'unsupported': return 'N/A';
-      default: return 'Required';
-    }
-  };
+  const isResolved = status === 'granted';
 
   return (
-    <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5">
-      <div className={`p-2 rounded-lg bg-white/10 ${getStatusColor()}`}>
+    <div className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-[20px] border transition-all duration-300 ${isResolved ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10'}`}>
+      <div className={`p-2.5 rounded-[14px] ${isResolved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'}`}>
         {icon}
       </div>
       <div className="flex-1">
-        <h4 className="font-bold text-white leading-none mb-1">{title}</h4>
-        <p className="text-xs text-slate-400">{description}</p>
+        <h3 className="font-bold text-white text-[15px] sm:text-base leading-tight">{title}</h3>
+        <p className="text-white/50 text-xs sm:text-sm mt-0.5">{description}</p>
       </div>
-      <div className={`text-xs font-bold uppercase tracking-wider ${getStatusColor()}`}>
-        {getStatusText()}
+      <div className="flex flex-col items-end gap-1">
+        {isResolved ? (
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+        ) : (
+          <span className="text-[10px] font-bold text-white/30 tracking-widest uppercase">Required</span>
+        )}
       </div>
     </div>
   );

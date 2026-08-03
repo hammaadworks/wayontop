@@ -17,6 +17,11 @@ export function useLocation() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
+      if (import.meta.env.DEV) {
+        // Fallback for dev mode
+        setLocation({ lat: 12.9507, lng: 77.5848, accuracy: 5, heading: 0, speed: 0 });
+        return;
+      }
       setError('Geolocation is not supported by your browser');
       return;
     }
@@ -86,7 +91,12 @@ export function useLocation() {
         });
       },
       (err) => {
-        setError(`Location error: ${err.message}`);
+        if (import.meta.env.DEV) {
+           console.warn('Geolocation failed in DEV, using mock location.', err);
+           setLocation({ lat: 12.9507, lng: 77.5848, accuracy: 5, heading: 0, speed: 0 });
+        } else {
+           setError(`Location error: ${err.message}`);
+        }
       },
       {
         enableHighAccuracy: true,

@@ -75,6 +75,7 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+    dedupe: ['react', 'react-dom']
   },
   optimizeDeps: {
     exclude: ['maplibre-gl-worker']

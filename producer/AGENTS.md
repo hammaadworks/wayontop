@@ -24,3 +24,12 @@ Even as an internal tool, it **MUST** maintain the premium glassmorphism aesthet
 - **Installing New UI Components (CRITICAL)**: If you need a new component, you must step out of the producer app. Run `cd ../packages/ui && npx shadcn-ui@latest add <component>`. Then import it via `@wayontop/ui`.
 - **Business Logic & Types**: Core data types, Supabase clients, and algorithms (like routing) reside in `@wayontop/ui/lib/*`. Do not duplicate logic locally if it can be shared.
 - **Best Practices**: Always write clean, scalable code. Implement the highest industry standards for React and state management.
+
+### 5. Ultimate Pro UI/UX
+The UI MUST be a pro combo of:
+1. **Apple**: Minimalist, frosted glass, deeply refined smooth micro-animations.
+2. **Google Maps**: Clean utility, high performance, highly readable map features and navigation.
+3. **Pokemon Go**: Dynamic, engaging gamification, and intuitive AR overlays.
+4. **Strava**: Energetic metric tracking, rewarding physical movement, and community-driven social proof.
+
+The design MUST be **mobile-first and UX-friendly**. Optimize ruthlessly for one-handed thumb reach on mobile devices. Ensure flawless responsiveness, 100/100 performance, and perfectly harmonious layouts with no oddly placed elements or giant banners.

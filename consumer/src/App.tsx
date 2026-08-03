@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Navigation, Search, Camera, Droplet, List as ListIcon, MapPin, Globe, Aperture, X } from 'lucide-react';
+import { Navigation, Search, Camera, Droplet, List as ListIcon, MapPin, Globe, Aperture, X, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Fuse from 'fuse.js';
 import html2canvas from 'html2canvas';
@@ -19,6 +19,8 @@ import { POICard } from './components/POICard';
 import { ViralSharing } from './lib/sharing';
 import { FEATURE_FLAGS } from './lib/featureFlags';
 import { showAlert } from './lib/events';
+import { Gamification } from './lib/gamification';
+import { Sparkles } from 'lucide-react';
 
 import type { GraphNode, GraphData, Stamp } from '@wayontop/ui/lib/types';
 
@@ -45,7 +47,6 @@ function MainApp() {
   
   const [stamps, setStamps] = useState<Stamp[]>([]);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [showRadar, setShowRadar] = useState(true);
   
   const { location, routeTrack, distanceWalked, startTime } = useLocation();
 
@@ -75,18 +76,52 @@ function MainApp() {
     }
   }, []);
 
+const MOCK_GRAPH: GraphData = {
+  nodes: [
+    { id: 'gate1', name: 'Main Gate', lat: 12.9507, lng: 77.5848, type: 'gate', tags: ['entrance'] },
+    { id: 'glasshouse', name: 'Glass House', lat: 12.9515, lng: 77.5860, type: 'poi', tags: ['landmark', 'photo'] },
+    { id: 'lake', name: 'Lalbagh Lake', lat: 12.9490, lng: 77.5855, type: 'poi', tags: ['water', 'photo'] },
+    { id: 'j1', name: 'Path Junction', lat: 12.9510, lng: 77.5855, type: 'junction', tags: [] }
+  ],
+  edges: [
+    { from: 'gate1', to: 'j1', distance_m: 50 },
+    { from: 'j1', to: 'glasshouse', distance_m: 100 },
+    { from: 'j1', to: 'lake', distance_m: 150 }
+  ],
+  sponsors: [
+    { id: 's1', name: 'MTR', poi_id: 'gate1', radius_m: 100, banner_asset: 'mtr-banner.png', video_asset: '' }
+  ]
+};
+
+const MOCK_STAMPS: Stamp[] = [
+  { id: 'stamp1', name: 'Glass House Explorer', lat: 12.9515, lng: 77.5860, rarity: 'rare', poi_link: 'glasshouse' }
+];
+
   useEffect(() => {
     async function loadData() {
-      const [graphRes, stampsRes] = await Promise.all([
-        supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'graph').single(),
-        supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'stamps').single()
-      ]);
-      
-      if (!graphRes.error && graphRes.data?.data) {
-        setGraph(graphRes.data.data as GraphData);
-      }
-      if (!stampsRes.error && stampsRes.data?.data) {
-        setStamps((stampsRes.data.data as any).stamps || []);
+      try {
+        const [graphRes, stampsRes] = await Promise.all([
+          supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'graph').maybeSingle(),
+          supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'stamps').maybeSingle()
+        ]);
+        
+        if (graphRes.data?.data) {
+          setGraph(graphRes.data.data as GraphData);
+        } else {
+          console.warn('Using MOCK_GRAPH');
+          setGraph(MOCK_GRAPH);
+        }
+        
+        if (stampsRes.data?.data) {
+          setStamps((stampsRes.data.data as any).stamps || []);
+        } else {
+          console.warn('Using MOCK_STAMPS');
+          setStamps(MOCK_STAMPS);
+        }
+      } catch (e) {
+        console.error('Failed to load data, using mock', e);
+        setGraph(MOCK_GRAPH);
+        setStamps(MOCK_STAMPS);
       }
     }
     loadData();
@@ -201,7 +236,7 @@ function MainApp() {
     <div id="ar-capture-zone" className="h-[100dvh] w-full overflow-hidden bg-mesh-dark relative text-slate-100 flex flex-col font-sans selection:bg-amber-400/30">
       
       {FEATURE_FLAGS.enableVenueSwitcher && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[100] bg-black/60 backdrop-blur-xl border border-white/10 p-1.5 rounded-full flex items-center shadow-2xl pointer-events-auto" data-html2canvas-ignore>
+        <div className="absolute top-safe pt-4 left-4 z-[100] bg-black/80 backdrop-blur-xl border border-white/20 p-1.5 rounded-full flex items-center shadow-2xl pointer-events-auto" data-html2canvas-ignore>
            <span className="text-[10px] font-bold text-amber-400 px-2 uppercase tracking-widest">DEV</span>
            <select 
              className="bg-transparent text-white text-xs outline-none cursor-pointer pr-1"
@@ -232,62 +267,35 @@ function MainApp() {
         )}
       </div>
 
-      {/* Sponsor Marquee */}
-      <SponsorMarquee 
-        sponsors={graph?.sponsors} 
-        graph={graph} 
-        location={location} 
-        className="absolute bottom-40 left-4 right-4 z-40 mx-auto" 
-      />
-
-      {/* 2. Top UI Bar */}
-      <div className="relative z-20 p-5 pt-safe flex flex-col pointer-events-none items-center" data-html2canvas-ignore={isCapturing}>
-        <div className="pointer-events-auto bg-black/40 backdrop-blur-3xl p-1 rounded-full flex shadow-lg w-48 border border-white/10">
-          <button 
-            onClick={() => setMode('ar')}
-            className={`flex-1 py-2 rounded-full text-[13px] font-semibold tracking-wide transition-all duration-300 ${mode === 'ar' ? 'bg-white text-black shadow-md' : 'text-white/70 hover:text-white'}`}
-          >
-            AR
-          </button>
-          <button 
-            onClick={() => setMode('map')}
-            className={`flex-1 py-2 rounded-full text-[13px] font-semibold tracking-wide transition-all duration-300 ${mode === 'map' ? 'bg-white text-black shadow-md' : 'text-white/70 hover:text-white'}`}
-          >
-            Map
-          </button>
-        </div>
-
-        <div className="absolute left-5 top-5 pt-safe flex flex-col gap-3 pointer-events-auto">
-          {mode === 'ar' && (
-            <button 
-              onClick={handleCapture}
-              disabled={isCapturing}
-              className={`w-10 h-10 rounded-full bg-[#1C1C1E]/70 backdrop-blur-3xl border border-white/10 flex items-center justify-center shadow-lg active:scale-95 transition-all ${isCapturing ? 'text-white/40 animate-pulse' : 'text-emerald-400'}`}
-            >
-              <Aperture className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        <div className="absolute right-5 top-5 pt-safe flex flex-col gap-3 pointer-events-auto">
-          <button 
-            className="w-10 h-10 rounded-full bg-[#1C1C1E]/70 backdrop-blur-3xl border border-white/10 flex items-center justify-center shadow-lg active:scale-95 transition-all text-white/80"
-            onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'kn' : 'en')}
-          >
-            <Globe className="w-5 h-5" />
-            <span className="absolute -bottom-1 -right-1 text-[8px] bg-emerald-500 text-white rounded px-1 font-bold">
-              {i18n.language === 'en' ? 'KN' : 'EN'}
+      {/* 2. Dynamic Island Area (Top) - Pushed down to clear physical iPhone Dynamic Island */}
+      <div className="absolute top-14 left-0 right-0 z-40 flex flex-col items-center gap-2 pointer-events-none" data-html2canvas-ignore={isCapturing}>
+        <SponsorMarquee 
+          sponsors={graph?.sponsors} 
+          graph={graph} 
+          location={location} 
+          className="pointer-events-auto"
+        />
+        {/* Accuracy and Stamps Row */}
+        <div className="flex items-center gap-2">
+          {/* Stamps */}
+          <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-auto">
+            <span className="font-bold text-white text-xs">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length} <span className="text-white/60 font-medium">Stamps</span></span>
+          </div>
+          {/* Accuracy */}
+          <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)] animate-pulse"></span>
+            <span className="text-xs font-semibold text-white/90">
+              {location ? t('accuracy', { acc: Math.round(location.accuracy) }) : t('connecting_gps')}
             </span>
-          </button>
-          <button className="w-10 h-10 rounded-full bg-[#1C1C1E]/70 backdrop-blur-3xl border border-white/10 flex items-center justify-center shadow-lg active:scale-95 transition-all text-red-500 font-bold text-[10px] tracking-wider" onClick={endWalk}>
-             {t('end_walk')}
-          </button>
+          </div>
         </div>
       </div>
 
+
+
       {/* Active Route HUD */}
       {activeRoute && targetNode && (
-        <div className="absolute top-24 left-4 right-4 z-20 pointer-events-auto animate-in slide-in-from-top-4 duration-500 max-w-[400px] mx-auto">
+        <div className="absolute top-36 left-4 right-4 z-20 pointer-events-auto animate-in slide-in-from-top-4 duration-500 max-w-[400px] mx-auto">
           <div className="bg-[#1C1C1E]/80 backdrop-blur-3xl p-4 rounded-2xl flex items-center justify-between border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
              <div>
                 <h3 className="text-white font-semibold text-[17px] tracking-tight leading-tight">{targetNode.name}</h3>
@@ -303,13 +311,19 @@ function MainApp() {
         </div>
       )}
 
-      {/* 3. Sleek Instagram-style Bottom Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto bg-gradient-to-t from-black via-black/80 to-transparent pt-12 pb-6 px-6" data-html2canvas-ignore={isCapturing}>
-        <div className="flex items-center justify-between max-w-[400px] mx-auto w-full">
+      {/* 3. Premium Floating Dock (Bottom Bar) */}
+      <div className="absolute bottom-6 left-2 right-2 z-30 pointer-events-none flex justify-center" data-html2canvas-ignore={isCapturing}>
+        <div className="pointer-events-auto bg-[#1C1C1E]/85 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-2 flex items-center justify-between w-full max-w-[420px] shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           
+          <button className="flex flex-col items-center justify-center w-14 h-14 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'kn' : 'en')}>
+            <Globe className="w-6 h-6 text-white/80 stroke-[1.5]" />
+            <span className="text-[9px] text-emerald-400 mt-1.5 font-bold tracking-widest">{i18n.language === 'en' ? 'KN' : 'EN'}</span>
+          </button>
+
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger aria-label="Search" className="flex flex-col items-center justify-center p-2 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer">
-              <Search className="w-7 h-7 text-white stroke-[1.5]" />
+            <SheetTrigger aria-label="Search" className="flex flex-col items-center justify-center w-14 h-14 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer">
+              <Search className="w-6 h-6 text-white stroke-[1.5]" />
+              <span className="text-[9px] text-white/60 mt-1.5 font-semibold">{t('search')}</span>
             </SheetTrigger>
             
             <SheetContent side="bottom" className="h-[90vh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
@@ -327,6 +341,24 @@ function MainApp() {
                       autoFocus
                     />
                   </div>
+                  
+                  {/* Quick Filters */}
+                  <div className="flex items-center gap-3 mt-5">
+                    <button 
+                      onClick={() => setSearchQuery('photo')}
+                      className="flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl py-3.5 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Camera className="w-4 h-4 text-emerald-400" />
+                      <span className="text-[13px] font-semibold text-white tracking-wide">Photo Spots</span>
+                    </button>
+                    <button 
+                      onClick={() => setSearchQuery('facility')}
+                      className="flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl py-3.5 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Droplet className="w-4 h-4 text-blue-400" />
+                      <span className="text-[13px] font-semibold text-white tracking-wide">Facilities</span>
+                    </button>
+                  </div>
                 </SheetHeader>
               
                 <div className="flex-1 px-4 overflow-y-auto">
@@ -335,7 +367,7 @@ function MainApp() {
                       <div key={poi.id} onClick={() => handlePOISelect(poi)} className="bg-transparent hover:bg-white/5 active:bg-white/10 p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-b border-white/5 last:border-0">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                            {poi.type === 'gate' ? <Navigation className="text-emerald-400 w-5 h-5" /> : <MapPin className="text-emerald-400 w-5 h-5" />}
+                            {poi.type === 'gate' ? <Navigation className="text-emerald-400 w-5 h-5" /> : <MapPin className="textemerald-400 w-5 h-5" />}
                           </div>
                           <div className="flex flex-col">
                             <h4 className="font-semibold text-[17px] text-white tracking-tight">{poi.name}</h4>
@@ -361,22 +393,24 @@ function MainApp() {
               </div>
             </SheetContent>
           </Sheet>
-
-          <button className="flex flex-col items-center justify-center p-2 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={() => { setSearchQuery('photo'); setSheetOpen(true); }}>
-            <Camera className="w-7 h-7 text-white stroke-[1.5]" />
+          
+          {/* Main Shutter/Action Button in Center - AR Snapshot */}
+          <button 
+            className="relative flex flex-col items-center justify-center w-16 h-16 rounded-full border-[3px] border-emerald-400 bg-white/5 active:scale-95 transition-transform mx-2 shadow-[0_0_15px_rgba(52,211,153,0.3)]" 
+            onClick={handleCapture}
+            disabled={isCapturing}
+          >
+            <div className={`w-12 h-12 bg-white rounded-full ${isCapturing ? 'animate-pulse opacity-50' : ''}`}></div>
           </button>
           
-          {/* Main Shutter/Action Button in Center */}
-          <button className="relative flex flex-col items-center justify-center w-14 h-14 rounded-full border-[3px] border-white active:scale-95 transition-transform" onClick={() => { setSearchQuery(''); setSheetOpen(true); }}>
-            <div className="w-11 h-11 bg-white rounded-full"></div>
+          <button className="flex flex-col items-center justify-center w-14 h-14 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={() => { showAlert('Leaderboard is coming soon!'); }}>
+            <ListIcon className="w-6 h-6 text-white stroke-[1.5]" />
+            <span className="text-[9px] text-white/60 mt-1.5 font-semibold">Rank</span>
           </button>
 
-          <button className="flex flex-col items-center justify-center p-2 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={() => { setSearchQuery('facility'); setSheetOpen(true); }}>
-            <Droplet className="w-7 h-7 text-white stroke-[1.5]" />
-          </button>
-          
-          <button className="flex flex-col items-center justify-center p-2 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={() => { setSearchQuery(''); setSheetOpen(true); }}>
-            <ListIcon className="w-7 h-7 text-white stroke-[1.5]" />
+          <button className="flex flex-col items-center justify-center w-14 h-14 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer" onClick={endWalk}>
+            <Flag className="w-6 h-6 text-red-400 stroke-[1.5]" />
+            <span className="text-[9px] text-red-400 mt-1.5 font-bold tracking-widest">END</span>
           </button>
 
         </div>
@@ -409,38 +443,40 @@ function MainApp() {
          </div>
       )}
 
-      {/* Radar Map (PUBG style mini-map) */}
+      {/* Back to AR Button (Only in Map mode) */}
+      {mode === 'map' && (
+        <button 
+          onClick={() => setMode('ar')}
+          className="absolute bottom-28 right-4 z-40 w-16 h-16 bg-emerald-500 rounded-full shadow-[0_8px_30px_rgba(16,185,129,0.5)] border-2 border-emerald-400 flex flex-col items-center justify-center pointer-events-auto active:scale-95 transition-transform"
+        >
+          <Camera className="w-6 h-6 text-white mb-0.5" />
+          <span className="text-[10px] font-bold text-white leading-none">AR</span>
+        </button>
+      )}
+
+      {/* Radar Map (PUBG/PoGo style mini-map) */}
       {mode === 'ar' && (
-        <div className="absolute top-24 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2" data-html2canvas-ignore={isCapturing}>
-          <button 
-            onClick={() => setShowRadar(!showRadar)}
-            className="bg-black/40 backdrop-blur-md border border-white/20 p-2 rounded-full text-white hover:bg-black/60 transition-colors shadow-lg active:scale-95"
-            aria-label="Toggle Radar"
+        <div className="absolute bottom-28 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2" data-html2canvas-ignore={isCapturing}>
+          <div 
+            onClick={() => setMode('map')}
+            className="w-32 h-32 rounded-full border-[3px] border-white/30 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden relative bg-black/20 backdrop-blur-md transform-gpu transition-all animate-in zoom-in-95 duration-300 cursor-pointer group"
           >
-            <MapPin className="w-5 h-5" />
-          </button>
-          
-          {showRadar && (
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[3px] border-emerald-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)] overflow-hidden relative glass-panel transform-gpu transition-all animate-in zoom-in-95 duration-300">
-               <div className="absolute inset-0 origin-center opacity-80 pointer-events-none">
-                 <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} isRadar={true} />
-               </div>
-               
-               {/* Radar Crosshair & Sweep Effect */}
-               <div className="absolute inset-0 pointer-events-none border border-emerald-500/20 rounded-full"></div>
-               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-emerald-500/20 pointer-events-none"></div>
-               <div className="absolute top-1/2 left-0 right-0 h-px bg-emerald-500/20 pointer-events-none"></div>
-               <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_70%,rgba(52,211,153,0.5)_100%)] animate-[spin_4s_linear_infinite] rounded-full pointer-events-none mix-blend-screen"></div>
-               
-               {/* Center Dot */}
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,1)]"></div>
-               
-               {/* Watermark */}
-               <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none">
-                 <span className="text-[8px] font-bold tracking-widest text-emerald-400/80 uppercase drop-shadow-md">Radar</span>
-               </div>
-            </div>
-          )}
+             <div className="absolute inset-0 origin-center opacity-90 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+               <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} isRadar={true} />
+             </div>
+             
+             {/* Expand hint overlay */}
+             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+               <span className="text-white font-bold text-xs uppercase tracking-widest drop-shadow-md">Expand</span>
+             </div>
+             
+             {/* Radar Crosshair & Sweep Effect */}
+             <div className="absolute inset-0 pointer-events-none border border-emerald-500/20 rounded-full"></div>
+             <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_70%,rgba(52,211,153,0.3)_100%)] animate-[spin_4s_linear_infinite] rounded-full pointer-events-none mix-blend-screen"></div>
+             
+             {/* Center Dot */}
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_12px_rgba(52,211,153,1)]"></div>
+          </div>
         </div>
       )}
 

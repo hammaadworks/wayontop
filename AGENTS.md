@@ -29,3 +29,12 @@ You **MUST** adhere to the [Design System](docs/design-system.md) for all coding
 - **Best Practices Only**: Never compromise on code quality. Always implement industry-standard best practices, robust error handling, and scalable architectures. 
 
 *Read `consumer/AGENTS.md` and `producer/AGENTS.md` for app-specific context.*
+
+### 5. Ultimate Pro UI/UX
+The UI MUST be a pro combo of:
+1. **Apple**: Minimalist, frosted glass, deeply refined smooth micro-animations.
+2. **Google Maps**: Clean utility, high performance, highly readable map features and navigation.
+3. **Pokemon Go**: Dynamic, engaging gamification, and intuitive AR overlays.
+4. **Strava**: Energetic metric tracking, rewarding physical movement, and community-driven social proof.
+
+The design MUST be **mobile-first and UX-friendly**. Optimize ruthlessly for one-handed thumb reach on mobile devices. Ensure flawless responsiveness, 100/100 performance, and perfectly harmonious layouts with no oddly placed elements or giant banners.

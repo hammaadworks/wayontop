@@ -53,16 +53,15 @@ export function SponsorMarquee({ sponsors = [], graph, location, className = "ab
     <>
       <div 
         onClick={() => setModalOpen(true)}
-        className={`${className} glass-panel p-2.5 flex items-center gap-4 z-40 cursor-pointer pointer-events-auto transform transition-all duration-300 hover:scale-[1.02] active:scale-95 border-amber-400/20 group shadow-2xl mx-auto max-w-[400px] w-full`}
+        className={`${className} overflow-hidden bg-black/50 backdrop-blur-2xl p-1.5 pr-4 rounded-full flex items-center gap-3 z-40 cursor-pointer pointer-events-auto transform transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] mx-auto w-[90%] max-w-[340px]`}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl"></div>
-        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.4)] relative z-10">
-          <span className="font-extrabold text-amber-950 text-xs tracking-wider">{displaySponsor.name.substring(0, 3).toUpperCase()}</span>
+        <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shrink-0 shadow-inner relative z-10">
+          <span className="font-bold text-amber-950 text-[10px] tracking-wider">{displaySponsor.name.substring(0, 3).toUpperCase()}</span>
         </div>
-        <div className="flex-1 overflow-hidden relative z-10">
-          <p className="text-xs font-bold tracking-widest text-white/50 uppercase mb-0.5">{displaySponsor.name}</p>
+        <div className="flex-1 overflow-hidden relative z-10 flex flex-col justify-center">
+          <p className="text-[10px] font-bold tracking-widest text-emerald-400 uppercase mb-0.5">{displaySponsor.name}</p>
           <div className="animate-marquee whitespace-nowrap">
-            <p className="text-sm font-medium text-amber-100 inline-block tracking-wide drop-shadow-sm">{adText}</p>
+            <p className="text-[13px] font-medium text-white/90 inline-block tracking-tight drop-shadow-md">{adText}</p>
           </div>
         </div>
       </div>

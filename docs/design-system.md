@@ -5,12 +5,12 @@ This document outlines the official brand style and design system for all WayOnT
 **CRITICAL DIRECTIVE**: All future UI/UX development MUST follow this brand style. No exceptions. Both Consumer and Producer applications must feel like they were built by the same team, sharing the same premium aesthetic.
 
 ## 1. Core Aesthetic
-Our design philosophy heavily borrows from Apple's sleek hardware/software integration and Google Maps' clean utility, with a modern "glassmorphism" overlay that feels futuristic yet highly legible.
+Our design philosophy is anchored in a concept we call **"Prismatic Zen"** (heavily inspired by our brand motion graphics like `parkgif.mp4`). It blends Apple's sleek glassmorphism with an ethereal, luminous, and tranquil zen-garden aesthetic.
 
-- **Theme**: Dark mode by default (Dark Mesh) with vibrant, glowing accents.
-- **Glassmorphism**: Heavy use of translucent panels (`backdrop-blur-xl`, `bg-black/40`, `border-white/10`) to create depth and hierarchy without opaque blocks.
+- **Theme**: A deep, dark slate foundation brought to life by glowing, iridescent pastel accents (mint green, pearlescent pink, soft lavender, and luminous white orbs).
+- **Glassmorphism**: Heavy use of translucent panels (`backdrop-blur-xl`, `bg-white/10`, `border-white/20`) layered *over* the iridescent glowing backgrounds to create depth, resembling frosted glass over glowing crystals.
 - **Typography**: Clean, sans-serif fonts (like Inter or San Francisco/Geist), utilizing varied weights for hierarchy (bold white for primary text, slate-300/400 for secondary).
-- **Rounding**: Soft, approachable corners. Large border radii on main cards (`rounded-2xl`, `rounded-3xl`), pill-shaped buttons (`rounded-full`).
+- **Rounding**: Soft, approachable corners. Large border radii on main cards (`rounded-2xl`, `rounded-3xl`, `rounded-[32px]`), pill-shaped buttons (`rounded-full`).
 
 ## 2. Design Tokens & Components (`packages/ui`)
 All design tokens and `shadcn/ui` components are strictly centralized in the `@wayontop/ui` package to ensure 100% consistency across the monorepo.
@@ -18,11 +18,11 @@ All design tokens and `shadcn/ui` components are strictly centralized in the `@w
 - **Custom Shared Components:** Foundational UI like `PermissionGate.tsx` are also centralized here.
 
 ### Colors
-- **Backgrounds**: `bg-mesh-dark` (an animated, subtle mesh gradient providing a dynamic backdrop).
-- **Primary Accent**: Emerald Green (`emerald-400` to `emerald-600`). Used for primary actions, success states, and glowing accents. Represents "go", "nature" (parks like Lalbagh), and "active".
-- **Secondary Accents**: Pink/Indigo gradients for special gamified features (like Stamps).
-- **Text**: `text-white` for primary text, `text-slate-300` or `text-slate-400` for subtitles, captions, and secondary information.
-- **Borders**: Highly subtle. `border-white/10` or `border-white/20` to define edges of glass panels.
+- **Backgrounds**: Deep slate (`bg-slate-950`) acts as the canvas. This is heavily augmented by absolute-positioned glowing orbs using `mix-blend-screen` and `mix-blend-overlay` to create iridescent, holographic backdrops.
+- **Primary Accents (The Crystals)**: Ethereal Pastels. We use gradients combining `teal-300/20`, `fuchsia-300/10`, `indigo-400/20`, and `rose-400/20` to mimic the light catching translucent crystals.
+- **Action Accents**: Vibrant Emerald/Teal (`emerald-400` to `emerald-600`) remains the primary color for buttons and success states, symbolizing nature and movement.
+- **Text**: `text-white` for primary text, `text-slate-300` for subtitles. We also use gradient text (`bg-clip-text text-transparent bg-gradient-to-r from-emerald-200 via-teal-100 to-indigo-200`) for magical or premium headers.
+- **Borders**: Luminous and subtle. `border-white/10` or `border-white/20` to define edges of glass panels, catching the "light".
 
 ### Utilities
 - `.glass-panel`: The workhorse container. Translucent black/grey with background blur and a subtle white border. Used for cards, dialogs, and main UI overlays.
@@ -35,8 +35,8 @@ A premium app feels alive. Static elements are a failure of design.
 - **Animations**:
   - `animate-in zoom-in-95`: Used when panels or modals appear, giving a soft pop.
   - `spring-bounce`: Custom keyframe for delightful, bouncy entrances.
+  - `shimmer`: A custom animated sheen (e.g., `animate-[shimmer_1.5s_infinite]`) used on primary buttons to make them feel magical and rewarding.
   - `float`: Custom keyframe for elements like the AR stamp to gently bob up and down.
-  - `pulse`: Used on recording/active states.
 
 ## 4. UI Components
 

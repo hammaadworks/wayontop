@@ -27,7 +27,7 @@ export function MapView({ graph, activeRoute, stamps = [], isRadar = false }: Ma
     if (isRadar && location && mapRef.current) {
       mapRef.current.jumpTo({
         center: [location.lng, location.lat],
-        zoom: 18
+        zoom: 16.5
       });
     }
   }, [location, isRadar]);
@@ -122,7 +122,7 @@ export function MapView({ graph, activeRoute, stamps = [], isRadar = false }: Ma
         initialViewState={{
           longitude: LALBAGH_CENTER.lng,
           latitude: LALBAGH_CENTER.lat,
-          zoom: isRadar ? 18 : 16,
+          zoom: isRadar ? 16.5 : 16,
           pitch: 0,
           bearing: 0
         }}
