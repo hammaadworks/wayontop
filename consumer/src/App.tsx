@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Navigation, Search, Camera, Droplet, List as ListIcon, MapPin, Globe, Aperture, X, Flag } from 'lucide-react';
+import { Navigation, Search, Camera, Droplet, List as ListIcon, MapPin, Globe, X, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Fuse from 'fuse.js';
 import html2canvas from 'html2canvas';
@@ -42,6 +42,7 @@ function MainApp() {
   const [showSummary, setShowSummary] = useState(false);
   const [selectedPOI, setSelectedPOI] = useState<GraphNode | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('onboardingComplete'));
   
   const { t, i18n } = useTranslation();
   
@@ -105,15 +106,29 @@ const MOCK_STAMPS: Stamp[] = [
           supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'stamps').maybeSingle()
         ]);
         
-        if (graphRes.data?.data) {
-          setGraph(graphRes.data.data as GraphData);
-        } else {
-          console.warn('Using MOCK_GRAPH');
-          setGraph(MOCK_GRAPH);
-        }
+        const activeGraph = graphRes.data?.data ? (graphRes.data.data as GraphData) : MOCK_GRAPH;
+        if (!graphRes.data?.data) console.warn('Using MOCK_GRAPH');
+        setGraph(activeGraph);
         
-        if (stampsRes.data?.data) {
-          setStamps((stampsRes.data.data as any).stamps || []);
+        let loadedStamps = stampsRes.data?.data ? ((stampsRes.data.data as any).stamps || []) : [];
+        
+        // Harvest stamps from the graph (placed by Producer)
+        const graphStamps: Stamp[] = activeGraph.nodes
+          .filter(n => n.type === 'stamp')
+          .map(n => ({
+            id: n.id,
+            name: n.name || 'Venue Stamp',
+            lat: n.lat,
+            lng: n.lng,
+            rarity: 'common',
+            description: `You found a stamp at ${n.name || 'this location'}!`,
+            poi_link: null
+          }));
+          
+        const combinedStamps = [...loadedStamps, ...graphStamps];
+        
+        if (combinedStamps.length > 0) {
+          setStamps(combinedStamps);
         } else {
           console.warn('Using MOCK_STAMPS');
           setStamps(MOCK_STAMPS);
@@ -267,49 +282,69 @@ const MOCK_STAMPS: Stamp[] = [
         )}
       </div>
 
-      {/* 2. Dynamic Island Area (Top) - Pushed down to clear physical iPhone Dynamic Island */}
-      <div className="absolute top-14 left-0 right-0 z-40 flex flex-col items-center gap-2 pointer-events-none" data-html2canvas-ignore={isCapturing}>
-        <SponsorMarquee 
-          sponsors={graph?.sponsors} 
-          graph={graph} 
-          location={location} 
-          className="pointer-events-auto"
-        />
-        {/* Accuracy and Stamps Row */}
-        <div className="flex items-center gap-2">
-          {/* Stamps */}
-          <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-auto">
-            <span className="font-bold text-white text-xs">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length} <span className="text-white/60 font-medium">Stamps</span></span>
-          </div>
-          {/* Accuracy */}
-          <div className="bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-auto">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)] animate-pulse"></span>
-            <span className="text-xs font-semibold text-white/90">
-              {location ? t('accuracy', { acc: Math.round(location.accuracy) }) : t('connecting_gps')}
-            </span>
-          </div>
-        </div>
-      </div>
 
 
 
-      {/* Active Route HUD */}
+
+      {/* Active Route HUD - Strava Style */}
       {activeRoute && targetNode && (
-        <div className="absolute top-36 left-4 right-4 z-20 pointer-events-auto animate-in slide-in-from-top-4 duration-500 max-w-[400px] mx-auto">
-          <div className="bg-[#1C1C1E]/80 backdrop-blur-3xl p-4 rounded-2xl flex items-center justify-between border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.5)]">
-             <div>
-                <h3 className="text-white font-semibold text-[17px] tracking-tight leading-tight">{targetNode.name}</h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                   <Navigation className="w-3 h-3 text-emerald-400 -rotate-45" />
-                   <p className="text-white/60 text-[13px] font-medium">{t('remaining_distance', { distance: Math.round(activeRoute.totalDistance) })}</p>
-                </div>
+        <div className="absolute top-safe pt-20 left-4 right-4 z-20 pointer-events-auto animate-in slide-in-from-top-4 duration-500">
+           <div className="bg-[#1C1C1E]/90 backdrop-blur-3xl p-5 rounded-[2rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] max-w-[400px] mx-auto">
+             <div className="flex items-start justify-between mb-4">
+               <div>
+                 <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-sm">Navigating To</p>
+                 <h3 className="text-white font-black text-2xl tracking-tight leading-none drop-shadow-md">{targetNode.name}</h3>
+               </div>
+               <Button variant="ghost" size="icon" className="text-white/50 hover:bg-white/10 hover:text-white rounded-full h-10 w-10 transition-colors bg-white/5 shrink-0 ml-4 active:scale-90" onClick={cancelRoute}>
+                 <X className="w-5 h-5" />
+               </Button>
              </div>
-             <Button variant="ghost" size="icon" className="text-white/40 hover:bg-white/10 hover:text-white rounded-full h-8 w-8 transition-colors bg-black/20" onClick={cancelRoute}>
-               <X className="w-4 h-4" />
-             </Button>
-          </div>
+             
+             <div className="grid grid-cols-3 gap-2 mt-2 pt-4 border-t border-white/10">
+               <div className="flex flex-col">
+                 <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Distance</p>
+                 <p className="text-white font-black text-2xl tracking-tighter">{Math.round(activeRoute.totalDistance)}<span className="text-[14px] text-white/50 ml-0.5 font-bold">m</span></p>
+               </div>
+               <div className="flex flex-col border-l border-white/10 pl-3">
+                 <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Time</p>
+                 <p className="text-white font-black text-2xl tracking-tighter">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}<span className="text-[14px] text-white/50 ml-0.5 font-bold">m</span></p>
+               </div>
+               <div className="flex flex-col border-l border-white/10 pl-3">
+                 <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Speed</p>
+                 <p className="text-white font-black text-2xl tracking-tighter">1.4<span className="text-[14px] text-white/50 ml-0.5 font-bold">m/s</span></p>
+               </div>
+             </div>
+           </div>
         </div>
       )}
+
+      {/* 2. Pyramid Stack (Stamps & Accuracy -> Sponsor Marquee) */}
+      <div className="absolute bottom-28 left-0 right-0 z-40 flex flex-col items-center gap-3 pointer-events-none" data-html2canvas-ignore={isCapturing}>
+        <div className="flex justify-center gap-2 pointer-events-auto">
+           {/* Stamps */}
+           <div className="bg-[#1C1C1E]/90 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
+             <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+             </div>
+             <span className="text-white font-bold">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span> 
+             <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
+           </div>
+           
+           {/* Accuracy */}
+           <div className="bg-[#1C1C1E]/90 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_8px_30px_rgba(0,0,0,0.5)] text-xs text-white/90 font-medium">
+             <div className={`w-2 h-2 rounded-full ${!location ? 'bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]' : location.accuracy < 15 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : location.accuracy < 30 ? 'bg-amber-400' : 'bg-red-500'}`}></div>
+             {!location ? 'Connecting GPS...' : `Acc: ${Math.round(location.accuracy)}m`}
+           </div>
+        </div>
+        
+        <div className="pointer-events-auto w-full max-w-[400px] px-4">
+          <SponsorMarquee 
+            sponsors={graph?.sponsors} 
+            graph={graph} 
+            location={location} 
+          />
+        </div>
+      </div>
 
       {/* 3. Premium Floating Dock (Bottom Bar) */}
       <div className="absolute bottom-6 left-2 right-2 z-30 pointer-events-none flex justify-center" data-html2canvas-ignore={isCapturing}>
@@ -454,9 +489,30 @@ const MOCK_STAMPS: Stamp[] = [
         </button>
       )}
 
+      {/* Global Alert Modal */}
+      {/* Sleek Top-Center Toast Notifications */}
+      {alertMessage && (
+        <div className="absolute top-safe pt-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-auto w-[90%] max-w-[320px]">
+          <div className="bg-[#1C1C1E]/95 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex items-center justify-between animate-in slide-in-from-top-10 fade-in duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                <Navigation className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-white/90 text-sm font-medium leading-tight">{alertMessage}</p>
+            </div>
+            <button 
+              onClick={() => setAlertMessage(null)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors shrink-0 ml-3"
+            >
+              <X className="w-4 h-4 text-white/70" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Radar Map (PUBG/PoGo style mini-map) */}
       {mode === 'ar' && (
-        <div className="absolute bottom-28 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2" data-html2canvas-ignore={isCapturing}>
+        <div className="absolute top-44 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2" data-html2canvas-ignore={isCapturing}>
           <div 
             onClick={() => setMode('map')}
             className="w-32 h-32 rounded-full border-[3px] border-white/30 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden relative bg-black/20 backdrop-blur-md transform-gpu transition-all animate-in zoom-in-95 duration-300 cursor-pointer group"
@@ -476,22 +532,61 @@ const MOCK_STAMPS: Stamp[] = [
              
              {/* Center Dot */}
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_12px_rgba(52,211,153,1)]"></div>
-          </div>
+           </div>
         </div>
       )}
 
-      {/* Global Alert Modal */}
-      {alertMessage && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl p-5 animate-in fade-in duration-300">
-          <div className="glass-panel p-6 text-center max-w-[300px] shadow-2xl animate-in zoom-in-95 duration-300 spring-bounce border-white/20">
-            <h3 className="text-xl font-bold text-white mb-2">Notice</h3>
-            <p className="text-white/70 mb-6 text-sm">{alertMessage}</p>
-            <button 
-              onClick={() => setAlertMessage(null)}
-              className="w-full bg-white text-black font-bold py-3 rounded-full active:scale-95 transition-transform"
-            >
-              OK
-            </button>
+      {/* Onboarding Tour / Info */}
+      {showOnboarding && !activeRoute && (
+        <div className="absolute inset-0 z-[250] bg-black/80 backdrop-blur-2xl flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 pointer-events-auto">
+          <div className="bg-[#1C1C1E]/90 border border-white/10 p-8 rounded-[3rem] max-w-[360px] w-full shadow-[0_30px_80px_rgba(0,0,0,0.8)] relative overflow-hidden transform-gpu">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/10 blur-[60px] rounded-full pointer-events-none"></div>
+            
+            <div className="relative z-10 flex flex-col items-center text-center">
+               <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(16,185,129,0.5)]">
+                 <Navigation className="w-10 h-10 text-white drop-shadow-md" />
+               </div>
+               
+               <h2 className="text-3xl font-black text-white mb-2 tracking-tight">WayOnTop</h2>
+               <p className="text-white/60 text-[15px] font-medium leading-relaxed mb-8 px-2">
+                 Your intelligent AR navigator for Lalbagh. Find places, collect stamps, and explore like a pro.
+               </p>
+               
+               <div className="space-y-6 mb-10 w-full text-left">
+                 <div className="flex gap-4 items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-white shadow-inner"><Search className="w-5 h-5"/></div>
+                   <div>
+                     <p className="text-white font-bold text-[15px]">Find Destinations</p>
+                     <p className="text-white/50 text-[13px] font-medium mt-0.5">Search and start your route.</p>
+                   </div>
+                 </div>
+                 <div className="flex gap-4 items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                   <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400 shadow-inner"><Navigation className="w-5 h-5"/></div>
+                   <div>
+                     <p className="text-white font-bold text-[15px]">Follow AR Arrows</p>
+                     <p className="text-white/50 text-[13px] font-medium mt-0.5">Use your camera to navigate.</p>
+                   </div>
+                 </div>
+                 <div className="flex gap-4 items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                   <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 text-amber-400 shadow-inner"><Sparkles className="w-5 h-5"/></div>
+                   <div>
+                     <p className="text-white font-bold text-[15px]">Collect Stamps</p>
+                     <p className="text-white/50 text-[13px] font-medium mt-0.5">Catch rare 3D stamps on your run.</p>
+                   </div>
+                 </div>
+               </div>
+               
+               <button 
+                 onClick={() => {
+                   localStorage.setItem('onboardingComplete', 'true');
+                   setShowOnboarding(false);
+                 }}
+                 className="w-full bg-gradient-to-b from-emerald-400 to-emerald-600 hover:to-emerald-500 text-black font-black uppercase tracking-widest py-4 rounded-[1.5rem] shadow-[0_10px_30px_rgba(16,185,129,0.4)] active:scale-95 transition-all duration-300"
+               >
+                 Start Exploring
+               </button>
+            </div>
           </div>
         </div>
       )}

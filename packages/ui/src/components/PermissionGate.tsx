@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { Camera, MapPin, Compass, Settings, AlertTriangle, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Camera, MapPin, Compass, Settings, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface PermissionGateProps {
   children: ReactNode;
@@ -251,13 +251,11 @@ export function PermissionGate({ children }: PermissionGateProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/40 backdrop-blur-3xl p-4 sm:p-6 overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-6 overflow-hidden">
       {/* Prismatic Zen Background Glows */}
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-200/20 via-indigo-400/10 to-transparent pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-white rounded-full blur-[100px] opacity-15 pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-300/20 rounded-full blur-[120px] mix-blend-screen pointer-events-none"></div>
+      <div className="absolute inset-0 bg-mesh-dark opacity-80 pointer-events-none -z-10"></div>
 
-      <div className="relative w-full max-w-md bg-white/10 backdrop-blur-2xl p-5 sm:p-8 rounded-[32px] shadow-[0_40px_80px_rgba(0,0,0,0.4)] border border-white/20 animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto flex flex-col">
+      <div className="relative w-full max-w-md p-5 sm:p-8 glass-panel animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto flex flex-col">
         
         {/* FOMO Visual Reward */}
         <div className="w-full h-40 sm:h-48 rounded-[20px] overflow-hidden mb-5 relative border-[0.5px] border-white/30 shadow-[0_10px_30px_rgba(16,185,129,0.2)] shrink-0">

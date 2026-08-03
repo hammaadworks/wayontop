@@ -46,6 +46,18 @@ export function ARView({ targetNode, stamps = [] }: ARViewProps) {
     return null;
   }, [location, stamps, collectedStampIds]);
 
+  const stampBearing = React.useMemo(() => {
+    if (!location || !nearbyStamp) return 0;
+    return getBearing(location.lat, location.lng, nearbyStamp.lat, nearbyStamp.lng);
+  }, [location, nearbyStamp]);
+
+  const isFacingStamp = React.useMemo(() => {
+    if (heading === null || !nearbyStamp) return false;
+    let diff = Math.abs(heading - stampBearing);
+    if (diff > 180) diff = 360 - diff;
+    return diff < 30; // 30 degree window
+  }, [heading, stampBearing, nearbyStamp]);
+
   const handleClaimStamp = async () => {
     if (!nearbyStamp) return;
     
@@ -90,7 +102,7 @@ export function ARView({ targetNode, stamps = [] }: ARViewProps) {
       
       {/* AR Overlay (3D Perspective) - Only show if navigating */}
       {targetNode ? (
-        <div className="z-10 flex flex-col items-center pointer-events-none mt-20" style={{ perspective: '800px' }}>
+        <div className="absolute bottom-[25%] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center pointer-events-none" style={{ perspective: '800px' }}>
           <div className="relative flex items-center justify-center h-64 w-64">
             {/* Floor glow */}
             <div 
@@ -132,34 +144,44 @@ export function ARView({ targetNode, stamps = [] }: ARViewProps) {
 
       {/* Stamp Claim UI Overlay (Pokemon Go Card Style) */}
       {nearbyStamp && !justClaimedStamp && !infoStamp && (
-        <div className="absolute bottom-32 z-30 flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 pointer-events-auto">
-          <div 
-            onClick={handleClaimStamp}
-            className="group cursor-pointer" style={{ perspective: '1200px' }}
-          >
-            {/* The 3D Card */}
-            <div className="w-[200px] h-[280px] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border-4 border-amber-300 bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 overflow-hidden transform-gpu transition-all duration-300 hover:-translate-y-4 hover:scale-105 group-hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] relative">
-              {/* Holographic overlay */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none group-hover:translate-x-full transition-transform duration-1000"></div>
-              
-              <div className="p-4 flex flex-col h-full text-center">
-                <div className="flex-1 flex items-center justify-center relative">
-                  <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
-                  <Sparkles className="w-16 h-16 text-amber-300 drop-shadow-[0_0_15px_rgba(251,191,36,1)] animate-pulse" />
-                </div>
-                
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-3 border border-white/10 mt-auto">
-                  <p className="text-[10px] uppercase font-bold text-amber-400 tracking-widest mb-1">{t('stamp_nearby')}</p>
-                  <h4 className="text-lg font-bold tracking-tight text-white leading-tight">{nearbyStamp.name}</h4>
+        <>
+          {!isFacingStamp ? (
+             <div className="absolute bottom-40 z-30 flex flex-col items-center animate-pulse pointer-events-none">
+               <div className="glass-panel px-6 py-3 bg-amber-500/20 border-amber-500/50 rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] flex items-center gap-2">
+                 <Sparkles className="w-5 h-5 text-amber-400" />
+                 <p className="text-amber-400 font-bold text-sm tracking-wide">
+                   {t('stamp_nearby_hint', 'Stamp nearby! Look around in AR to find it.')}
+                 </p>
+               </div>
+             </div>
+          ) : (
+            <div className="absolute bottom-40 z-30 flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 pointer-events-auto">
+              <div 
+                onClick={handleClaimStamp}
+                className="group cursor-pointer active:scale-95 active:rotate-[15deg] transition-all duration-500" style={{ perspective: '1200px' }}
+              >
+                {/* The 3D Card */}
+                <div className="w-[200px] h-[280px] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border-4 border-amber-300 bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 overflow-hidden transform-gpu transition-all duration-500 hover:-translate-y-4 hover:scale-105 group-hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] group-active:rotate-y-180 relative flex flex-col">
+                  {/* Holographic overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent pointer-events-none group-hover:translate-x-full transition-transform duration-1000"></div>
+                  
+                  <div className="p-4 flex flex-col h-full text-center z-10">
+                    <div className="flex-1 flex items-center justify-center relative">
+                      <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full"></div>
+                      <Sparkles className="w-16 h-16 text-amber-300 drop-shadow-[0_0_15px_rgba(251,191,36,1)] animate-pulse" />
+                    </div>
+                    
+                    <div className="bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/20 mt-auto shadow-inner relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                      <p className="text-[10px] uppercase font-black text-amber-400 tracking-widest mb-1 relative z-10">{t('stamp_nearby', 'TAP TO CLAIM')}</p>
+                      <h4 className="text-lg font-bold tracking-tight text-white leading-tight relative z-10">{nearbyStamp.name}</h4>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <button className="mt-6 w-full bg-gradient-to-b from-amber-300 to-amber-500 hover:to-amber-400 text-amber-950 font-black tracking-widest uppercase py-3 px-8 rounded-full shadow-[0_10px_30px_rgba(251,191,36,0.6)] active:scale-95 transition-all duration-300">
-              {t('claim_stamp')}
-            </button>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* Celebration UI */}

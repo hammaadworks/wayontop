@@ -63,12 +63,12 @@
 
 /* Mesh Gradients */
 .bg-mesh-dark {
-  background-color: #0a0a0a;
+  background-color: #0c120c; /* Deep forest night */
   background-image: 
-    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(251, 191, 36, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.2) 0px, transparent 50%), /* Emerald canopy */
+    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), /* Water streams */
+    radial-gradient(at 100% 100%, rgba(217, 70, 239, 0.15) 0px, transparent 50%), /* Magenta flowers */
+    radial-gradient(at 0% 100%, rgba(139, 69, 19, 0.15) 0px, transparent 50%); /* Earth/Bark */
 }
 
 /* Awwwards Animations */
@@ -155,70 +155,72 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Botanical Light Theme - Gardens & Earth */
+  --background: oklch(0.98 0.01 120); /* Off-white with a hint of green */
+  --foreground: oklch(0.2 0.05 120); /* Deep forest green */
+  --card: oklch(0.99 0.02 120);
+  --card-foreground: oklch(0.2 0.05 120);
+  --popover: oklch(0.99 0.02 120);
+  --popover-foreground: oklch(0.2 0.05 120);
+  --primary: oklch(0.6 0.15 150); /* Vibrant Emerald */
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.7 0.12 240); /* Water stream blue */
+  --secondary-foreground: oklch(0.2 0.05 240);
+  --muted: oklch(0.94 0.03 120);
+  --muted-foreground: oklch(0.5 0.05 120);
+  --accent: oklch(0.75 0.15 320); /* Flower fuchsia */
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.6 0.18 20);
+  --border: oklch(0.9 0.05 120); /* Earthy green border */
+  --input: oklch(0.9 0.05 120);
+  --ring: oklch(0.6 0.15 150);
+  --chart-1: oklch(0.6 0.15 150); /* Emerald */
+  --chart-2: oklch(0.7 0.12 240); /* Water blue */
+  --chart-3: oklch(0.75 0.15 320); /* Flower fuchsia */
+  --chart-4: oklch(0.8 0.1 70); /* Earth yellow/brown */
+  --chart-5: oklch(0.6 0.1 30); /* Terracotta */
+  --radius: 0.75rem;
+  --sidebar: oklch(0.98 0.01 120);
+  --sidebar-foreground: oklch(0.2 0.05 120);
+  --sidebar-primary: oklch(0.6 0.15 150);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.94 0.03 120);
+  --sidebar-accent-foreground: oklch(0.2 0.05 120);
+  --sidebar-border: oklch(0.9 0.05 120);
+  --sidebar-ring: oklch(0.6 0.15 150);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Botanical Dark Theme - Night Garden */
+  --background: oklch(0.18 0.02 140); /* Very dark forest green/black */
+  --foreground: oklch(0.95 0.02 140);
+  --card: oklch(0.22 0.03 140);
+  --card-foreground: oklch(0.95 0.02 140);
+  --popover: oklch(0.22 0.03 140);
+  --popover-foreground: oklch(0.95 0.02 140);
+  --primary: oklch(0.65 0.18 150); /* Bright Emerald Green */
+  --primary-foreground: oklch(0.15 0.05 150);
+  --secondary: oklch(0.55 0.15 240); /* Deep Water Stream */
+  --secondary-foreground: oklch(0.95 0.02 240);
+  --muted: oklch(0.28 0.04 140);
+  --muted-foreground: oklch(0.7 0.05 140);
+  --accent: oklch(0.65 0.2 320); /* Glowing Flower Fuchsia */
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.6 0.18 20);
+  --border: oklch(1 0 0 / 15%);
+  --input: oklch(1 0 0 / 20%);
+  --ring: oklch(0.65 0.18 150);
+  --chart-1: oklch(0.65 0.18 150);
+  --chart-2: oklch(0.55 0.15 240);
+  --chart-3: oklch(0.65 0.2 320);
+  --chart-4: oklch(0.7 0.15 70);
+  --chart-5: oklch(0.5 0.1 30);
+  --sidebar: oklch(0.22 0.03 140);
+  --sidebar-foreground: oklch(0.95 0.02 140);
+  --sidebar-primary: oklch(0.65 0.18 150);
+  --sidebar-primary-foreground: oklch(0.15 0.05 150);
+  --sidebar-accent: oklch(0.28 0.04 140);
+  --sidebar-accent-foreground: oklch(0.95 0.02 140);
+  --sidebar-border: oklch(1 0 0 / 15%);
+  --sidebar-ring: oklch(0.65 0.18 150);
 }
