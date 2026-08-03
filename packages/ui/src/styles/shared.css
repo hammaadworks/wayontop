@@ -6,21 +6,10 @@
 
 @layer base {
   :root {
-    /* Premium Branding */
-    --primary: #10b981; /* Emerald */
-    --primary-foreground: #ffffff;
-    --accent: #fbbf24; /* Amber */
-    
     /* Ultra-Premium Glassmorphism */
     --surface: rgba(20, 20, 25, 0.45);
     --surface-border: rgba(255, 255, 255, 0.12);
     --surface-foreground: #ffffff;
-  }
-
-  /* When wayon.top expands, we can inject a theme class like .theme-wonderla */
-  .theme-wonderla {
-    --primary: #2563eb; /* Wonderla Blue */
-    --surface: rgba(255, 255, 255, 0.85);
   }
   
   * {

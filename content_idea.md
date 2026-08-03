@@ -40,3 +40,6 @@ so strict. need to be super empathtic to the user, how he feels how can he use i
 - coverage - see what is bloated and reduce your website size
 - css overview and fix it
 - webvitals and unlighthouse for performance
+
+4. performance
+- prefecting and caching = see when the user is busy with the permisisons we are optimistic so we load the major graphs and stuff sot eh experience is seamless

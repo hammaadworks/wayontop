@@ -86,6 +86,7 @@ function MainApp() {
     if (mapRef.current && currentLocation && locateTrigger > 0) {
       mapRef.current.flyTo({ center: [currentLocation.lng, currentLocation.lat], zoom: 18, essential: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locateTrigger]);
 
 
@@ -97,6 +98,7 @@ function MainApp() {
     if (currentVenue) {
       loadGraph();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVenue]);
 
   useEffect(() => {
@@ -373,25 +375,25 @@ function MainApp() {
       <div className="min-h-[100dvh] bg-mesh-dark flex items-center justify-center p-4 text-slate-100">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 mb-4 shadow-sm border border-indigo-200">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 mb-4 shadow-lg border border-indigo-500/30">
               <MapPin className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Producer UI</h1>
-            <p className="text-slate-500 mt-2">Select a venue to begin mapping</p>
+            <h1 className="text-3xl font-bold text-slate-50 tracking-tight">Producer UI</h1>
+            <p className="text-slate-400 mt-2">Select a venue to begin mapping</p>
           </div>
 
           {showNewVenue ? (
-            <Card className="shadow-xl glass-panel border-white/10 text-white">
+            <Card className="shadow-xl glass-panel border-white/10 shadow-2xl text-white">
               <CardHeader className="border-b border-white/10 bg-black/20 rounded-t-2xl">
                 <CardTitle className="text-white">Create New Venue</CardTitle>
                 <CardDescription className="text-slate-300">Setup a new park, mall, or event space</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2"><Label>Venue Name</Label><Input placeholder="Venue Name" value={newVenueForm.name || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, name: e.target.value }))} /></div>
-                <div className="space-y-2"><Label>Venue Key (e.g. lalbagh)</Label><Input placeholder="Venue Key" value={newVenueForm.key || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold text-slate-400 uppercase tracking-wider tracking-wider">Venue Name</Label><Input className="bg-black/40 border-white/10 text-white focus:border-emerald-500/50 transition-colors" placeholder="e.g. Central Park" value={newVenueForm.name || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, name: e.target.value }))} /></div>
+                <div className="space-y-2"><Label className="text-xs font-bold text-slate-400 uppercase tracking-wider tracking-wider">Venue Key</Label><Input className="bg-black/40 border-white/10 text-white focus:border-emerald-500/50 transition-colors" placeholder="e.g. centralpark" value={newVenueForm.key || ''} onChange={e => setNewVenueForm((s: Partial<Venue>) => ({ ...s, key: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') }))} /></div>
                 
                 <div className="flex justify-between items-center pt-2">
-                  <Label>Center Coordinates</Label>
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider tracking-wider">Center Coordinates</Label>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -428,13 +430,13 @@ function MainApp() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button variant="default" size="default" className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={createVenue}>Create Venue</Button>
+                  <Button variant="default" size="default" className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all" onClick={createVenue}>Create Venue</Button>
                   <Button variant="ghost" onClick={() => setShowNewVenue(false)}>Cancel</Button>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card className="shadow-xl glass-panel border-white/10 text-white">
+            <Card className="shadow-xl glass-panel border-white/10 shadow-2xl text-white">
               <div className="p-2">
                 {loadingVenues ? (
                   <div className="p-8 text-center text-slate-300 flex flex-col items-center">
@@ -449,12 +451,12 @@ function MainApp() {
                 ) : (
                   <div className="grid gap-1">
                     {venues.map(v => (
-                      <div key={v.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 group cursor-pointer">
+                      <div key={v.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-emerald-500/30 group cursor-pointer shadow-sm">
                         <button onClick={() => setCurrentVenue(v)} className="flex-1 text-left">
-                          <div className="font-semibold text-white group-hover:text-emerald-400">{v.name}</div>
+                          <div className="font-semibold text-white group-hover:text-emerald-400 transition-colors">{v.name}</div>
                           <div className="text-xs text-slate-400 mt-1">{v.key} • {v.lat.toFixed(4)}, {v.lng.toFixed(4)}</div>
                         </button>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setVenueToDelete(v.id); }} className="text-slate-400 hover:text-red-500 hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setVenueToDelete(v.id); }} className="text-slate-400 hover:text-red-500 hover:bg-red-500/200/10"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     ))}
                   </div>
@@ -550,7 +552,7 @@ function MainApp() {
                 tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
                 tileSize: 256,
                 attribution: '&copy; OpenStreetMap Contributors',
-                maxzoom: 18,
+                maxzoom: 19,
                 scheme: "xyz"
               }
             },
@@ -730,14 +732,14 @@ function MainApp() {
       {/* Top Navigation Bar - Floating */}
       <div className="absolute top-0 left-0 right-0 z-10 p-4 pointer-events-none flex justify-between items-start gap-4">
         {/* Logo / Stats Box */}
-        <div className="glass-panel text-white p-3 md:p-4 pointer-events-auto flex flex-col gap-2 min-w-[140px] md:min-w-[200px] cursor-pointer border border-white/10" onClick={() => setCurrentVenue(null)}>
+        <div className="glass-panel text-white p-3 md:p-4 pointer-events-auto flex flex-col gap-2 min-w-[140px] md:min-w-[200px] cursor-pointer border border-white/10 hover:border-emerald-500/50 hover:bg-white/5 transition-all shadow-xl" onClick={() => setCurrentVenue(null)}>
           <div className="flex items-center gap-2 mb-1">
             <div className="bg-indigo-600 p-1 md:p-1.5 rounded-lg hidden md:block">
               <MapPin className="w-4 h-4 text-white" />
             </div>
-            <h1 className="font-bold text-slate-800 tracking-tight text-sm md:text-base leading-tight">
+            <h1 className="font-bold text-white tracking-tight text-sm md:text-base leading-tight">
               {currentVenue.name}
-              <div className="text-[10px] text-indigo-600 font-normal mt-0.5 hover:underline">Change Venue</div>
+              <div className="text-[10px] text-emerald-400 font-medium mt-0.5 hover:text-emerald-300 transition-colors">Change Venue</div>
             </h1>
           </div>
           <div className="flex justify-between items-center text-xs font-medium text-slate-300">
@@ -753,7 +755,7 @@ function MainApp() {
           </Button>
 
           {/* Layers Toggle */}
-          <div className="glass-panel text-white p-2 flex flex-col gap-2">
+          <div className="glass-panel text-white p-3 flex flex-col gap-2 shadow-xl border border-white/10 rounded-xl">
             <div className="flex items-center gap-2 px-2 pb-1 border-b border-white/10 mb-1">
               <Layers className="w-3.5 h-3.5 text-slate-300" />
               <span className="text-[10px] font-bold text-slate-300 uppercase">Views</span>
@@ -793,7 +795,7 @@ function MainApp() {
             <SheetTrigger render={<Button variant="secondary" size="default" className="rounded-full shadow-lg glass-pill text-white hover:bg-white/10 font-semibold h-10 border-white/10" />}>
               <Megaphone className="w-4 h-4 mr-2 text-emerald-400" /> <span className="hidden md:inline">Sponsors</span>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto glass-panel border-l border-white/10 !bg-[#1C1C1E]/95 text-white">
+            <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto glass-panel border-l border-white/10 !bg-[#09090b]/95 backdrop-blur-2xl text-white border-l border-white/10 shadow-2xl">
               <SheetHeader className="mb-6">
                 <SheetTitle className="text-white">Sponsor Zones</SheetTitle>
                 <SheetDescription className="text-slate-400">Manage active sponsor zones for {currentVenue.name}.</SheetDescription>
@@ -819,7 +821,7 @@ function MainApp() {
                         <Label className="text-slate-300">Location (Node)</Label>
                         <Select value={sponsorForm.poi_id} onValueChange={v => setSponsorForm(s => ({ ...s, poi_id: v || undefined }))}>
                           <SelectTrigger className="bg-black/50 border-white/20 text-white"><SelectValue placeholder="Select a Node..." /></SelectTrigger>
-                          <SelectContent className="bg-[#1C1C1E] border-white/20 text-white">
+                          <SelectContent className="bg-[#09090b] backdrop-blur-2xl border-white/20 text-white">
                             {data.nodes.map(n => <SelectItem key={n.id} value={n.id} className="hover:bg-white/10">{n.name || n.id} ({n.type})</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -856,17 +858,17 @@ function MainApp() {
 
                 <div className="grid gap-4">
                   {data.sponsors.map(sponsor => (
-                    <Card key={sponsor.id} className="shadow-sm border-slate-200">
+                    <Card key={sponsor.id} className="shadow-md border-white/10 glass-panel bg-black/40 text-white">
                       <CardHeader className="p-4 pb-3 flex flex-row justify-between items-start">
                         <div>
                           <CardTitle className="text-base font-semibold">{sponsor.name}</CardTitle>
-                          <p className="text-sm text-slate-500 mt-1">{sponsor.tagline}</p>
+                          <p className="text-sm text-slate-400 mt-1">{sponsor.tagline}</p>
                         </div>
                         <div className="flex gap-1 -mt-2 -mr-2">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingSponsorId(sponsor.id); setSponsorForm(sponsor); setShowSponsorForm(true); }}>
-                            <Megaphone className="w-4 h-4 text-indigo-600" />
+                            <Megaphone className="w-4 h-4 text-emerald-400" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteSponsor(sponsor.id)}>
+                          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-500/20" onClick={() => deleteSponsor(sponsor.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -890,7 +892,7 @@ function MainApp() {
       )}
 
       {/* Floating Action Buttons (Right) */}
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+6rem)] right-4 z-10 flex flex-col gap-3">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] right-4 md:right-6 z-10 flex flex-col gap-3">
         {rawTrace.length > 0 && (
           <Button 
             variant="secondary" size="icon" 
@@ -929,8 +931,8 @@ function MainApp() {
 
       {/* Selected Entity Floating Panel */}
       {(selectedNode && mode === 'view') && (
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+6rem)] left-4 right-20 md:right-auto md:w-[320px] z-20 transition-all duration-300">
-          <Card className="shadow-2xl glass-panel border-white/10 text-white">
+        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-4 right-20 md:left-6 md:right-auto md:w-[340px] z-20 transition-all duration-300">
+          <Card className="shadow-2xl glass-panel border-white/10 shadow-2xl text-white">
             <CardHeader className="pb-3 flex flex-row items-center justify-between border-b border-white/10">
               <CardTitle className="text-base font-bold flex items-center text-white">
                 <MapPin className="w-4 h-4 mr-2 text-emerald-400" /> Edit Node
@@ -946,18 +948,18 @@ function MainApp() {
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-300 uppercase">Node Name</Label>
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Node Name</Label>
                 <Input 
                   value={selectedNode.name} 
                   onChange={e => updateNode(selectedNode.id, { name: e.target.value })}
-                  className="bg-black/50 border-white/20 text-white h-9"
+                  className="bg-black/40 border-white/10 text-white h-10 focus:border-emerald-500/50 transition-colors placeholder:text-slate-600"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-300 uppercase">Node Type</Label>
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Node Type</Label>
                 <Select value={selectedNode.type} onValueChange={(val) => { if (val) updateNode(selectedNode.id, { type: val as NodeType }) }}>
-                  <SelectTrigger className="bg-black/50 border-white/20 text-white h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#1C1C1E] border-white/20 text-white">
+                  <SelectTrigger className="bg-black/40 border-white/10 text-white h-10 focus:border-emerald-500/50 transition-colors placeholder:text-slate-600"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#09090b] backdrop-blur-2xl border-white/20 text-white">
                     <SelectItem value="poi" className="hover:bg-white/10">POI (Destination)</SelectItem>
                     <SelectItem value="stamp" className="hover:bg-white/10">Stamp (Scavenger Hunt)</SelectItem>
                     <SelectItem value="gate" className="hover:bg-white/10">Gate (Entry/Exit)</SelectItem>
@@ -979,8 +981,8 @@ function MainApp() {
       )}
 
       {(selectedEdge && mode === 'view') && (
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+6rem)] left-4 right-20 md:right-auto md:w-[300px] z-20 transition-all duration-300">
-          <Card className="shadow-2xl glass-panel border-white/10 text-white">
+        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-4 right-20 md:left-6 md:right-auto md:w-[320px] z-20 transition-all duration-300">
+          <Card className="shadow-2xl glass-panel border-white/10 shadow-2xl text-white">
             <CardHeader className="pb-3 flex flex-row items-center justify-between border-b border-white/10">
               <CardTitle className="text-base font-bold flex items-center text-white">
                 <Route className="w-4 h-4 mr-2 text-emerald-400" /> Path Segment
@@ -997,7 +999,7 @@ function MainApp() {
             <CardContent className="pt-4">
               <div className="flex justify-between items-center py-2 bg-black/40 rounded-lg px-4 border border-white/10">
                 <span className="text-slate-300 font-medium text-sm">Distance</span>
-                <span className="font-bold text-emerald-400">{selectedEdge.distance_m} meters</span>
+                <span className="text-lg font-black text-emerald-400 tracking-tight">{selectedEdge.distance_m} meters</span>
               </div>
             </CardContent>
           </Card>
@@ -1005,11 +1007,11 @@ function MainApp() {
       )}
 
       {mode === 'add_node' && (
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+6rem)] left-4 right-20 md:right-auto md:w-[320px] z-20 transition-all duration-300">
+        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-4 right-20 md:left-6 md:right-auto md:w-[340px] z-20 transition-all duration-300">
           <Card className="shadow-2xl glass-panel border-emerald-500/30 text-white">
             <CardHeader className="pb-3 border-b border-white/10 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-emerald-400">New Node Settings</CardTitle>
+                <CardTitle className="text-base text-lg font-black text-emerald-400 tracking-tight">New Node Settings</CardTitle>
                 <CardDescription className="text-slate-300 text-xs">Tap map to place node</CardDescription>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMode('view')} className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 -mt-2 -mr-2">
@@ -1018,14 +1020,14 @@ function MainApp() {
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-300 uppercase">Name (Optional)</Label>
-                <Input value={newNodeName} onChange={e => setNewNodeName(e.target.value)} placeholder="e.g. Glass House" className="bg-black/50 border-white/20 text-white h-9" />
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Name (Optional)</Label>
+                <Input value={newNodeName} onChange={e => setNewNodeName(e.target.value)} placeholder="e.g. Glass House" className="bg-black/40 border-white/10 text-white h-10 focus:border-emerald-500/50 transition-colors placeholder:text-slate-600" />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-300 uppercase">Type</Label>
+                <Label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type</Label>
                 <Select value={newNodeType} onValueChange={(val) => { if (val) setNewNodeType(val as NodeType) }}>
-                  <SelectTrigger className="bg-black/50 border-white/20 text-white h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#1C1C1E] border-white/20 text-white">
+                  <SelectTrigger className="bg-black/40 border-white/10 text-white h-10 focus:border-emerald-500/50 transition-colors placeholder:text-slate-600"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#09090b] backdrop-blur-2xl border-white/20 text-white">
                     <SelectItem value="poi" className="hover:bg-white/10">POI (Destination)</SelectItem>
                     <SelectItem value="stamp" className="hover:bg-white/10">Stamp (Scavenger Hunt)</SelectItem>
                     <SelectItem value="gate" className="hover:bg-white/10">Gate (Entry/Exit)</SelectItem>
@@ -1039,8 +1041,8 @@ function MainApp() {
       )}
 
       {/* Main Editing Toolbar - Bottom Center */}
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-[360px] md:w-auto">
-        <div className="glass-pill p-1.5 shadow-2xl flex gap-1 justify-between items-center w-full">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-[380px] md:w-auto">
+        <div className="glass-pill p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-white/10 flex gap-1 justify-between items-center w-full bg-black/40 backdrop-blur-2xl">
           <Button 
             variant={mode === 'view' ? 'default' : 'ghost'} 
             className={`rounded-full px-4 md:px-5 h-12 md:h-11 border-white/10 ${mode === 'view' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md text-white' : 'text-slate-300 hover:bg-white/10'}`}

@@ -258,7 +258,7 @@ export function PermissionGate({ children }: PermissionGateProps) {
       <div className="relative w-full max-w-md p-5 sm:p-8 glass-panel animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto flex flex-col">
         
         {/* FOMO Visual Reward */}
-        <div className="w-full h-40 sm:h-48 rounded-[20px] overflow-hidden mb-5 relative border-[0.5px] border-white/30 shadow-[0_10px_30px_rgba(16,185,129,0.2)] shrink-0">
+        <div className="w-full h-40 sm:h-48 rounded-[20px] overflow-hidden mb-5 relative border-[0.5px] border-white/30 shadow-[0_10px_30px] shadow-primary/20 shrink-0">
           <video 
             src="/parkgif.mp4" 
             autoPlay 
@@ -271,8 +271,8 @@ export function PermissionGate({ children }: PermissionGateProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-4">
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary shadow-[0_0_8px] shadow-primary"></span>
               </span>
               <p className="text-[11px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-md">Live AR Mode</p>
             </div>
@@ -283,11 +283,11 @@ export function PermissionGate({ children }: PermissionGateProps) {
         <div className="flex justify-center mb-4 shrink-0">
           <div className="bg-black/20 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-inner">
             <div className="flex -space-x-2">
-              <div className="w-4 h-4 rounded-full bg-emerald-400 border border-white/20 shadow-sm"></div>
-              <div className="w-4 h-4 rounded-full bg-teal-400 border border-white/20 shadow-sm"></div>
-              <div className="w-4 h-4 rounded-full bg-indigo-400 border border-white/20 shadow-sm"></div>
+              <div className="w-4 h-4 rounded-full bg-primary border border-white/20 shadow-sm"></div>
+              <div className="w-4 h-4 rounded-full bg-secondary border border-white/20 shadow-sm"></div>
+              <div className="w-4 h-4 rounded-full bg-accent border border-white/20 shadow-sm"></div>
             </div>
-            <span className="text-[11px] sm:text-xs text-white/90 font-medium tracking-wide">10,000+ explorers joined</span>
+            <span className="text-[11px] sm:text-xs text-white/90 font-medium tracking-wide">Touch Lalbagh grass, the AR way 🌿</span>
           </div>
         </div>
         
@@ -297,12 +297,12 @@ export function PermissionGate({ children }: PermissionGateProps) {
           </h2>
           <p className="text-white/70 text-center mb-5 text-[13px] sm:text-sm leading-relaxed font-medium px-2">
             {isPrimaryDenied 
-              ? "Your journey is paused! We need these permissions to guide you through the beautiful AR trails."
-              : "To project magical crystal trails and AR routes into the real world, we need a few permissions."}
+              ? "Your Lalbagh journey is paused! We need these permissions to guide you through the historic gardens in AR."
+              : "To project magical crystal trails across Lalbagh Botanical Garden, we need a few permissions."}
           </p>
         </div>
 
-        <div className="space-y-2.5 sm:space-y-3 mb-6 flex-1 overflow-y-auto pr-1">
+        <div className="space-y-2.5 sm:space-y-3 mb-6">
           <PermissionRow 
             icon={<MapPin className="w-5 h-5" />}
             title="Location"
@@ -364,7 +364,7 @@ export function PermissionGate({ children }: PermissionGateProps) {
             <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
             
             {isProcessing ? (
-              <RefreshCw className="w-5 h-5 animate-spin text-emerald-300" />
+              <RefreshCw className="w-5 h-5 animate-spin text-primary" />
             ) : (
               isPrimaryDenied ? 'Fix Permissions 🛠️' : 'Unlock AR Map 🚀'
             )}
@@ -379,8 +379,8 @@ function PermissionRow({ icon, title, description, status }: { icon: ReactNode, 
   const isResolved = status === 'granted';
 
   return (
-    <div className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-[20px] border transition-all duration-300 ${isResolved ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10'}`}>
-      <div className={`p-2.5 rounded-[14px] ${isResolved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'}`}>
+    <div className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-[20px] border transition-all duration-300 ${isResolved ? 'bg-primary/10 border-primary/20 shadow-[0_0_20px] shadow-primary/10' : 'bg-white/5 border-white/10'}`}>
+      <div className={`p-2.5 rounded-[14px] ${isResolved ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white/50'}`}>
         {icon}
       </div>
       <div className="flex-1">
@@ -389,9 +389,9 @@ function PermissionRow({ icon, title, description, status }: { icon: ReactNode, 
       </div>
       <div className="flex flex-col items-end gap-1">
         {isResolved ? (
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+          <CheckCircle2 className="w-5 h-5 text-primary drop-shadow-[0_0_8px_var(--color-primary)]" />
         ) : (
-          <span className="text-[10px] font-bold text-white/30 tracking-widest uppercase">Required</span>
+          <span className="text-[10px] font-bold text-white/60 tracking-widest uppercase">Required</span>
         )}
       </div>
     </div>

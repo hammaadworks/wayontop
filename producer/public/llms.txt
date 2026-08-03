@@ -1,0 +1,2 @@
+# WayOnTop Producer Map Editor
+This is an internal tool for mapping venues for the WayOnTop AR Wayfinding platform.

@@ -34,3 +34,9 @@ The UI MUST be a pro combo of:
 4. **Strava**: Energetic metric tracking, rewarding physical movement, and community-driven social proof.
 
 The design MUST be **mobile-first and UX-friendly**. Optimize ruthlessly for one-handed thumb reach on mobile devices. Ensure flawless responsiveness, 100/100 performance, and perfectly harmonious layouts with no oddly placed elements or giant banners.
+
+### 6. Lalbagh Specific & Gen Z Copywriting
+You **MUST** always keep the UI copy strictly tied to Lalbagh Botanical Garden, Bengaluru. 
+- **Context is King:** Reference actual Lalbagh landmarks (the iconic Glass House, the 3,000-million-year-old Lalbagh Rock, Kempegowda Watchtower, the Bonsai Garden, or the 240-acre canopy). 
+- **Tone:** The copy must always be super helpful, professional, **Gen Z**, small, crisp, engaging, and humorous. 
+- **Example:** Instead of "Explore the park," use something like *"Don't just walk. Experience Lalbagh!"* or *"Discover the Glass House's hidden secrets ✨"*. No generic placeholder text allowed.
