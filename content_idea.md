@@ -12,6 +12,15 @@ how to get started
 
 ---
 
+Process FAQ
+
+- what are the different types of nodes: POI, Stamp, Amenity, Junctions,
+- what is VPS, why use LiDAR, why not for Lalbagh
+- Devtools MCP : amazing tool for your ai development, especially to fix contrast issues and unused declarations.
+- 
+
+---
+
 Vid 1: Problem intro
 Vid 2: Project setup
 Vid 3: 
@@ -27,6 +36,7 @@ Stuck?!!
 - created a unified permissions modal, but how to guide the user?
 - it's so easy to miss details while building the app but at the same time as user 
 so strict. need to be super empathtic to the user, how he feels how can he use it, how will he use it.
+- reward psychology
 
 2. vercel vs cloudflare
 - while vercel devx is amazing sometimes considering this is a gift

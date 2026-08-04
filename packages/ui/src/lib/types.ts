@@ -1,4 +1,4 @@
-export type NodeType = 'gate' | 'poi' | 'junction' | 'stamp';
+export type NodeType = 'gate' | 'poi' | 'junction' | 'stamp' | 'amenity';
 
 export interface GraphNode {
   id: string;
@@ -7,6 +7,8 @@ export interface GraphNode {
   lng: number;
   type: NodeType;
   tags: string[];
+  has_stamp?: boolean; // For POIs that also act as stamps
+  subtype?: string; // For amenities (e.g., 'washroom', 'first_aid')
 }
 
 export interface GraphEdge {

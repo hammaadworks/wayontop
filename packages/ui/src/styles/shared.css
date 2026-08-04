@@ -212,4 +212,8 @@
   --sidebar-accent-foreground: oklch(0.95 0.02 140);
   --sidebar-border: oklch(1 0 0 / 15%);
   --sidebar-ring: oklch(0.65 0.18 150);
+  
+  /* Improved Contrast for Glass Panels in Dark Mode */
+  --surface: rgba(10, 12, 15, 0.85);
+  --surface-border: rgba(255, 255, 255, 0.18);
 }
