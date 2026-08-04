@@ -13,7 +13,7 @@ export function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2:
     Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c;
+  return Number((R * c).toFixed(2));
 }
 
 // Calculate bearing in degrees from one point to another

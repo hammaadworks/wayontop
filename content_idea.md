@@ -17,7 +17,7 @@ Process FAQ
 - what are the different types of nodes: POI, Stamp, Amenity, Junctions,
 - what is VPS, why use LiDAR, why not for Lalbagh
 - Devtools MCP : amazing tool for your ai development, especially to fix contrast issues and unused declarations.
-- 
+- "Rubber banding" effect: locate me recenter on use effect, move it to onclick adn you free to move
 
 ---
 
