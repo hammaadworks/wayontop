@@ -8,9 +8,6 @@ export function useMapEditorState() {
     const [edgeStartNode, setEdgeStartNode] = useState<GraphNode | null>(null);
     const [testRoutePath, setTestRoutePath] = useState<{ path: GraphNode[], totalDistance: number } | null>(null);
 
-    // New Node Form
-    const [newNodeName, setNewNodeName] = useState('');
-    const [newNodeType, setNewNodeType] = useState<NodeType>('poi');
     const [testingStamp, setTestingStamp] = useState<GraphNode | null>(null);
     const [isLocked, setIsLocked] = useState(true);
 
@@ -21,8 +18,6 @@ export function useMapEditorState() {
         selectedEdge, setSelectedEdge,
         edgeStartNode, setEdgeStartNode,
         testRoutePath, setTestRoutePath,
-        newNodeName, setNewNodeName,
-        newNodeType, setNewNodeType,
         testingStamp, setTestingStamp
     };
 }

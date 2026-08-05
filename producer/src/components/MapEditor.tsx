@@ -113,10 +113,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setEdgeStartNode,
         testRoutePath,
         setTestRoutePath,
-        newNodeName,
-        setNewNodeName,
-        newNodeType,
-        setNewNodeType,
         testingStamp,
         setTestingStamp,
         isLocked,
@@ -153,14 +149,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         if (mode === 'add_node') {
             const newNode: GraphNode = {
                 id: `n_${Date.now()}`,
-                name: newNodeName || `Node ${data.nodes.length + 1}`,
+                name: `Node ${data.nodes.length + 1}`,
                 lat: latlng.lat,
                 lng: latlng.lng,
-                type: newNodeType,
+                type: 'poi',
                 tags: []
             };
             setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
-            setNewNodeName('');
             setMode('view');
         } else if (mode === 'add_edge') {
             const newNode: GraphNode = {
@@ -210,18 +205,16 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         if (!edgeStartNode) {
             setEdgeStartNode(node);
             setTestRoutePath(null);
-            toast.info(`Start node selected: ${node.name || node.id}. Select destination.`);
             return;
         }
         const result = findShortestPath(data, edgeStartNode.id, node.id);
         if (result) {
             setTestRoutePath(result);
-            toast.success(`Route found: ${Math.round(result.totalDistance)}m`);
         } else {
-            toast.error('No valid route found between these nodes.');
             setTestRoutePath(null);
         }
         setEdgeStartNode(null);
+        setMode('view');
     };
 
     const handleNodeClick = (node: GraphNode) => {
@@ -401,7 +394,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         }
                         handleMapClick({lat: e.lngLat.lat, lng: e.lngLat.lng});
                     }}
-                    interactiveLayerIds={mode === 'view' && !isLocked ? INTERACTIVE_LAYER_IDS : undefined}
+                    interactiveLayerIds={mode === 'view' ? INTERACTIVE_LAYER_IDS : undefined}
                 >
                     {currentLocation && (
                         <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
@@ -422,7 +415,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         </Source>
                     )}
 
-                    {mode === 'test_route' && testRoutePath && (
+                    {testRoutePath && (
                         <Source id="test-route-source" type="geojson" data={testRouteGeoJSON}>
                             <Layer id="test-route-layer-glow" type="line" paint={TEST_ROUTE_GLOW_PAINT}
                                    layout={ROUND_LAYOUT}/>
@@ -481,11 +474,11 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 mode={mode}
                 setMode={setMode}
                 setEdgeStartNode={setEdgeStartNode}
+                isLocked={isLocked}
             />
 
             <EditorPanels
                 mode={mode}
-                setMode={setMode}
                 selectedNode={selectedNode}
                 setSelectedNode={setSelectedNode}
                 selectedEdge={selectedEdge}
@@ -494,11 +487,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 deleteEdge={deleteEdge}
                 updateNode={updateNode}
                 isLocked={isLocked}
-                newNodeName={newNodeName}
-                setNewNodeName={setNewNodeName}
-                newNodeType={newNodeType}
-                setNewNodeType={setNewNodeType}
                 setTestingStamp={setTestingStamp}
+                testRoutePath={testRoutePath}
+                setTestRoutePath={setTestRoutePath}
             />
 
             <MapBottomBar

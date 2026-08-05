@@ -49,12 +49,12 @@ export function TopNavigationBar({
                 </div>
                 <div className="shrink-0 flex justify-center">
                     <div
-                        className="flex bg-black/40 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner mx-auto">
+                        className="flex bg-black/40 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner mx-auto relative">
                         <button onClick={() => setMapSkin('satellite')}
-                                className={`px-4 py-1.5 text-xs rounded-full font-bold transition-colors ${mapSkin === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                className={`w-14 py-1.5 text-xs rounded-full font-bold transition-colors ${mapSkin === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
                         </button>
                         <button onClick={() => setMapSkin('animated')}
-                                className={`px-4 py-1.5 text-xs rounded-full font-bold transition-colors ${mapSkin === 'animated' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
+                                className={`w-14 py-1.5 text-xs rounded-full font-bold transition-colors ${mapSkin === 'animated' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
                         </button>
                     </div>
                 </div>

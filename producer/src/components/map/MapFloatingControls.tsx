@@ -17,6 +17,7 @@ interface MapFloatingControlsProps {
     mode: string;
     setMode: (mode: any) => void;
     setEdgeStartNode: (node: any) => void;
+    isLocked: boolean;
 }
 
 export function MapFloatingControls({
@@ -33,8 +34,9 @@ export function MapFloatingControls({
                                         setRecording,
                                         mode,
                                         setMode,
-                                        setEdgeStartNode
-                                    }: MapFloatingControlsProps) {
+                                        setEdgeStartNode,
+                                        isLocked
+                                    }: Readonly<MapFloatingControlsProps>) {
     const getDirection = (b: number) => {
         const normalized = (b + 360) % 360;
         const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -63,12 +65,12 @@ export function MapFloatingControls({
                         {Math.round((bearing + 360) % 360)}°
                     </span>
                 </Button>
-                <Button variant="ghost" size="icon" disabled={!canUndo}
+                <Button variant="ghost" size="icon" disabled={!canUndo || isLocked}
                         className="rounded-full w-10 h-10 bg-slate-500/20 text-slate-300 hover:text-emerald-400 hover:bg-slate-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(100,116,139,0.2)] disabled:opacity-30"
                         onClick={undo}>
                     <Undo2 className="w-5 h-5 drop-shadow-md"/>
                 </Button>
-                <Button variant="ghost" size="icon" disabled={!canRedo}
+                <Button variant="ghost" size="icon" disabled={!canRedo || isLocked}
                         className="rounded-full w-10 h-10 bg-slate-500/20 text-slate-300 hover:text-emerald-400 hover:bg-slate-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(100,116,139,0.2)] disabled:opacity-30"
                         onClick={redo}>
                     <Redo2 className="w-5 h-5 drop-shadow-md"/>
@@ -79,8 +81,8 @@ export function MapFloatingControls({
             <div
                 className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] right-4 md:right-6 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black/60 backdrop-blur-3xl rounded-full">
                 {rawTrace.length > 0 && (
-                    <Button variant="ghost" size="icon"
-                            className="rounded-full w-10 h-10 bg-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/40 transition-all border border-transparent hover:border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                    <Button variant="ghost" size="icon" disabled={isLocked}
+                            className="rounded-full w-10 h-10 bg-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/40 transition-all border border-transparent hover:border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] disabled:opacity-30 disabled:cursor-not-allowed"
                             onClick={() => {
                                 setRawTrace([]);
                                 toast.success('Cleared trace');
@@ -117,7 +119,7 @@ export function MapFloatingControls({
                     <Pencil className="w-5 h-5 drop-shadow-md"/>
                 </Button>
                 <Button variant="ghost" size="icon"
-                        disabled={isTouchup}
+                        disabled={isTouchup || isLocked}
                         className={`rounded-full w-10 h-10 transition-all border ${!recording ? 'bg-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/40 border-transparent hover:border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.8)] animate-pulse'} disabled:opacity-30 disabled:cursor-not-allowed`}
                         onClick={() => {
                             if (isTouchup) {

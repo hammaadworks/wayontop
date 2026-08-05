@@ -7,37 +7,61 @@ import type {Venue} from './useVenues';
 export type SyncState = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error' | 'offline';
 
 export function useGraph(currentVenue: Venue | null) {
-    const [data, setInternalData] = useState<GraphData>({nodes: [], edges: [], sponsors: []});
-    const [history, setHistory] = useState<GraphData[]>([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
+    const [state, setState] = useState<{
+        data: GraphData;
+        history: GraphData[];
+        historyIndex: number;
+    }>({
+        data: {nodes: [], edges: [], sponsors: []},
+        history: [],
+        historyIndex: -1
+    });
+
+    const data = state.data;
+    const history = state.history;
+    const historyIndex = state.historyIndex;
+
 
     const setData = useCallback((action: React.SetStateAction<GraphData>) => {
-        setInternalData(prev => {
-            const nextData = typeof action === 'function' ? (action as any)(prev) : action;
-            if (JSON.stringify(prev) !== JSON.stringify(nextData)) {
-                setHistory(h => {
-                    const newHistory = h.slice(0, historyIndex + 1);
-                    return [...newHistory, nextData];
-                });
-                setHistoryIndex(i => i + 1);
+        setState(prev => {
+            const nextData = typeof action === 'function' ? (action as any)(prev.data) : action;
+            if (JSON.stringify(prev.data) === JSON.stringify(nextData)) {
+                return prev;
             }
-            return nextData;
+            const newHistory = prev.history.slice(0, prev.historyIndex + 1);
+            return {
+                data: nextData,
+                history: [...newHistory, nextData],
+                historyIndex: prev.historyIndex + 1
+            };
         });
-    }, [historyIndex]);
+    }, []);
 
     const undo = useCallback(() => {
-        if (historyIndex > 0) {
-            setHistoryIndex(i => i - 1);
-            setInternalData(history[historyIndex - 1]);
-        }
-    }, [history, historyIndex]);
+        setState(prev => {
+            if (prev.historyIndex > 0) {
+                return {
+                    ...prev,
+                    historyIndex: prev.historyIndex - 1,
+                    data: prev.history[prev.historyIndex - 1]
+                };
+            }
+            return prev;
+        });
+    }, []);
 
     const redo = useCallback(() => {
-        if (historyIndex < history.length - 1) {
-            setHistoryIndex(i => i + 1);
-            setInternalData(history[historyIndex + 1]);
-        }
-    }, [history, historyIndex]);
+        setState(prev => {
+            if (prev.historyIndex < prev.history.length - 1) {
+                return {
+                    ...prev,
+                    historyIndex: prev.historyIndex + 1,
+                    data: prev.history[prev.historyIndex + 1]
+                };
+            }
+            return prev;
+        });
+    }, []);
 
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < history.length - 1;
@@ -138,9 +162,11 @@ export function useGraph(currentVenue: Venue | null) {
             lastSavedData.current = JSON.stringify(finalData);
         }
 
-        setInternalData(finalData);
-        setHistory([finalData]);
-        setHistoryIndex(0);
+        setState({
+            data: finalData,
+            history: [finalData],
+            historyIndex: 0
+        });
         setLoadingGraph(false);
     }, [currentVenue]);
 

@@ -51,7 +51,7 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
     return (
         <Dialog>
             <DialogTrigger
-                className="rounded-full flex-1 flex flex-col items-center justify-center gap-1 h-16 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer outline-none"
+                className="rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 text-white hover:bg-white/10 cursor-pointer outline-none"
             >
                 <Megaphone className="w-5 h-5"/>
                 <span className="text-[10px] font-bold">Sponsor</span>
