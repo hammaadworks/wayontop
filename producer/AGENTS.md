@@ -1,7 +1,7 @@
 # Producer App - AI Agent Guidelines
 
 ## Project Context
-The Producer App is the internal admin tool for mapping venues (like Lalbagh Botanical Garden) and managing sponsors. It generates the `graph.json` (nodes, edges, POIs) and `stamps.json` data consumed by the Consumer app. 
+The Producer App is the internal admin tool for mapping venues (like Lalbagh Botanical Garden) and managing sponsors. It generates the graph (nodes, edges, POIs) and stamp data consumed by the Consumer app, syncing directly to Supabase.
 
 ## Core Rules for AI Agents
 
