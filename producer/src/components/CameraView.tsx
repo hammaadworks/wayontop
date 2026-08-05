@@ -24,7 +24,7 @@ export function CameraView({ stampName, onClose }: { stampName: string; onClose:
       }
     }
 
-    setupCamera();
+    void setupCamera();
 
     return () => {
       if (stream) {

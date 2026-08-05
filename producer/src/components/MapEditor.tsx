@@ -4,9 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
 import {toast} from 'sonner';
-import {ArrowRight, MapPin} from 'lucide-react';
 
-import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 
 import {CameraView} from './CameraView';
@@ -312,6 +310,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 </Marker>
             );
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, isZoomedIn]);
 
     const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
@@ -327,6 +326,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 geometry: {type: 'LineString', coordinates: [[start.lng, start.lat], [end.lng, end.lat]]}
             };
         }).filter(Boolean) as GeoJSON.Feature[]
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [data.edges, data.nodes, selectedEdge]);
 
     const testRouteGeoJSON = useMemo<GeoJSON.Feature>(() => ({
@@ -465,17 +465,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 onBack={onBack}
             />
 
-            <SpecialToast
-                visible={mode === 'add_edge'}
-                message={edgeStartNode ? 'Select target node' : 'Select start node'}
-                icon={<ArrowRight className="w-4 h-4"/>}
-            />
-
-            <SpecialToast
-                visible={mode === 'add_node'}
-                message="Tap map to place the node"
-                icon={<MapPin className="w-4 h-4"/>}
-            />
 
             <MapFloatingControls
                 mapRef={mapRef}
@@ -517,6 +506,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setMode={setMode}
                 isLocked={isLocked}
                 setIsLocked={setIsLocked}
+                edgeStartNode={edgeStartNode}
                 setEdgeStartNode={setEdgeStartNode}
                 setTestRoutePath={setTestRoutePath}
                 setSelectedNode={setSelectedNode}

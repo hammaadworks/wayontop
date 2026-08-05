@@ -21,7 +21,7 @@ export const Gamification = {
       localStorage.setItem(STAMPS_KEY, JSON.stringify(stamps));
       
       Analytics.logEvent('stamp_collected', { stamp_id: stampId });
-      Gamification.syncTotalCount();
+      void Gamification.syncTotalCount();
     }
   },
 

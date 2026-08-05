@@ -34,6 +34,7 @@ function Drawer({
   const hasSnapPoints = snapPoints != null && snapPoints.length > 0
   const contextValue = React.useMemo(
     () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasSnapPoints, modal, showSwipeHandle, swipeDirection]
   )
 

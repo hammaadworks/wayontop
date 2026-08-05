@@ -4,7 +4,7 @@ import { Button } from '@wayontop/ui/components/ui/button';
 import { Input } from '@wayontop/ui/components/ui/input';
 import { Label } from '@wayontop/ui/components/ui/label';
 import { Card } from '@wayontop/ui/components/ui/card';
-import { Navigation, LogOut, MapPin, TrendingUp, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { Navigation, LogOut, MapPin, TrendingUp, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function SponsorsPortal() {

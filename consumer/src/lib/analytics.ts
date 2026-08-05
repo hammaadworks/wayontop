@@ -27,7 +27,7 @@ export const Analytics = {
     localStorage.setItem(ANALYTICS_QUEUE_KEY, JSON.stringify(queue));
 
     // 2. Attempt sync
-    Analytics.syncQueue();
+    void Analytics.syncQueue();
   },
 
   syncQueue: async () => {

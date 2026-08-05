@@ -1,17 +1,20 @@
 import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, WifiOff} from 'lucide-react';
+import type {GraphNode, GraphEdge} from '@wayontop/ui/lib/types';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {toast} from 'sonner';
 import {SponsorManager} from '../SponsorManager';
+import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 
 interface MapBottomBarProps {
-    mode: string;
-    setMode: (mode: any) => void;
+    mode: 'view' | 'add_node' | 'add_edge' | 'test_route';
+    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route') => void;
     isLocked: boolean;
     setIsLocked: (val: boolean) => void;
-    setEdgeStartNode: (node: any) => void;
+    edgeStartNode: GraphNode | null;
+    setEdgeStartNode: (node: GraphNode | null) => void;
     setTestRoutePath: (path: any) => void;
-    setSelectedNode: (node: any) => void;
-    setSelectedEdge: (edge: any) => void;
+    setSelectedNode: (node: GraphNode | null) => void;
+    setSelectedEdge: (edge: GraphEdge | null) => void;
     syncState: 'idle' | 'unsaved' | 'saving' | 'saved' | 'error' | 'offline';
     saveGraph: () => void;
     data: any;
@@ -19,12 +22,25 @@ interface MapBottomBarProps {
 }
 
 export function MapBottomBar({
-                                 mode, setMode, isLocked, setIsLocked, setEdgeStartNode, setTestRoutePath,
+                                 mode, setMode, isLocked, setIsLocked, edgeStartNode, setEdgeStartNode, setTestRoutePath,
                                  setSelectedNode, setSelectedEdge, syncState, saveGraph, data, setData
                              }: MapBottomBarProps) {
     return (
         <div
-            className="absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-[420px]">
+            className="absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-[420px] flex flex-col items-center gap-5">
+            
+            <SpecialToast
+                visible={mode === 'add_edge'}
+                message={edgeStartNode ? 'Select target node' : 'Select start node'}
+                icon={<ArrowRight className="w-4 h-4"/>}
+            />
+
+            <SpecialToast
+                visible={mode === 'add_node'}
+                message="Tap to place"
+                icon={<MapPin className="w-4 h-4"/>}
+            />
+
             <div
                 className="glass-pill p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex justify-between items-center w-full bg-black/60 backdrop-blur-3xl rounded-[2rem]">
                 <Button variant="ghost"

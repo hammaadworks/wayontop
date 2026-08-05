@@ -16,9 +16,9 @@ export default function LandingPage() {
             <span className="font-bold text-xl tracking-tight">WayOnTop</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/70">
-            <a href="#venues" className="hover:text-emerald-400 transition-colors">Venues</a>
-            <a href="#about" className="hover:text-emerald-400 transition-colors">About</a>
-            <a href="#sponsors" className="hover:text-emerald-400 transition-colors">For Sponsors</a>
+            <button type="button" onClick={() => document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-emerald-400 transition-colors">Venues</button>
+            <button type="button" onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-emerald-400 transition-colors">About</button>
+            <button type="button" onClick={() => document.getElementById('sponsors')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-emerald-400 transition-colors">For Sponsors</button>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/sponsors">
