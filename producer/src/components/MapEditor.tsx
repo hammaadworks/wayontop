@@ -17,6 +17,7 @@ import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 import type {Venue} from '../hooks/useVenues';
 import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
+
 import {useMapEditorState} from '../hooks/useMapEditorState';
 
 const SATELLITE_STYLE: any = {
@@ -144,6 +145,12 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             });
         }
     }, [currentVenue]);
+
+    const availableTags = useMemo(() => {
+        const tags = new Set<string>();
+        data.nodes.forEach(n => n.tags?.forEach(t => tags.add(t)));
+        return Array.from(tags).sort();
+    }, [data.nodes]);
 
     const handleMapClick = (latlng: { lat: number, lng: number }) => {
         if (mode === 'add_node') {
@@ -490,6 +497,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setTestingStamp={setTestingStamp}
                 testRoutePath={testRoutePath}
                 setTestRoutePath={setTestRoutePath}
+                availableTags={availableTags}
             />
 
             <MapBottomBar

@@ -3,9 +3,10 @@ import {CameraOff, Map, Settings, ZoomIn, ZoomOut} from 'lucide-react';
 
 interface CameraFeedProps {
     className?: string;
+    onClose?: () => void;
 }
 
-export function CameraFeed({className = ''}: CameraFeedProps) {
+export function CameraFeed({className = '', onClose}: CameraFeedProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const trackRef = useRef<MediaStreamTrack | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -89,29 +90,29 @@ export function CameraFeed({className = ''}: CameraFeedProps) {
 
     // Touch handlers for pinch-to-zoom
     const onTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && zoomCaps) {
-      pinchStartDistRef.current = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      pinchStartZoomRef.current = zoom;
-    }
-  };
+        if (e.touches.length === 2 && zoomCaps) {
+            pinchStartDistRef.current = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            pinchStartZoomRef.current = zoom;
+        }
+    };
 
     const onTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchStartDistRef.current !== null && zoomCaps) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      
-      const scale = currentDist / pinchStartDistRef.current;
-      const newZoom = pinchStartZoomRef.current * scale;
-      
-      // Debounce or directly apply if smooth enough. Let's try directly applying:
-      void handleZoomChange(newZoom);
-    }
-  };
+        if (e.touches.length === 2 && pinchStartDistRef.current !== null && zoomCaps) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+
+            const scale = currentDist / pinchStartDistRef.current;
+            const newZoom = pinchStartZoomRef.current * scale;
+
+            // Debounce or directly apply if smooth enough. Let's try directly applying:
+            void handleZoomChange(newZoom);
+        }
+    };
 
     const onTouchEnd = () => {
         pinchStartDistRef.current = null;
@@ -165,10 +166,17 @@ export function CameraFeed({className = ''}: CameraFeedProps) {
                 </div>
 
                 <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('switch-view', {detail: {view: 'map'}}))}
+                    onClick={() => {
+                        if (onClose) onClose();
+                        else window.dispatchEvent(new CustomEvent('switch-view', {detail: {view: 'map'}}));
+                    }}
                     className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-8 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-all"
                 >
-                    <Map className="w-5 h-5"/> Switch to Map View
+                    {onClose ? (
+                        <>Close Camera</>
+                    ) : (
+                        <><Map className="w-5 h-5"/> Switch to Map View</>
+                    )}
                 </button>
             </div>
         );

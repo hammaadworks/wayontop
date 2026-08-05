@@ -1,7 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {
     Camera,
-    Droplet,
     Flag,
     Globe,
     List as ListIcon,
@@ -10,7 +9,10 @@ import {
     Search,
     Settings,
     Sparkles,
-    X
+    X,
+    HeartHandshake,
+    Gem,
+    DoorClosed
 } from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
@@ -397,7 +399,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                                 onClick={() => setSearchQuery('facility')}
                                                 className="flex-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-2xl py-3.5 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
                                             >
-                                                <Droplet className="w-4 h-4 text-blue-400"/>
+                                                <HeartHandshake className="w-4 h-4 text-blue-400"/>
                                                 <span
                                                     className="text-[13px] font-semibold text-white tracking-wide">Facilities</span>
                                             </button>
@@ -423,9 +425,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                                     <div className="flex items-center gap-4">
                                                         <div
                                                             className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                                            {poi.type === 'gate' ?
-                                                                <Navigation className="text-emerald-400 w-5 h-5"/> :
-                                                                <MapPin className="textemerald-400 w-5 h-5"/>}
+                                                            {poi.type === 'gate' ? <DoorClosed className="text-emerald-400 w-5 h-5"/> :
+                                                             poi.type === 'facility' ? <HeartHandshake className="text-emerald-400 w-5 h-5"/> :
+                                                             poi.type === 'stamp' ? <Gem className="text-emerald-400 w-5 h-5"/> :
+                                                                <MapPin className="text-emerald-400 w-5 h-5"/>}
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <h4 className="font-semibold text-[17px] text-white tracking-tight">{poi.name}</h4>

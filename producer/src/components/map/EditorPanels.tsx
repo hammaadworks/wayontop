@@ -1,9 +1,20 @@
-import {Camera, DoorOpen, GitBranch, Layers, MapPin, Route, Star, Trash2, X} from 'lucide-react';
+import {useState} from 'react';
+import {Camera, CircleSmall, DoorClosed, Gem, HeartHandshake, MapPin, Route, Trash2, X} from 'lucide-react';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@wayontop/ui/components/ui/card';
 import {Input} from '@wayontop/ui/components/ui/input';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
 import {Switch} from '@wayontop/ui/components/ui/switch';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@wayontop/ui/components/ui/alert-dialog';
 
 interface EditorPanelsProps {
     mode: string;
@@ -18,13 +29,15 @@ interface EditorPanelsProps {
     setTestingStamp: (node: any) => void;
     testRoutePath?: { path: any[]; totalDistance: number } | null;
     setTestRoutePath?: (path: any) => void;
+    availableTags?: string[];
 }
 
 export function EditorPanels({
-                                 mode, selectedNode, setSelectedNode, selectedEdge, setSelectedEdge,
+                                 mode, selectedNode, selectedEdge, setSelectedEdge,
                                  deleteNode, deleteEdge, updateNode, isLocked,
-                                 setTestingStamp, testRoutePath, setTestRoutePath
+                                 setTestingStamp, testRoutePath, setTestRoutePath, availableTags
                              }: Readonly<EditorPanelsProps>) {
+    const [tagInput, setTagInput] = useState('');
     const isUnnamedTrack = selectedNode?.type === 'track' && (!selectedNode.name || selectedNode.name.trim() === '' || selectedNode.name.startsWith('Node '));
     const showNodePanel = selectedNode && mode === 'view' && !(isLocked && isUnnamedTrack) && !testRoutePath;
 
@@ -42,17 +55,11 @@ export function EditorPanels({
                                     <div className="flex items-center gap-1.5 mb-0.5">
                                         <span
                                             className="uppercase text-[9px] font-black text-emerald-400 tracking-widest">{selectedNode.type}</span>
-                                        {selectedNode.subtype && <span
-                                            className="uppercase text-[9px] font-bold text-slate-400 border border-slate-700 px-1 rounded-sm">{selectedNode.subtype}</span>}
-                                        {selectedNode.has_stamp && <Star className="w-3 h-3 text-fuchsia-400 ml-1"/>}
+                                        {selectedNode.has_stamp && <Gem className="w-3 h-3 text-fuchsia-400 ml-1"/>}
                                     </div>
                                     <div
                                         className="text-sm font-black tracking-tight">{selectedNode.name || 'Unnamed Node'}</div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)}
-                                        className="h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10 rounded-full shrink-0">
-                                    <X className="w-4 h-4"/>
-                                </Button>
                             </div>
                         ) : (
                             <>
@@ -63,39 +70,57 @@ export function EditorPanels({
                                         <MapPin className="w-3.5 h-3.5 mr-1.5 text-emerald-400"/> Edit Node
                                     </CardTitle>
                                     <div className="flex gap-1">
-                                        <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)}
-                                                className="h-6 w-6 text-slate-400 hover:text-white hover:bg-white/10">
-                                            <X className="w-3.5 h-3.5"/>
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => deleteNode(selectedNode.id)}
-                                                className="h-6 w-6 text-red-500 hover:bg-red-500/20">
-                                            <Trash2 className="w-3.5 h-3.5"/>
-                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger render={<Button variant="ghost" size="icon"
+                                                                                className="h-6 w-6 text-red-500 hover:bg-red-500/20"/>}>
+                                                <Trash2 className="w-3.5 h-3.5"/>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="bg-[#1C1C1E] border-white/10 text-white">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete Node</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-slate-400">
+                                                        Are you sure you want to delete the node
+                                                        "{selectedNode.name || 'Unnamed Node'}"? This action cannot be
+                                                        undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel
+                                                        className="bg-white/5 border-white/10 hover:bg-white/10 hover:text-white">
+                                                        Cancel
+                                                    </AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={() => deleteNode(selectedNode.id)}
+                                                        className="bg-red-500 hover:bg-red-600 text-white"
+                                                    >
+                                                        Delete
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-2 flex-1 flex flex-col gap-1.5 justify-center">
-                                    {selectedNode.type !== 'track' && (
-                                        <Input value={selectedNode.name || ''}
-                                               onChange={e => updateNode(selectedNode.id, {name: e.target.value})}
-                                               placeholder="Node Name..."
-                                               className="h-7 text-xs font-bold bg-black/60 border-white/10 text-white focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 shadow-inner px-2.5"/>
-                                    )}
+                                    <Input value={selectedNode.name || ''}
+                                           onChange={e => updateNode(selectedNode.id, {name: e.target.value})}
+                                           placeholder="Node Name..."
+                                           className="h-7 text-xs font-bold bg-black/60 border-white/10 text-white focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 shadow-inner px-2.5"/>
 
                                     <div className="flex bg-black/40 rounded-md p-0.5 border border-white/10">
-                                        {['poi', 'stamp', 'gate', 'facility', 'track'].map(t => {
+                                        {['poi', 'facility', 'stamp', 'gate', 'track'].map(t => {
                                             const icons: Record<string, any> = {
                                                 poi: MapPin,
-                                                stamp: Star,
-                                                gate: DoorOpen,
-                                                facility: Layers,
-                                                track: GitBranch
+                                                facility: HeartHandshake,
+                                                stamp: Gem,
+                                                gate: DoorClosed,
+                                                track: CircleSmall
                                             };
                                             const activeClasses: Record<string, string> = {
                                                 poi: 'bg-amber-500/20 text-amber-400 shadow-sm border border-amber-500/30',
                                                 stamp: 'bg-fuchsia-500/20 text-fuchsia-400 shadow-sm border border-fuchsia-500/30',
                                                 gate: 'bg-emerald-500/20 text-emerald-400 shadow-sm border border-emerald-500/30',
-                                                facility: 'bg-blue-500/20 text-blue-400 shadow-sm border border-blue-500/30',
-                                                track: 'bg-indigo-500/20 text-indigo-400 shadow-sm border border-indigo-500/30'
+                                                facility: 'bg-rose-500/20 text-rose-400 shadow-sm border border-rose-500/30',
+                                                track: 'bg-blue-500/20 text-blue-400 shadow-sm border border-blue-500/30'
                                             };
                                             const Icon = icons[t];
                                             const isActive = selectedNode.type === t;
@@ -112,22 +137,7 @@ export function EditorPanels({
                                         })}
                                     </div>
 
-                                    {selectedNode.type === 'facility' && (
-                                        <Select value={selectedNode.subtype || ''}
-                                                onValueChange={(val) => updateNode(selectedNode.id, {subtype: val || undefined})}>
-                                            <SelectTrigger
-                                                className="bg-black/40 border-white/10 text-white h-7 text-[11px] font-bold px-2.5">
-                                                <SelectValue placeholder="Select Facility Type..."/>
-                                            </SelectTrigger>
-                                            <SelectContent
-                                                className="bg-[#09090b] backdrop-blur-2xl border-white/20 text-white z-50">
-                                                <SelectItem value="washroom">Washroom</SelectItem>
-                                                <SelectItem value="drinking_water">Drinking Water</SelectItem>
-                                                <SelectItem value="food">Food</SelectItem>
-                                                <SelectItem value="first_aid">First Aid</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
+
                                     {selectedNode.type === 'poi' && (
                                         <div
                                             className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5">
@@ -138,6 +148,61 @@ export function EditorPanels({
                                                     onCheckedChange={(checked: boolean) => updateNode(selectedNode.id, {has_stamp: checked})}/>
                                         </div>
                                     )}
+                                    <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2 mt-2">
+                                        <span className="text-[10px] font-bold text-slate-300">TAGS</span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {(selectedNode.tags || []).map((t: string) => (
+                                                <div key={t}
+                                                     className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-sm text-[10px] font-bold">
+                                                    {t}
+                                                    <button className="hover:text-white"
+                                                            onClick={() => updateNode(selectedNode.id, {tags: (selectedNode.tags || []).filter((tag: string) => tag !== t)})}>
+                                                        <X className="w-3 h-3"/>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex flex-col gap-1 mt-1">
+                                            <Input
+                                                value={tagInput}
+                                                onChange={(e) => setTagInput(e.target.value)}
+                                                placeholder="Search or add tag..."
+                                                className="h-7 text-xs font-bold bg-black/60 border-white/10 text-white focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 shadow-inner px-2.5"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        const newTag = tagInput.trim();
+                                                        if (newTag) {
+                                                            const currentTags = selectedNode.tags || [];
+                                                            if (!currentTags.includes(newTag)) {
+                                                                updateNode(selectedNode.id, {tags: [...currentTags, newTag]});
+                                                            }
+                                                            setTagInput('');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            {availableTags && availableTags.length > 0 && (
+                                                <div
+                                                    className="flex w-full max-w-full overflow-x-auto gap-1.5 pb-1 mt-1 snap-x touch-pan-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                                    {availableTags
+                                                        .filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(selectedNode.tags || []).includes(t))
+                                                        .map(t => (
+                                                            <button
+                                                                key={t}
+                                                                onClick={() => {
+                                                                    updateNode(selectedNode.id, {tags: [...(selectedNode.tags || []), t]});
+                                                                    setTagInput('');
+                                                                }}
+                                                                className="snap-start shrink-0 flex items-center bg-white/5 hover:bg-white/10 text-slate-300 px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 transition-colors"
+                                                            >
+                                                                + {t}
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     {(selectedNode.type === 'stamp' || selectedNode.has_stamp) && (
                                         <Button
                                             className="w-full bg-linear-to-r from-pink-500 to-emerald-500 text-white text-[11px] font-black tracking-widest h-7 border-0 shadow-[0_0_10px_rgba(16,185,129,0.3)] rounded-md"
@@ -225,9 +290,18 @@ export function EditorPanels({
                                     <Route className="w-3 h-3 mr-1"/> Route Found
                                 </div>
                                 <div
-                                    className="text-sm font-black tracking-tight text-white drop-shadow-lg leading-tight truncate">
-                                    {testRoutePath.path[0].name || testRoutePath.path[0].id} <span
-                                    className="text-slate-400 mx-1">→</span> {testRoutePath.path[testRoutePath.path.length - 1].name || testRoutePath.path[testRoutePath.path.length - 1].id}
+                                    className="text-sm font-black tracking-tight text-white drop-shadow-lg leading-tight flex flex-col sm:flex-row sm:items-center gap-y-0.5 sm:gap-y-0">
+                                    <div className="truncate flex items-baseline sm:block">
+                                        <span
+                                            className="text-slate-400 sm:hidden mr-1.5 shrink-0 text-[10px] uppercase font-bold">from:</span>
+                                        {testRoutePath.path[0].name || testRoutePath.path[0].id}
+                                    </div>
+                                    <div className="text-slate-400 hidden sm:block mx-1.5 shrink-0">→</div>
+                                    <div className="truncate flex items-baseline sm:block">
+                                        <span
+                                            className="text-slate-400 sm:hidden mr-1.5 shrink-0 text-[10px] uppercase font-bold w-[26px]">to:</span>
+                                        {testRoutePath.path[testRoutePath.path.length - 1].name || testRoutePath.path[testRoutePath.path.length - 1].id}
+                                    </div>
                                 </div>
                                 <div className="text-xl font-black text-emerald-400 mt-0.5">
                                     {Math.round(testRoutePath.totalDistance)}<span

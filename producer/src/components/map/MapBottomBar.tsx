@@ -71,7 +71,7 @@ export function MapBottomBar({
                 </Button>
 
                 <Button variant="ghost"
-                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'add_node' ? 'bg-emerald-600/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-white hover:bg-white/10'}`}
+                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'add_node' ? 'bg-emerald-600/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-white hover:text-white hover:bg-white/10'}`}
                         onClick={() => {
                             if (mode === 'add_node') {
                                 setMode('view');
@@ -144,7 +144,7 @@ export function MapBottomBar({
                 </div>
 
                 <Button variant="ghost"
-                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'test_route' ? 'bg-emerald-600/20 text-emerald-400' : 'text-white hover:bg-white/10'}`}
+                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'test_route' ? 'bg-emerald-600/20 text-emerald-400' : 'text-white hover:text-white hover:bg-white/10'}`}
                         onClick={() => {
                             setMode('test_route');
                             setEdgeStartNode(null);

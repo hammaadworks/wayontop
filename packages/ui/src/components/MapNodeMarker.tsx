@@ -1,5 +1,5 @@
 import React from 'react';
-import {Coffee, LogOut, MapPin, Sparkles} from 'lucide-react';
+import {HeartHandshake, DoorClosed, MapPin, Gem} from 'lucide-react';
 import {cn} from '../lib/utils';
 
 interface MapNodeMarkerProps {
@@ -18,14 +18,32 @@ export function MapNodeMarker({
                                   opacity = 'opacity-100'
                               }: Readonly<MapNodeMarkerProps>) {
     if (type === 'track') {
-        // Tracks are just tiny helper dots, no labels
+        const showLabel = isZoomedIn && name && name.trim() !== '';
+        const labelScale = showLabel ? 'scale-100 opacity-100' : 'scale-50 opacity-0 pointer-events-none';
+
+        // Tracks are just tiny helper dots, but can show labels if explicitly named
         return (
             <div
                 className={cn("relative flex items-center justify-center w-6 h-6 -ml-3 -mt-3 cursor-pointer", opacity)}>
-                <div className="absolute inset-0 rounded-full bg-slate-500 opacity-20"></div>
+                
+                <div
+                    className={cn(
+                        "absolute bottom-full mb-1 flex items-center px-2 py-0.5 rounded-full",
+                        "bg-black/60 backdrop-blur-md border border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.5)]",
+                        "transition-all duration-500 origin-bottom whitespace-nowrap z-10",
+                        labelScale,
+                        isSelected && "border-white/30 bg-black/80 ring-1 ring-white/20"
+                    )}
+                >
+                    <span className="text-[9px] font-black tracking-widest text-slate-300 uppercase drop-shadow-sm">
+                        {name}
+                    </span>
+                </div>
+
+                <div className="absolute inset-0 rounded-full bg-blue-500 opacity-20"></div>
                 <div className={cn(
-                    "relative w-2 h-2 rounded-full bg-slate-400 border border-white/50 shadow-sm transition-all duration-300",
-                    isSelected && "scale-150 border-white bg-slate-300"
+                    "relative w-2 h-2 rounded-full bg-blue-400 border border-white/50 shadow-sm transition-all duration-300",
+                    isSelected && "scale-150 border-white bg-blue-300"
                 )}></div>
             </div>
         );
@@ -39,23 +57,23 @@ export function MapNodeMarker({
     let iconColor = 'text-amber-400';
 
     if (type === 'stamp') {
-        Icon = Sparkles;
+        Icon = Gem;
         colorClass = 'bg-purple-500';
         shadowClass = 'shadow-purple-500/50';
         gradientClass = 'from-purple-400 to-purple-700';
         iconColor = 'text-purple-400';
     } else if (type === 'gate') {
-        Icon = LogOut;
+        Icon = DoorClosed;
         colorClass = 'bg-emerald-500';
         shadowClass = 'shadow-emerald-500/50';
         gradientClass = 'from-emerald-400 to-emerald-600';
         iconColor = 'text-emerald-400';
     } else if (type === 'facility') {
-        Icon = Coffee;
-        colorClass = 'bg-blue-500';
-        shadowClass = 'shadow-blue-500/50';
-        gradientClass = 'from-blue-400 to-blue-600';
-        iconColor = 'text-blue-400';
+        Icon = HeartHandshake;
+        colorClass = 'bg-rose-500';
+        shadowClass = 'shadow-rose-500/50';
+        gradientClass = 'from-rose-400 to-rose-600';
+        iconColor = 'text-rose-400';
     }
 
     const showLabel = isZoomedIn && name;
