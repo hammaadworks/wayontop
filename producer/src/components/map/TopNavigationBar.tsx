@@ -1,4 +1,4 @@
-import {Layers} from 'lucide-react';
+import {Combine, Layers} from 'lucide-react';
 import {Popover, PopoverContent, PopoverTrigger} from '@wayontop/ui/components/ui/popover';
 
 interface TopNavigationBarProps {
@@ -10,6 +10,9 @@ interface TopNavigationBarProps {
     currentAccuracy: number | null;
     saveGraph: () => void;
     onBack: () => void;
+    isLocked: boolean;
+    mode: string;
+    setMode: (mode: any) => void;
 }
 
 export function TopNavigationBar({
@@ -20,7 +23,10 @@ export function TopNavigationBar({
                                      setLayers,
                                      currentAccuracy,
                                      saveGraph,
-                                     onBack
+                                     onBack,
+                                     isLocked,
+                                     mode,
+                                     setMode
                                  }: Readonly<TopNavigationBarProps>) {
     const getAccuracyClass = (acc: number) => {
         if (acc <= 5) return 'bg-emerald-400 text-emerald-400';
@@ -49,7 +55,7 @@ export function TopNavigationBar({
                 </div>
                 <div className="shrink-0 flex justify-center">
                     <div
-                        className="flex bg-black/40 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner mx-auto relative">
+                        className="flex items-center bg-black/40 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner mx-auto relative">
                         <button onClick={() => setMapSkin('satellite')}
                                 className={`w-14 py-1.5 text-xs rounded-full font-bold transition-colors ${mapSkin === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
                         </button>
@@ -58,83 +64,102 @@ export function TopNavigationBar({
                         </button>
                     </div>
                 </div>
-                <div className="flex-1 flex justify-end">
-                    <Popover>
-                        <PopoverTrigger
-                            className="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10 shrink-0 transition-all border border-transparent hover:border-emerald-500/20 group cursor-pointer outline-none">
-                            <Layers className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]"/>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            className="w-52 p-3 glass-panel bg-black/90 backdrop-blur-3xl border-emerald-500/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl text-white pointer-events-auto"
-                            align="end" sideOffset={12}>
-                            <div className="flex items-center gap-2 px-3 pb-3 border-b border-white/10 mb-3">
-                                <div
-                                    className="p-1.5 bg-emerald-500/20 rounded-md border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                    <Layers className="w-3.5 h-3.5 text-emerald-400 drop-shadow-md"/>
+                <div className="flex-1 flex justify-end pr-1.5">
+                    <div
+                        className="flex items-center bg-black/40 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner gap-1 relative">
+                        <button
+                            onClick={() => {
+                                if (isLocked) {
+                                    import('sonner').then(m => m.toast.info("Unlock edit mode to merge nodes into one"));
+                                } else {
+                                    setMode(mode === 'merge_nodes' ? 'view' : 'merge_nodes');
+                                }
+                            }}
+                            title={isLocked ? "Merges multiple nodes into one in edit mode" : "Draw area to merge nodes"}
+                            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all outline-none ${mode === 'merge_nodes' ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse' : (isLocked ? 'text-slate-500 cursor-help' : 'text-slate-300 hover:text-white hover:bg-white/10')}`}
+                        >
+                            <Combine className="w-4 h-4"/>
+                        </button>
+
+                        <div className="w-px h-4 bg-white/20"/>
+
+                        <Popover>
+                            <PopoverTrigger
+                                className="w-10 h-10 flex items-center justify-center rounded-full text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all group cursor-pointer outline-none">
+                                <Layers className="w-4 h-4 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]"/>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className="w-52 p-3 glass-panel bg-black/90 backdrop-blur-3xl border-emerald-500/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl text-white pointer-events-auto"
+                                align="end" sideOffset={12}>
+                                <div className="flex items-center gap-2 px-3 pb-3 border-b border-white/10 mb-3">
+                                    <div
+                                        className="p-1.5 bg-emerald-500/20 rounded-md border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                        <Layers className="w-3.5 h-3.5 text-emerald-400 drop-shadow-md"/>
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Map Layers</span>
                                 </div>
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Map Layers</span>
-                            </div>
-                            <div className="space-y-1">
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
+                                <div className="space-y-1">
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
                                     <span
                                         className="text-[11px] font-bold text-slate-300 group-hover:text-emerald-400 transition-colors">Points of Interest</span>
-                                    <input type="checkbox" checked={layers.pois}
-                                           onChange={e => setLayers((l: any) => ({...l, pois: e.target.checked}))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
+                                        <input type="checkbox" checked={layers.pois}
+                                               onChange={e => setLayers((l: any) => ({...l, pois: e.target.checked}))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
                                     <span
                                         className="text-[11px] font-bold text-slate-300 group-hover:text-emerald-400 transition-colors">Tracks (Hidden)</span>
-                                    <input type="checkbox" checked={layers.tracks}
-                                           onChange={e => setLayers((l: any) => ({...l, tracks: e.target.checked}))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
+                                        <input type="checkbox" checked={layers.tracks}
+                                               onChange={e => setLayers((l: any) => ({...l, tracks: e.target.checked}))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
                                     <span
                                         className="text-[11px] font-bold text-slate-300 group-hover:text-emerald-400 transition-colors">Path Connections</span>
-                                    <input type="checkbox" checked={layers.paths}
-                                           onChange={e => setLayers((l: any) => ({...l, paths: e.target.checked}))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                                <div className="h-px bg-white/10 my-1 mx-3"/>
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
+                                        <input type="checkbox" checked={layers.paths}
+                                               onChange={e => setLayers((l: any) => ({...l, paths: e.target.checked}))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                    <div className="h-px bg-white/10 my-1 mx-3"/>
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
                                     <span
                                         className="text-[11px] font-bold text-amber-300 group-hover:text-amber-400 transition-colors">Filled Sponsor Zones</span>
-                                    <input type="checkbox" checked={layers.filledSponsors}
-                                           onChange={e => setLayers((l: any) => ({
-                                               ...l,
-                                               filledSponsors: e.target.checked
-                                           }))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
+                                        <input type="checkbox" checked={layers.filledSponsors}
+                                               onChange={e => setLayers((l: any) => ({
+                                                   ...l,
+                                                   filledSponsors: e.target.checked
+                                               }))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group">
                                     <span
                                         className="text-[11px] font-bold text-slate-400 group-hover:text-emerald-400 transition-colors">Open Sponsor Slots</span>
-                                    <input type="checkbox" checked={layers.openSponsors}
-                                           onChange={e => setLayers((l: any) => ({
-                                               ...l,
-                                               openSponsors: e.target.checked
-                                           }))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                                <div className="h-px bg-white/10 my-1 mx-3"/>
-                                <label
-                                    className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group"
-                                    title="Shows your live recorded trail">
+                                        <input type="checkbox" checked={layers.openSponsors}
+                                               onChange={e => setLayers((l: any) => ({
+                                                   ...l,
+                                                   openSponsors: e.target.checked
+                                               }))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                    <div className="h-px bg-white/10 my-1 mx-3"/>
+                                    <label
+                                        className="flex items-center justify-between px-3 cursor-pointer hover:bg-emerald-500/10 rounded-xl py-1.5 transition-colors group"
+                                        title="Shows your live recorded trail">
                                     <span
                                         className="text-[11px] font-bold text-red-300 group-hover:text-red-400 transition-colors">GPS Trace (Recording)</span>
-                                    <input type="checkbox" checked={layers.trace}
-                                           onChange={e => setLayers((l: any) => ({...l, trace: e.target.checked}))}
-                                           className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
-                                </label>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                                        <input type="checkbox" checked={layers.trace}
+                                               onChange={e => setLayers((l: any) => ({...l, trace: e.target.checked}))}
+                                               className="w-3.5 h-3.5 rounded text-emerald-500 bg-black/40 border-white/20 transition-all cursor-pointer"/>
+                                    </label>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
             </div>
 

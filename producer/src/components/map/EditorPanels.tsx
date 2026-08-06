@@ -4,17 +4,7 @@ import {Button} from '@wayontop/ui/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@wayontop/ui/components/ui/card';
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Switch} from '@wayontop/ui/components/ui/switch';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@wayontop/ui/components/ui/alert-dialog';
+import {BaseModal} from '@wayontop/ui/components/BaseModal';
 
 interface EditorPanelsProps {
     mode: string;
@@ -38,6 +28,7 @@ export function EditorPanels({
                                  setTestingStamp, testRoutePath, setTestRoutePath, availableTags
                              }: Readonly<EditorPanelsProps>) {
     const [tagInput, setTagInput] = useState('');
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const isUnnamedTrack = selectedNode?.type === 'track' && (!selectedNode.name || selectedNode.name.trim() === '' || selectedNode.name.startsWith('Node '));
     const showNodePanel = selectedNode && mode === 'view' && !(isLocked && isUnnamedTrack) && !testRoutePath;
 
@@ -70,34 +61,31 @@ export function EditorPanels({
                                         <MapPin className="w-3.5 h-3.5 mr-1.5 text-emerald-400"/> Edit Node
                                     </CardTitle>
                                     <div className="flex gap-1">
-                                        <AlertDialog>
-                                            <AlertDialogTrigger render={<Button variant="ghost" size="icon"
-                                                                                className="h-6 w-6 text-red-500 hover:bg-red-500/20"/>}>
-                                                <Trash2 className="w-3.5 h-3.5"/>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="bg-[#1C1C1E] border-white/10 text-white">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete Node</AlertDialogTitle>
-                                                    <AlertDialogDescription className="text-slate-400">
-                                                        Are you sure you want to delete the node
-                                                        "{selectedNode.name || 'Unnamed Node'}"? This action cannot be
-                                                        undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel
-                                                        className="bg-white/5 border-white/10 hover:bg-white/10 hover:text-white">
-                                                        Cancel
-                                                    </AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={() => deleteNode(selectedNode.id)}
-                                                        className="bg-red-500 hover:bg-red-600 text-white"
-                                                    >
-                                                        Delete
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                        <Button variant="ghost" size="icon"
+                                                onClick={() => setIsDeleteDialogOpen(true)}
+                                                className="h-6 w-6 text-red-500 hover:bg-red-500/20">
+                                            <Trash2 className="w-3.5 h-3.5"/>
+                                        </Button>
+                                        <BaseModal
+                                            open={isDeleteDialogOpen}
+                                            onOpenChange={setIsDeleteDialogOpen}
+                                            title="Delete Node"
+                                            description={
+                                                <>
+                                                    Are you sure you want to delete the node
+                                                    "{selectedNode.name || 'Unnamed Node'}"? This action cannot be
+                                                    undone.
+                                                </>
+                                            }
+                                            onConfirm={() => {
+                                                deleteNode(selectedNode.id);
+                                                setIsDeleteDialogOpen(false);
+                                            }}
+                                            onCancel={() => setIsDeleteDialogOpen(false)}
+                                            confirmText="Delete"
+                                            cancelText="Cancel"
+                                            confirmClassName="bg-red-500 hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+                                        />
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-2 flex-1 flex flex-col gap-1.5 justify-center">

@@ -15,6 +15,8 @@ export function useCompass() {
     // Check if we need to request permission (iOS 13+)
     if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
       setNeedsPermission(true);
+      // Auto-request on mount. If PermissionGate already got permission, this resolves to 'granted' instantly without needing a user gesture.
+      requestPermission();
     } else {
       startListening();
     }

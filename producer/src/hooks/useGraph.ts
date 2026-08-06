@@ -66,8 +66,9 @@ export function useGraph(currentVenue: Venue | null) {
     const canUndo = historyIndex > 0;
     const canRedo = historyIndex < history.length - 1;
 
-    const [loadingGraph, setLoadingGraph] = useState(false);
+    const [loadingGraph, setLoadingGraph] = useState(true);
     const [syncState, setSyncState] = useState<SyncState>('idle');
+    const [timeUntilSync, setTimeUntilSync] = useState<number | null>(null);
     const lastSavedData = useRef<string>('');
 
     const loadGraph = useCallback(async () => {
@@ -201,6 +202,38 @@ export function useGraph(currentVenue: Venue | null) {
         };
     }, []);
 
+    const saveGraphRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
+    // Auto-save timer
+    useEffect(() => {
+        let intervalId: number | undefined;
+
+        if (syncState === 'unsaved') {
+            setTimeUntilSync(10);
+            intervalId = window.setInterval(() => {
+                setTimeUntilSync(prev => {
+                    if (prev === null) return null;
+                    if (prev <= 1) return 0;
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            setTimeUntilSync(null);
+        }
+
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [syncState]);
+
+    useEffect(() => {
+        if (timeUntilSync === 0) {
+            if (saveGraphRef.current) {
+                saveGraphRef.current();
+            }
+        }
+    }, [timeUntilSync]);
+
     const saveGraph = async () => {
         if (!currentVenue || loadingGraph) return;
 
@@ -257,5 +290,9 @@ export function useGraph(currentVenue: Venue | null) {
         }
     };
 
-    return {data, setData, loadingGraph, saveGraph, syncState, undo, redo, canUndo, canRedo};
+    useEffect(() => {
+        saveGraphRef.current = saveGraph;
+    });
+
+    return {data, setData, loadingGraph, saveGraph, syncState, undo, redo, canUndo, canRedo, timeUntilSync};
 }

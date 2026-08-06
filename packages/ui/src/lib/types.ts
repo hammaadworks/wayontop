@@ -21,8 +21,7 @@ export interface SponsorZone {
     name: string;
     poi_id: string;
     radius_m: number;
-    banner_asset: string;
-    video_asset: string;
+    creative_asset?: string;
     tagline?: string;
     logo_asset?: string;
 }
@@ -41,4 +40,5 @@ export interface Stamp {
     rarity: 'common' | 'rare' | 'epic' | 'golden';
     description?: string;
     poi_link: string | null;
+    image_url?: string;
 }

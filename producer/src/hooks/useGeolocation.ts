@@ -12,6 +12,12 @@ export function useGeolocation(
     const lastRecordedNodeRef = useRef<GraphNode | null>(null);
 
     useEffect(() => {
+        if (!recording) {
+            lastRecordedNodeRef.current = null;
+        }
+    }, [recording]);
+
+    useEffect(() => {
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
                 const pos = {lat: position.coords.latitude, lng: position.coords.longitude};

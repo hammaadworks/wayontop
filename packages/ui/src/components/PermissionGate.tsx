@@ -17,7 +17,7 @@ export interface GateState {
 
 // ---- PASSIVE: mount + visibilitychange only. Never fires a native prompt. ----
 async function passiveCheck(): Promise<Partial<GateState>> {
-    const result: Partial<GateState> = {compass: 'unknown'}; // no passive check exists for this, anywhere
+    const result: Partial<GateState> = {};
 
     if (navigator.permissions?.query) {
         try {
@@ -99,6 +99,7 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
     });
 
     const [isProcessing, setIsProcessing] = useState(false);
+    const [retryFeedback, setRetryFeedback] = useState<string | null>(null);
 
     const applyPatch = useCallback((patch: Partial<GateState>) => {
         setGateState(prev => ({...prev, ...patch}));
@@ -144,7 +145,14 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
 
     // ---- The one tap that does everything ----
     const onGrantTap = async () => {
+        // If compass is the ONLY thing blocking us, Safari blocks retries without a reload.
+        if (gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
+            window.location.reload();
+            return;
+        }
+
         setIsProcessing(true);
+        setRetryFeedback(null);
 
         // We MUST invoke requestCompass immediately (synchronously) inside the click handler.
         // Awaiting anything else first will lose the transient user activation in iOS Safari,
@@ -158,14 +166,20 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
         cameraPromise.then(res => applyPatch({camera: res}));
         locationPromise.then(res => applyPatch({location: res}));
 
-        await Promise.all([compassPromise, cameraPromise, locationPromise]);
+        const [compassRes, cameraRes, locationRes] = await Promise.all([compassPromise, cameraPromise, locationPromise]);
 
         setIsProcessing(false);
+
+        // If they were already denied, and we tried again but the OS instantly blocked us, show visual feedback.
+        if (isPrimaryDenied && (cameraRes === 'denied' || locationRes === 'denied' || compassRes === 'denied' || cameraRes === 'blocked' || locationRes === 'blocked')) {
+            setRetryFeedback("Still blocked by your browser. Please check settings!");
+            setTimeout(() => setRetryFeedback(null), 4000);
+        }
     };
 
-    // Automatically bypass for producer if URL has ?touchup=true
+    // Automatically bypass if URL has ?touchup=true
     const isTouchupBypass = typeof window !== 'undefined' &&
-        isProducerApp && window.location.search.includes('touchup=true');
+        window.location.search.includes('touchup=true');
 
     const isPrimaryGranted =
         gateState.location === 'granted' &&
@@ -182,7 +196,6 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
         ['denied', 'blocked'].includes(gateState.compass);
 
 
-
     const os = getDeviceOS();
     const browser = getBrowser();
 
@@ -195,7 +208,8 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
             if (browser === 'safari') {
                 return (
                     <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Tap the{" "}<strong>puzzle piece or icon</strong> in your search bar (prob at the bottom) &gt;{" "}
+                        <li>Tap the{" "}<strong>puzzle piece or icon</strong> in your search bar (prob at the
+                            bottom) &gt;{" "}
                             <strong>Website Settings</strong> &gt; Allow Camera.
                         </li>
                         <li>If that's a vibe killer, just head to your iPhone{" "}<strong>Settings
@@ -230,7 +244,8 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
 
         return (
             <ul className="list-disc list-inside space-y-2 mt-2">
-                <li>Click the little{" "}<strong>lock 🔒 icon</strong> next to the website address and allow the Camera! Easy
+                <li>Click the little{" "}<strong>lock 🔒 icon</strong> next to the website address and allow the Camera!
+                    Easy
                     peasy. ✨
                 </li>
             </ul>
@@ -393,10 +408,26 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
                         {gateState.compass === 'denied' && (
                             <div className="text-sm text-slate-300">
                                 <p className="font-bold text-white mb-1">Compass (Denied)</p>
-                                <p>No settings screen exists for this. Tap Retry below, then
-                                    tap{" "}<strong>Allow</strong> on the prompt.</p>
+                                <p className="mb-3">Safari blocked the prompt because it was previously denied. We need
+                                    to reload the page to ask again.</p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 w-full"
+                                >
+                                    <RefreshCw className="w-4 h-4"/>
+                                    Reload Page to Retry
+                                </button>
+                                <p className="mt-3 text-xs opacity-70 leading-relaxed">If it still fails after
+                                    reloading, you may need to clear Safari Website Data in your Settings.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {retryFeedback && (
+                    <div
+                        className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 text-sm font-bold p-3 rounded-xl text-center animate-in fade-in slide-in-from-bottom-2">
+                        {retryFeedback}
                     </div>
                 )}
 
@@ -415,6 +446,9 @@ export function PermissionGate({children, isProducerApp}: Readonly<PermissionGat
                                 return <RefreshCw className="w-5 h-5 animate-spin text-primary"/>;
                             }
                             if (isPrimaryDenied) {
+                                if (gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
+                                    return 'Reload to Fix Compass 🔄';
+                                }
                                 return 'Fix Permissions 🛠️';
                             }
                             return 'Unlock AR Map 🚀';

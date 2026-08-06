@@ -18,11 +18,24 @@ interface MapBottomBarProps {
     saveGraph: () => void;
     data: any;
     setData: any;
+    timeUntilSync: number | null;
 }
 
 export function MapBottomBar({
-                                 mode, setMode, isLocked, setIsLocked, edgeStartNode, setEdgeStartNode,
-                                 setSelectedNode, setSelectedEdge, syncState, saveGraph, data, setData, setTestRoutePath
+                                 mode,
+                                 setMode,
+                                 isLocked,
+                                 setIsLocked,
+                                 edgeStartNode,
+                                 setEdgeStartNode,
+                                 setSelectedNode,
+                                 setSelectedEdge,
+                                 syncState,
+                                 saveGraph,
+                                 data,
+                                 setData,
+                                 setTestRoutePath,
+                                 timeUntilSync
                              }: MapBottomBarProps) {
     return (
         <div
@@ -129,11 +142,33 @@ export function MapBottomBar({
                             <Button
                                 onClick={saveGraph}
                                 disabled={syncState === 'saving' || syncState === 'idle' || syncState === 'saved'}
-                                className={`rounded-full h-16 w-16 p-0 border-2 flex flex-col items-center justify-center gap-1 transition-transform hover:scale-105 active:scale-95 ${buttonConfig.color}`}
+                                className={`relative rounded-full h-16 w-16 p-0 border-2 flex flex-col items-center justify-center gap-1 transition-transform hover:scale-105 active:scale-95 overflow-hidden ${buttonConfig.color}`}
                             >
-                                <Icon className={`w-6 h-6 ${buttonConfig.spin ? 'animate-spin' : ''}`}/>
-                                <span
-                                    className="text-[10px] uppercase font-black leading-none">{buttonConfig.label}</span>
+                                {syncState === 'unsaved' && timeUntilSync !== null && (
+                                    <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
+                                         viewBox="0 0 64 64">
+                                        <circle
+                                            cx="32" cy="32" r="30"
+                                            fill="transparent"
+                                            stroke="rgba(255,255,255,0.2)"
+                                            strokeWidth="4"
+                                        />
+                                        <circle
+                                            cx="32" cy="32" r="30"
+                                            fill="transparent"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                            strokeDasharray="188.5"
+                                            strokeDashoffset={188.5 - (188.5 * (timeUntilSync / 10))}
+                                            className="transition-all duration-1000 ease-linear text-white"
+                                        />
+                                    </svg>
+                                )}
+                                <div className="z-10 flex flex-col items-center justify-center gap-1">
+                                    <Icon className={`w-6 h-6 ${buttonConfig.spin ? 'animate-spin' : ''}`}/>
+                                    <span
+                                        className="text-[10px] uppercase font-black leading-none">{buttonConfig.label}</span>
+                                </div>
                             </Button>
                         );
                     })()}

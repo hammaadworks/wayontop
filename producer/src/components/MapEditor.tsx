@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
 import {toast} from 'sonner';
+import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
+import {BaseModal} from '@wayontop/ui/components/BaseModal';
 
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 
@@ -89,6 +91,25 @@ const FILLED_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#eab308', 'line-width
 const OPEN_SPONSORS_PAINT: any = {'fill-color': '#64748b', 'fill-opacity': 0.2};
 const OPEN_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#94a3b8', 'line-width': 2, 'line-dasharray': [4, 4]};
 
+const SPONSOR_CIRCUMFERENCE_LAYOUT: any = {
+    'symbol-placement': 'line',
+    'symbol-spacing': 250,
+    'text-field': ['concat', ['get', 'radius'], 'm Zone • '],
+    'text-size': 13,
+    'text-transform': 'uppercase',
+    'text-letter-spacing': 0.2,
+    'text-offset': [0, -0.75],
+    'text-keep-upright': true
+};
+
+const SPONSOR_CIRCUMFERENCE_PAINT: any = {
+    'text-color': '#ffffff',
+    'text-halo-color': 'rgba(0,0,0,0.8)',
+    'text-halo-width': 1.5,
+    'text-opacity': 0.8
+};
+
+
 const TRACE_GLOW_PAINT: any = {
     'line-color': '#ef4444',
     'line-width': 8,
@@ -101,7 +122,18 @@ const isSponsorFilled = (s: any) => !!(s.logo_asset || s.banner_asset || s.video
 
 export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue, onBack: () => void }>) {
     const mapRef = useRef<any>(null);
-    const {data, setData, loadingGraph, saveGraph, syncState, undo, redo, canUndo, canRedo} = useGraph(currentVenue);
+    const {
+        data,
+        setData,
+        loadingGraph,
+        saveGraph,
+        syncState,
+        undo,
+        redo,
+        canUndo,
+        canRedo,
+        timeUntilSync
+    } = useGraph(currentVenue);
     const editorState = useMapEditorState();
     const {
         mode,
@@ -134,6 +166,92 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
     const [bearing, setBearing] = useState(0);
+
+    const [lassoPoints, setLassoPoints] = useState<[number, number][]>([]);
+    const [mergeModalOpen, setMergeModalOpen] = useState(false);
+    const [nodesToMerge, setNodesToMerge] = useState<GraphNode[]>([]);
+
+    const confirmMerge = () => {
+        if (nodesToMerge.length < 2) return;
+
+        let primaryNode = nodesToMerge[0];
+        let maxScore = -1;
+        for (const n of nodesToMerge) {
+            let score = 0;
+            if (n.type !== 'track') score += 10;
+            if (n.name && n.name.trim() !== '') score += 5;
+            if (score > maxScore) {
+                maxScore = score;
+                primaryNode = n;
+            }
+        }
+
+        const primaryId = primaryNode.id;
+        const idsToRemove = new Set(nodesToMerge.map(n => n.id).filter(id => id !== primaryId));
+
+        setData(prev => {
+            const newNodes = prev.nodes.filter(n => !idsToRemove.has(n.id));
+
+            let newEdges = prev.edges.map(e => {
+                let from = e.from;
+                let to = e.to;
+                if (idsToRemove.has(from)) from = primaryId;
+                if (idsToRemove.has(to)) to = primaryId;
+                return {from, to, distance_m: 0}; // distance updated below
+            });
+
+            newEdges = newEdges.filter(e => e.from !== e.to);
+            const edgeSet = new Set<string>();
+            const uniqueEdges: GraphEdge[] = [];
+            for (const e of newEdges) {
+                const key1 = `${e.from}-${e.to}`;
+                const key2 = `${e.to}-${e.from}`;
+                if (!edgeSet.has(key1) && !edgeSet.has(key2)) {
+                    edgeSet.add(key1);
+                    uniqueEdges.push(e);
+                }
+            }
+
+            const nodesMap = new Map(newNodes.map(n => [n.id, n]));
+            uniqueEdges.forEach(e => {
+                const n1 = nodesMap.get(e.from);
+                const n2 = nodesMap.get(e.to);
+                if (n1 && n2) {
+                    e.distance_m = distanceInMeters(n1.lat, n1.lng, n2.lat, n2.lng);
+                }
+            });
+
+            return {...prev, nodes: newNodes, edges: uniqueEdges};
+        });
+
+        setMergeModalOpen(false);
+        setNodesToMerge([]);
+        setMode('view');
+        setLassoPoints([]);
+        toast.success(`Merged ${nodesToMerge.length} nodes into one`);
+    };
+
+    const handleLassoMerge = (points: [number, number][]) => {
+        if (points.length < 3) {
+            setLassoPoints([]);
+            return;
+        }
+
+        const polygon = turf.polygon([[...points, points[0]]]);
+
+        const selected = data.nodes.filter(n => {
+            const pt = turf.point([n.lng, n.lat]);
+            return turf.booleanPointInPolygon(pt, polygon);
+        });
+
+        if (selected.length > 1) {
+            setNodesToMerge(selected);
+            setMergeModalOpen(true);
+        } else {
+            toast.error('Select at least two nodes to merge within the drawn area');
+            setLassoPoints([]);
+        }
+    };
 
 
     useEffect(() => {
@@ -182,6 +300,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 return newData;
             });
             setEdgeStartNode(newNode);
+        } else if (mode === 'merge_nodes') {
+            setLassoPoints(prev => [...prev, [latlng.lng, latlng.lat]]);
         } else if (mode === 'view') {
             setSelectedNode(null);
             setSelectedEdge(null);
@@ -313,6 +433,93 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, isZoomedIn]);
 
+    const sponsorMarkers = useMemo(() => {
+        if (!layers.filledSponsors && !layers.openSponsors) return null;
+
+        return (data.sponsors || []).map(sponsor => {
+            const isFilled = isSponsorFilled(sponsor);
+            if (isFilled && !layers.filledSponsors) return null;
+            if (!isFilled && !layers.openSponsors) return null;
+
+            const node = (data.nodes || []).find(n => n.id === sponsor.poi_id);
+            if (!node) return null;
+
+            const type = node.type || 'unknown';
+            let Icon = AlertTriangle;
+            let bgClass = 'bg-slate-500/20';
+            let textClass = 'text-slate-400';
+            let borderClass = 'border-slate-500/50';
+            let shadowClass = 'shadow-slate-500/20';
+
+            if (type === 'poi') {
+                Icon = MapPin;
+                textClass = 'text-amber-400';
+                bgClass = 'bg-amber-500/20';
+                borderClass = 'border-amber-500/50';
+                shadowClass = 'shadow-amber-500/20';
+            } else if (type === 'stamp') {
+                Icon = Gem;
+                textClass = 'text-fuchsia-400';
+                bgClass = 'bg-fuchsia-500/20';
+                borderClass = 'border-fuchsia-500/50';
+                shadowClass = 'shadow-fuchsia-500/20';
+            } else if (type === 'gate') {
+                Icon = DoorClosed;
+                textClass = 'text-emerald-400';
+                bgClass = 'bg-emerald-500/20';
+                borderClass = 'border-emerald-500/50';
+                shadowClass = 'shadow-emerald-500/20';
+            } else if (type === 'facility') {
+                Icon = HeartHandshake;
+                textClass = 'text-rose-400';
+                bgClass = 'bg-rose-500/20';
+                borderClass = 'border-rose-500/50';
+                shadowClass = 'shadow-rose-500/20';
+            } else if (type === 'track') {
+                Icon = Crosshair;
+                textClass = 'text-blue-400';
+                bgClass = 'bg-blue-500/20';
+                borderClass = 'border-blue-500/50';
+                shadowClass = 'shadow-blue-500/20';
+            }
+
+            if (type === 'track' && !sponsor.logo_asset) {
+                return null;
+            }
+
+            // Calculate deterministic offset based on sponsor ID to place it randomly but consistently inside the zone
+            const hash = sponsor.id.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+            const randomDist = (Math.abs(hash) % 100) / 100; // 0 to 0.99
+            const randomAngle = Math.abs(hash) % 360; // 0 to 359
+
+            // Move the blob outwards by 40% to 80% of the radius
+            const distance_m = sponsor.radius_m * (0.4 + (randomDist * 0.4));
+            const center = [node.lng, node.lat];
+            const destination = turf.destination(center, distance_m, randomAngle, {units: 'meters'});
+            const [blobLng, blobLat] = destination.geometry.coordinates;
+
+            return (
+                <Marker key={`sponsor-label-${sponsor.id}`} longitude={blobLng} latitude={blobLat} anchor="center">
+                    <div
+                        className={`pointer-events-none flex flex-col items-center justify-center transition-all duration-300 ${isZoomedIn ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        <div className={`rounded-full border shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center justify-center overflow-hidden
+                            ${sponsor.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
+                            {sponsor.logo_asset ? (
+                                <img src={sponsor.logo_asset} alt="Sponsor Logo"
+                                     className="w-full h-full object-cover"/>
+                            ) : (
+                                <Icon className={`w-4 h-4 ${textClass}`}/>
+                            )}
+                        </div>
+                    </div>
+                </Marker>
+            );
+        });
+    }, [data.sponsors, data.nodes, layers.filledSponsors, layers.openSponsors, isZoomedIn]);
+
     const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
         features: data.edges.map(edge => {
@@ -344,7 +551,11 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         features: data.sponsors.filter(isSponsorFilled).map(sponsor => {
             const node = data.nodes.find(n => n.id === sponsor.poi_id);
             if (!node) return null;
-            return turf.circle([node.lng, node.lat], sponsor.radius_m, {steps: 64, units: 'meters'});
+            return turf.circle([node.lng, node.lat], sponsor.radius_m, {
+                steps: 64,
+                units: 'meters',
+                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m}
+            });
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsors, data.nodes]);
 
@@ -353,7 +564,11 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         features: data.sponsors.filter(s => !isSponsorFilled(s)).map(sponsor => {
             const node = data.nodes.find(n => n.id === sponsor.poi_id);
             if (!node) return null;
-            return turf.circle([node.lng, node.lat], sponsor.radius_m, {steps: 64, units: 'meters'});
+            return turf.circle([node.lng, node.lat], sponsor.radius_m, {
+                steps: 64,
+                units: 'meters',
+                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m}
+            });
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsors, data.nodes]);
 
@@ -389,6 +604,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     mapStyle={mapSkin === 'satellite' ? SATELLITE_STYLE : ANIMATED_MAP_STYLE}
                     style={{width: '100%', height: '100%', zIndex: 0}}
                     pitchWithRotate={true} dragRotate={true} maxPitch={85} maxZoom={22}
+                    dragPan={true}
                     onClick={(e) => {
                         if (mode === 'view') {
                             const edgeFeature = e.features?.find(f => f.layer.id === 'edges-core' || f.layer.id === 'edges-glow');
@@ -412,6 +628,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     )}
 
                     {nodeMarkers}
+                    {sponsorMarkers}
 
                     {layers.paths && data.edges.length > 0 && (
                         <Source id="edges-source" type="geojson" data={edgesGeoJSON}>
@@ -434,6 +651,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         <Source id="filled-sponsors-source" type="geojson" data={filledSponsorsGeoJSON}>
                             <Layer id="filled-sponsors-layer" type="fill" paint={FILLED_SPONSORS_PAINT}/>
                             <Layer id="filled-sponsors-outline" type="line" paint={FILLED_SPONSORS_OUTLINE_PAINT}/>
+                            <Layer id="filled-sponsors-circumference" type="symbol"
+                                   layout={SPONSOR_CIRCUMFERENCE_LAYOUT} paint={SPONSOR_CIRCUMFERENCE_PAINT}/>
                         </Source>
                     )}
 
@@ -441,6 +660,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         <Source id="open-sponsors-source" type="geojson" data={openSponsorsGeoJSON}>
                             <Layer id="open-sponsors-layer" type="fill" paint={OPEN_SPONSORS_PAINT}/>
                             <Layer id="open-sponsors-outline" type="line" paint={OPEN_SPONSORS_OUTLINE_PAINT}/>
+                            <Layer id="open-sponsors-circumference" type="symbol" layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
+                                   paint={SPONSOR_CIRCUMFERENCE_PAINT}/>
                         </Source>
                     )}
 
@@ -450,8 +671,71 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                             <Layer id="trace-layer-core" type="line" paint={TRACE_CORE_PAINT} layout={ROUND_LAYOUT}/>
                         </Source>
                     )}
+                    {lassoPoints.length > 0 && mode === 'merge_nodes' && (
+                        <Marker
+                            longitude={lassoPoints[0][0]}
+                            latitude={lassoPoints[0][1]}
+                            anchor="center"
+                            onClick={(e) => {
+                                e.originalEvent.stopPropagation();
+                                if (lassoPoints.length >= 3) {
+                                    handleLassoMerge(lassoPoints);
+                                } else {
+                                    import('sonner').then(m => m.toast.error('You need at least 3 points to form an area'));
+                                }
+                            }}
+                        >
+                            <div
+                                className="w-5 h-5 bg-indigo-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)] animate-pulse cursor-pointer flex items-center justify-center"
+                                title="Click to close area">
+                                <div className="w-2 h-2 bg-white rounded-full"/>
+                            </div>
+                        </Marker>
+                    )}
+                    {lassoPoints.length > 1 && mode === 'merge_nodes' && lassoPoints.slice(1).map((pt, i) => (
+                        <Marker key={`lasso-pt-${i}`} longitude={pt[0]} latitude={pt[1]} anchor="center">
+                            <div
+                                className="w-3 h-3 bg-indigo-400 border-2 border-white rounded-full shadow-md pointer-events-none"/>
+                        </Marker>
+                    ))}
+                    {lassoPoints.length > 1 && mode === 'merge_nodes' && (
+                        <Source id="lasso-source" type="geojson" data={{
+                            type: 'FeatureCollection',
+                            features: [
+                                {
+                                    type: 'Feature',
+                                    properties: {},
+                                    geometry: {type: 'LineString', coordinates: lassoPoints}
+                                },
+                                ...(lassoPoints.length >= 3 ? [{
+                                    type: 'Feature',
+                                    properties: {isFill: true},
+                                    geometry: {type: 'Polygon', coordinates: [[...lassoPoints, lassoPoints[0]]]}
+                                }] : [])
+                            ]
+                        } as any}>
+                            <Layer id="lasso-line" type="line" filter={['!has', 'isFill']}
+                                   paint={{'line-color': '#6366f1', 'line-width': 2, 'line-dasharray': [2, 2]}}/>
+                            <Layer id="lasso-fill" type="fill" filter={['has', 'isFill']}
+                                   paint={{'fill-color': '#6366f1', 'fill-opacity': 0.2}}/>
+                        </Source>
+                    )}
                 </MapGL>
             </div>
+
+            <BaseModal
+                open={mergeModalOpen}
+                onOpenChange={setMergeModalOpen}
+                title={<span className="text-indigo-400">Merge Nodes</span>}
+                description={`Merge these ${nodesToMerge.length} nodes into a single primary node? All connected paths will be automatically re-routed.`}
+                onConfirm={confirmMerge}
+                onCancel={() => {
+                    setMergeModalOpen(false);
+                    setLassoPoints([]);
+                }}
+                confirmText="Yes, merge them"
+                confirmClassName="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+            />
 
             {/* UI Overlays */}
             <TopNavigationBar
@@ -463,6 +747,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 currentAccuracy={currentAccuracy}
                 saveGraph={saveGraph}
                 onBack={onBack}
+                isLocked={isLocked}
+                mode={mode}
+                setMode={setMode}
             />
 
 
@@ -514,6 +801,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 saveGraph={saveGraph}
                 data={data}
                 setData={setData}
+                timeUntilSync={timeUntilSync}
             />
 
             {testingStamp && (
