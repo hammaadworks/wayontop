@@ -186,6 +186,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
     const [bearing, setBearing] = useState(0);
+    const [pipVisible, setPipVisible] = useState(false);
 
 
     const [lassoPoints, setLassoPoints] = useState<[number, number][]>([]);
@@ -638,7 +639,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
     return (
         <div className="fixed inset-0 w-full font-sans text-slate-100 overflow-hidden bg-mesh-dark">
-            <PiPCamera />
+            <PiPCamera isVisible={pipVisible} />
             <div className="absolute inset-0 z-0">
                 {loadingGraph && (
                     <div
@@ -837,6 +838,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 isLocked={isLocked}
                 mode={mode}
                 setMode={setMode}
+                pipVisible={pipVisible}
+                togglePip={() => setPipVisible(prev => !prev)}
             />
 
 

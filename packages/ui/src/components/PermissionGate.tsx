@@ -56,8 +56,19 @@ function requestLocation(): Promise<PermState> {
     return new Promise(resolve => {
         navigator.geolocation.getCurrentPosition(
             () => resolve('granted'),
-            (err: GeolocationPositionError) => resolve(err.code === err.PERMISSION_DENIED ? 'denied' : 'blocked'),
-            {enableHighAccuracy: true, timeout: 10000}
+            (err: GeolocationPositionError) => {
+                // code 1: PERMISSION_DENIED
+                // code 2: POSITION_UNAVAILABLE
+                // code 3: TIMEOUT
+                if (err.code === err.PERMISSION_DENIED) {
+                    resolve('denied');
+                } else {
+                    // If we get timeout or unavailable, the user actually GRANTED permission,
+                    // but the hardware failed to get a location. The gate should let them through.
+                    resolve('granted');
+                }
+            },
+            {enableHighAccuracy: true, timeout: 6000}
         );
     });
 }

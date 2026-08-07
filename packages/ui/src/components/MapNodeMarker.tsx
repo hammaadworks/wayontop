@@ -1,4 +1,4 @@
-import {Crosshair, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
+import {Circle, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
 import {cn} from '../lib/utils';
 
 interface MapNodeMarkerProps {
@@ -56,7 +56,7 @@ export function MapNodeMarker({
         ringColorClass = 'border-rose-500/30';
         activeGlowClass = 'shadow-[0_0_20px_rgba(244,63,94,0.6)]';
     } else if (type === 'track') {
-        Icon = Crosshair;
+        Icon = Circle;
         iconColorClass = 'text-blue-400';
         glowColorClass = 'bg-blue-500/20';
         ringColorClass = 'border-blue-500/30';

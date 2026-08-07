@@ -53,3 +53,13 @@ so strict. need to be super empathtic to the user, how he feels how can he use i
 
 4. performance
 - prefecting and caching = see when the user is busy with the permisisons we are optimistic so we load the major graphs and stuff sot eh experience is seamless
+
+5. MapLibre GL JS + Vite Production Bug
+- Everything works fine locally (map, markers, routes), but in Vercel production, only the GeoJSON line routes disappear without any console errors.
+- **Why this happens:** MapLibre relies on a Web Worker to tessellate vector geometries (`type: "line"` or `fill`). Raster tiles and DOM markers don't need this worker. When Vite builds the project for production, the default worker instantiation fails to resolve properly. Because there's no worker to process vector geometry, MapLibre silently drops your GeoJSON routes.
+- **The Fix:** Explicitly import the worker as a bundled chunk and inject it into MapLibre before map initialization:
+  ```ts
+  import { setWorkerUrl } from 'maplibre-gl';
+  import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+  setWorkerUrl(workerUrl);
+  ```

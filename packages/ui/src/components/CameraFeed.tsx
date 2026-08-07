@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {CameraOff, Map, Settings, ZoomIn, ZoomOut} from 'lucide-react';
 
 interface CameraFeedProps {
@@ -119,67 +120,69 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
     };
 
     if (error) {
-        return (
-            <div
-                className={`flex flex-col items-center justify-center bg-slate-900 text-white p-8 pb-32 text-center ${className} z-50`}>
-                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                    <CameraOff className="w-10 h-10 text-slate-400"/>
-                </div>
-
-                <h3 className="text-2xl font-bold mb-3 tracking-tight">Camera Unavailable</h3>
-                <p className="text-slate-400 mb-8 max-w-sm">
-                    You can still navigate Lalbagh without AR! Use the Map view, or follow the steps below to enable the
-                    camera.
-                </p>
-
-                <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 text-left max-w-md w-full mb-8">
-                    <h4 className="text-amber-400 font-bold mb-4 flex items-center gap-2">
-                        <Settings className="w-5 h-5"/> How to Enable Camera
-                    </h4>
-
-                    <div className="space-y-4 text-sm text-slate-300">
-                        <div>
-                            <p className="font-bold text-white mb-1">1. Browser Level (Site Settings)</p>
-                            <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
-                                <li><span className="text-white">iOS:</span> Tap the <strong>aA</strong> icon in the
-                                    address bar → Website Settings → Camera → Allow
-                                </li>
-                                <li><span className="text-white">Android:</span> Tap the lock icon near the URL →
-                                    Permissions → Camera → Allow
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <p className="font-bold text-white mb-1">2. OS Level (Device Settings)</p>
-                            <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
-                                <li><span className="text-white">iOS:</span> Settings → Safari/Chrome → Camera → Allow
-                                </li>
-                                <li><span className="text-white">Android:</span> Settings → Apps → Chrome → Permissions
-                                    → Camera → Allow
-                                </li>
-                            </ul>
-                        </div>
+        const errorContent = (
+            <div className="fixed inset-0 z-[9999] bg-slate-900 overflow-y-auto w-full h-[100dvh]">
+                <div className="min-h-full flex flex-col items-center justify-center text-white p-6 py-12 text-center mx-auto max-w-md">
+                    <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 shrink-0">
+                        <CameraOff className="w-10 h-10 text-slate-400"/>
                     </div>
 
-                    <p className="mt-5 text-xs text-slate-500">After changing settings, refresh the page.</p>
-                </div>
+                    <h3 className="text-2xl font-bold mb-3 tracking-tight">Camera Unavailable</h3>
+                    <p className="text-slate-400 mb-8">
+                        You can still navigate Lalbagh without AR! Use the Map view, or follow the steps below to enable the
+                        camera.
+                    </p>
 
-                <button
-                    onClick={() => {
-                        if (onClose) onClose();
-                        else window.dispatchEvent(new CustomEvent('switch-view', {detail: {view: 'map'}}));
-                    }}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-8 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-all"
-                >
-                    {onClose ? (
-                        <>Close Camera</>
-                    ) : (
-                        <><Map className="w-5 h-5"/> Switch to Map View</>
-                    )}
-                </button>
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 text-left w-full mb-8 shrink-0">
+                        <h4 className="text-amber-400 font-bold mb-4 flex items-center gap-2">
+                            <Settings className="w-5 h-5"/> How to Enable Camera
+                        </h4>
+
+                        <div className="space-y-4 text-sm text-slate-300">
+                            <div>
+                                <p className="font-bold text-white mb-1">1. Browser Level (Site Settings)</p>
+                                <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
+                                    <li><span className="text-white">iOS:</span> Tap the <strong>aA</strong> icon in the
+                                        address bar → Website Settings → Camera → Allow
+                                    </li>
+                                    <li><span className="text-white">Android:</span> Tap the lock icon near the URL →
+                                        Permissions → Camera → Allow
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <p className="font-bold text-white mb-1">2. OS Level (Device Settings)</p>
+                                <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
+                                    <li><span className="text-white">iOS:</span> Settings → Safari/Chrome → Camera → Allow
+                                    </li>
+                                    <li><span className="text-white">Android:</span> Settings → Apps → Chrome → Permissions
+                                        → Camera → Allow
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <p className="mt-5 text-xs text-slate-500">After changing settings, refresh the page.</p>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            if (onClose) onClose();
+                            else window.dispatchEvent(new CustomEvent('switch-view', {detail: {view: 'map'}}));
+                        }}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-8 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-all w-full justify-center shrink-0"
+                    >
+                        {onClose ? (
+                            <>Close Camera</>
+                        ) : (
+                            <><Map className="w-5 h-5"/> Switch to Map View</>
+                        )}
+                    </button>
+                </div>
             </div>
         );
+        return createPortal(errorContent, document.body);
     }
 
     // Visual zoom scale if no hardware zoom is available? User said "make sure hardware supports it".

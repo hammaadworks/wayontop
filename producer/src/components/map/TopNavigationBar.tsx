@@ -13,6 +13,8 @@ interface TopNavigationBarProps {
     isLocked: boolean;
     mode: string;
     setMode: (mode: any) => void;
+    pipVisible: boolean;
+    togglePip: () => void;
 }
 
 export function TopNavigationBar({
@@ -26,7 +28,9 @@ export function TopNavigationBar({
                                      onBack,
                                      isLocked,
                                      mode,
-                                     setMode
+                                     setMode,
+                                     pipVisible,
+                                     togglePip
                                  }: Readonly<TopNavigationBarProps>) {
     const getAccuracyClass = (acc: number) => {
         if (acc <= 5) return 'bg-emerald-400 text-emerald-400';
@@ -47,15 +51,8 @@ export function TopNavigationBar({
                         saveGraph();
                         onBack();
                     }}>
-                    <div
-                        className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center mr-2 border border-emerald-500/30 group-hover:bg-emerald-500/40 transition-colors">
-                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                             strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                    </div>
                     <span
-                        className="text-xs font-black text-white uppercase tracking-widest truncate max-w-[100px] group-hover:text-emerald-300 transition-colors">
+                        className="text-xs font-black text-emerald-400 uppercase tracking-widest truncate max-w-[150px] group-hover:text-emerald-300 transition-colors">
                         {venueKey}
                     </span>
                 </button>
@@ -170,7 +167,8 @@ export function TopNavigationBar({
             {/* Accuracy Indicator */}
             {currentAccuracy !== null && (
                 <div
-                    className="pointer-events-auto mt-2 mx-auto w-fit glass-pill px-3 py-1.5 shadow-lg border border-white/10 flex items-center gap-2 bg-black/60 backdrop-blur-3xl rounded-full transition-all">
+                    onClick={togglePip}
+                    className={`pointer-events-auto mt-2 mx-auto w-fit glass-pill px-3 py-1.5 shadow-lg border flex items-center gap-2 backdrop-blur-3xl rounded-full transition-all cursor-pointer hover:bg-white/10 active:scale-95 ${pipVisible ? 'bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-black/60 border-white/10'}`}>
                     <div
                         className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${getAccuracyClass(currentAccuracy)}`}/>
                     <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
