@@ -1,4 +1,4 @@
-import {Eraser, LocateFixed, Pencil, Play, Redo2, Square, Undo2} from 'lucide-react';
+import {LocateFixed, Pencil, Play, Redo2, Square, Undo2} from 'lucide-react';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {toast} from 'sonner';
 
@@ -9,8 +9,6 @@ interface MapFloatingControlsProps {
     canRedo: boolean;
     undo: () => void;
     redo: () => void;
-    rawTrace: any[];
-    setRawTrace: React.Dispatch<React.SetStateAction<any[]>>;
     currentLocation: { lat: number, lng: number } | null;
     recording: boolean;
     setRecording: (val: boolean) => void;
@@ -18,8 +16,6 @@ interface MapFloatingControlsProps {
     setMode: (mode: any) => void;
     setEdgeStartNode: (node: any) => void;
     isLocked: boolean;
-    data: any;
-    setData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export function MapFloatingControls({
@@ -29,17 +25,13 @@ export function MapFloatingControls({
                                         canRedo,
                                         undo,
                                         redo,
-                                        rawTrace,
-                                        setRawTrace,
                                         currentLocation,
                                         recording,
                                         setRecording,
                                         mode,
                                         setMode,
                                         setEdgeStartNode,
-                                        isLocked,
-                                        data,
-                                        setData
+                                        isLocked
                                     }: Readonly<MapFloatingControlsProps>) {
     const getDirection = (b: number) => {
         const normalized = (b + 360) % 360;

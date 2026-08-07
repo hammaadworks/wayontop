@@ -849,8 +849,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 canRedo={canRedo}
                 undo={undo}
                 redo={redo}
-                rawTrace={rawTrace}
-                setRawTrace={setRawTrace}
                 currentLocation={currentLocation}
                 recording={recording}
                 setRecording={setRecording}
@@ -858,8 +856,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setMode={setMode}
                 setEdgeStartNode={setEdgeStartNode}
                 isLocked={isLocked}
-                data={data}
-                setData={setData}
             />
 
             <EditorPanels
