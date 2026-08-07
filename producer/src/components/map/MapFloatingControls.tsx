@@ -105,7 +105,7 @@ export function MapFloatingControls({
                     <Pencil className="w-5 h-5 drop-shadow-md"/>
                 </Button>
                 <Button variant="ghost" size="icon"
-                        disabled={isTouchup || isLocked}
+                        disabled={isTouchup}
                         className={`rounded-full w-10 h-10 transition-all border ${!recording ? 'bg-amber-500/20 text-amber-400 hover:text-amber-300 hover:bg-amber-500/40 border-transparent hover:border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.8)] animate-pulse'} disabled:opacity-30 disabled:cursor-not-allowed`}
                         onClick={() => {
                             if (isTouchup) {

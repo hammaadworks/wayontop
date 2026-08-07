@@ -138,6 +138,8 @@ const TRACE_CORE_PAINT: any = {
 
 const isSponsorFilled = (s: any) => !!(s.logo_asset || s.banner_asset || s.video_asset || s.tagline);
 
+import * as maplibregl from 'maplibre-gl';
+
 export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue, onBack: () => void }>) {
     const mapRef = useRef<any>(null);
     const {
@@ -182,12 +184,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
     const [bearing, setBearing] = useState(0);
-
-    useEffect(() => {
-        if (isLocked && recording) {
-            setRecording(false);
-        }
-    }, [isLocked, recording]);
 
 
     const [lassoPoints, setLassoPoints] = useState<[number, number][]>([]);
@@ -651,6 +647,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 )}
                 <MapGL
                     ref={mapRef}
+                    mapLib={maplibregl as any}
                     initialViewState={{
                         longitude: currentVenue.lng,
                         latitude: currentVenue.lat,
