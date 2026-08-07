@@ -26,10 +26,19 @@ export interface SponsorZone {
     logo_asset?: string;
 }
 
+export interface DefaultAd {
+    id: string;
+    name: string;
+    creative_asset?: string;
+    tagline?: string;
+    logo_asset?: string;
+}
+
 export interface GraphData {
     nodes: GraphNode[];
     edges: GraphEdge[];
     sponsors: SponsorZone[];
+    defaultAds?: DefaultAd[];
 }
 
 export interface Stamp {

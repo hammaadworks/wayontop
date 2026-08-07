@@ -21,6 +21,7 @@ import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
 
 import {useMapEditorState} from '../hooks/useMapEditorState';
+import {MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 
 const SATELLITE_STYLE: any = {
     version: 8,
@@ -85,11 +86,22 @@ const TEST_ROUTE_PAINT: any = {
     'line-opacity': 0.9
 };
 
-const FILLED_SPONSORS_PAINT: any = {'fill-color': '#eab308', 'fill-opacity': 0.25};
-const FILLED_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#eab308', 'line-width': 2};
+const SPONSOR_FILL_COLOR: any = [
+    'match',
+    ['get', 'type'],
+    'poi', '#fbbf24',
+    'stamp', '#e879f9',
+    'gate', '#34d399',
+    'facility', '#fb7185',
+    'track', '#60a5fa',
+    '#94a3b8'
+];
 
-const OPEN_SPONSORS_PAINT: any = {'fill-color': '#64748b', 'fill-opacity': 0.2};
-const OPEN_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#94a3b8', 'line-width': 2, 'line-dasharray': [4, 4]};
+const FILLED_SPONSORS_PAINT: any = {'fill-color': SPONSOR_FILL_COLOR, 'fill-opacity': 0.25};
+const FILLED_SPONSORS_OUTLINE_PAINT: any = {'line-color': SPONSOR_FILL_COLOR, 'line-width': 2};
+
+const OPEN_SPONSORS_PAINT: any = {'fill-color': '#ffffff', 'fill-opacity': 0.1};
+const OPEN_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 4]};
 
 const SPONSOR_CIRCUMFERENCE_LAYOUT: any = {
     'symbol-placement': 'line',
@@ -401,8 +413,16 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const latestFns = useRef({updateNodePosition, handleNodeClick});
     latestFns.current = {updateNodePosition, handleNodeClick};
 
-    const isZoomedIn = zoom >= 15;
+    const showVenuePin = zoom < MAP_ZOOM_TIERS.VENUE_PIN_MAX;
+    const showMarkers = zoom >= MAP_ZOOM_TIERS.MARKERS_MIN;
+    const showRoutes = zoom >= MAP_ZOOM_TIERS.ROUTES_MIN;
+    const showMarkerNames = zoom >= MAP_ZOOM_TIERS.MARKER_NAMES_MIN;
+    const showSponsorZones = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
+    const showSponsorRadiusText = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
+    const showSponsorLogos = zoom >= MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
+
     const nodeMarkers = useMemo(() => {
+        if (!showMarkers) return null;
         return data.nodes.filter(n => {
             if (!layers.pois && (n.type === 'poi' || n.type === 'stamp' || n.type === 'gate' || n.type === 'facility')) return false;
             return !(!layers.tracks && n.type === 'track');
@@ -423,7 +443,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     <MapNodeMarker
                         type={node.type}
                         name={node.name}
-                        isZoomedIn={isZoomedIn}
+                        isZoomedIn={showMarkerNames}
                         isSelected={isSelected}
                         opacity={opacity}
                     />
@@ -431,15 +451,16 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             );
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, isZoomedIn]);
+    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMarkerNames, showMarkers]);
 
     const sponsorMarkers = useMemo(() => {
+        if (!showSponsorLogos) return null;
         if (!layers.filledSponsors && !layers.openSponsors) return null;
 
         return (data.sponsors || []).map(sponsor => {
             const isFilled = isSponsorFilled(sponsor);
-            if (isFilled && !layers.filledSponsors) return null;
-            if (!isFilled && !layers.openSponsors) return null;
+            if (!isFilled) return null; // Unsponsored zones have no bubbles
+            if (!layers.filledSponsors) return null;
 
             const node = (data.nodes || []).find(n => n.id === sponsor.poi_id);
             if (!node) return null;
@@ -504,7 +525,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return (
                 <Marker key={`sponsor-label-${sponsor.id}`} longitude={blobLng} latitude={blobLat} anchor="center">
                     <div
-                        className={`pointer-events-none flex flex-col items-center justify-center transition-all duration-300 ${isZoomedIn ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        className={`pointer-events-none flex flex-col items-center justify-center transition-all duration-300 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
                         <div className={`rounded-full border shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center justify-center overflow-hidden
                             ${sponsor.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
                             {sponsor.logo_asset ? (
@@ -518,7 +539,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 </Marker>
             );
         });
-    }, [data.sponsors, data.nodes, layers.filledSponsors, layers.openSponsors, isZoomedIn]);
+    }, [data.sponsors, data.nodes, layers.filledSponsors, layers.openSponsors, showSponsorLogos]);
 
     const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
@@ -554,7 +575,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return turf.circle([node.lng, node.lat], sponsor.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m}
+                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m, type: node.type}
             });
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsors, data.nodes]);
@@ -567,7 +588,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return turf.circle([node.lng, node.lat], sponsor.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m}
+                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m, type: node.type}
             });
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsors, data.nodes]);
@@ -627,10 +648,27 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         </Marker>
                     )}
 
+                    {showVenuePin && (
+                        <Marker longitude={currentVenue.lng} latitude={currentVenue.lat} anchor="center">
+                            <div
+                                className="flex flex-col items-center justify-center transition-all duration-500 cursor-default pointer-events-none drop-shadow-xl">
+                                <div
+                                    className="p-4 bg-black/90 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-full mb-3 animate-pulse">
+                                    <MapPin
+                                        className="w-8 h-8 text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]"/>
+                                </div>
+                                <span
+                                    className="text-lg font-black tracking-widest uppercase drop-shadow-md text-emerald-100 bg-black/80 px-4 py-1.5 rounded-full border border-emerald-500/30">
+                                    {currentVenue.name}
+                                </span>
+                            </div>
+                        </Marker>
+                    )}
+
                     {nodeMarkers}
                     {sponsorMarkers}
 
-                    {layers.paths && data.edges.length > 0 && (
+                    {showRoutes && layers.paths && data.edges.length > 0 && (
                         <Source id="edges-source" type="geojson" data={edgesGeoJSON}>
                             <Layer id="edges-glow" type="line" paint={EDGES_GLOW_PAINT} layout={ROUND_LAYOUT}/>
                             <Layer id="edges-core" type="line"
@@ -647,21 +685,23 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         </Source>
                     )}
 
-                    {layers.filledSponsors && (
+                    {showSponsorZones && layers.filledSponsors && (
                         <Source id="filled-sponsors-source" type="geojson" data={filledSponsorsGeoJSON}>
                             <Layer id="filled-sponsors-layer" type="fill" paint={FILLED_SPONSORS_PAINT}/>
                             <Layer id="filled-sponsors-outline" type="line" paint={FILLED_SPONSORS_OUTLINE_PAINT}/>
-                            <Layer id="filled-sponsors-circumference" type="symbol"
-                                   layout={SPONSOR_CIRCUMFERENCE_LAYOUT} paint={SPONSOR_CIRCUMFERENCE_PAINT}/>
+                            {showSponsorRadiusText && <Layer id="filled-sponsors-circumference" type="symbol"
+                                                             layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
+                                                             paint={SPONSOR_CIRCUMFERENCE_PAINT}/>}
                         </Source>
                     )}
 
-                    {layers.openSponsors && (
+                    {showSponsorZones && layers.openSponsors && (
                         <Source id="open-sponsors-source" type="geojson" data={openSponsorsGeoJSON}>
                             <Layer id="open-sponsors-layer" type="fill" paint={OPEN_SPONSORS_PAINT}/>
                             <Layer id="open-sponsors-outline" type="line" paint={OPEN_SPONSORS_OUTLINE_PAINT}/>
-                            <Layer id="open-sponsors-circumference" type="symbol" layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
-                                   paint={SPONSOR_CIRCUMFERENCE_PAINT}/>
+                            {showSponsorRadiusText && <Layer id="open-sponsors-circumference" type="symbol"
+                                                             layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
+                                                             paint={SPONSOR_CIRCUMFERENCE_PAINT}/>}
                         </Source>
                     )}
 

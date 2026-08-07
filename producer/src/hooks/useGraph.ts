@@ -12,7 +12,7 @@ export function useGraph(currentVenue: Venue | null) {
         history: GraphData[];
         historyIndex: number;
     }>({
-        data: {nodes: [], edges: [], sponsors: []},
+        data: {nodes: [], edges: [], sponsors: [], defaultAds: []},
         history: [],
         historyIndex: -1
     });
@@ -159,7 +159,7 @@ export function useGraph(currentVenue: Venue | null) {
                 timestamp: remoteTimestamp
             }));
         } else {
-            finalData = {nodes: [], edges: [], sponsors: []};
+            finalData = {nodes: [], edges: [], sponsors: [], defaultAds: []};
             lastSavedData.current = JSON.stringify(finalData);
         }
 

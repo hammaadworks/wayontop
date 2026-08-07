@@ -1,4 +1,3 @@
-import React from 'react';
 import {Crosshair, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
 import {cn} from '../lib/utils';
 

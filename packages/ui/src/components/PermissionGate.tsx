@@ -91,7 +91,7 @@ function getBrowser() {
     return 'other';
 }
 
-export function PermissionGate({children, isProducerApp}: Readonly<PermissionGateProps>) {
+export function PermissionGate({children}: Readonly<PermissionGateProps>) {
     const [gateState, setGateState] = useState<GateState>({
         camera: 'unknown',
         location: 'unknown',

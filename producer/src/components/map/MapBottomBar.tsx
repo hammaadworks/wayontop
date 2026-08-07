@@ -5,8 +5,8 @@ import {SponsorManager} from '../SponsorManager';
 import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 
 interface MapBottomBarProps {
-    mode: 'view' | 'add_node' | 'add_edge' | 'test_route';
-    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route') => void;
+    mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes';
+    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes') => void;
     isLocked: boolean;
     setIsLocked: (val: boolean) => void;
     edgeStartNode: GraphNode | null;
