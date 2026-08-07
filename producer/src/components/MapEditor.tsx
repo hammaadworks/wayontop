@@ -1,6 +1,10 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import MapGL, {Layer, Marker, Source} from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { setWorkerUrl } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
+setWorkerUrl(workerUrl);
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
 import {toast} from 'sonner';
@@ -137,8 +141,6 @@ const TRACE_CORE_PAINT: any = {
 };
 
 const isSponsorFilled = (s: any) => !!(s.logo_asset || s.banner_asset || s.video_asset || s.tagline);
-
-import * as maplibregl from 'maplibre-gl';
 
 export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue, onBack: () => void }>) {
     const mapRef = useRef<any>(null);
@@ -647,7 +649,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 )}
                 <MapGL
                     ref={mapRef}
-                    mapLib={maplibregl as any}
                     initialViewState={{
                         longitude: currentVenue.lng,
                         latitude: currentVenue.lat,
