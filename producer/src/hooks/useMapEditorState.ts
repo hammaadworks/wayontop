@@ -10,6 +10,7 @@ export function useMapEditorState() {
 
     const [testingStamp, setTestingStamp] = useState<GraphNode | null>(null);
     const [isLocked, setIsLocked] = useState(true);
+    const [selectedTrace, setSelectedTrace] = useState<any>(null);
 
     return {
         mode, setMode,
@@ -18,6 +19,7 @@ export function useMapEditorState() {
         selectedEdge, setSelectedEdge,
         edgeStartNode, setEdgeStartNode,
         testRoutePath, setTestRoutePath,
-        testingStamp, setTestingStamp
+        testingStamp, setTestingStamp,
+        selectedTrace, setSelectedTrace
     };
 }

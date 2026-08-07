@@ -12,6 +12,7 @@ import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {CameraView} from './CameraView';
 import {TopNavigationBar} from './map/TopNavigationBar';
 import {MapFloatingControls} from './map/MapFloatingControls';
+import {PiPCamera} from './PiPCamera';
 import {MapBottomBar} from './map/MapBottomBar';
 import {EditorPanels} from './map/EditorPanels';
 import {distanceInMeters, findShortestPath} from '@wayontop/ui/lib/routing';
@@ -63,27 +64,30 @@ const ANIMATED_MAP_STYLE: any = {
     }]
 };
 
-const INTERACTIVE_LAYER_IDS = ['edges-core', 'edges-glow'];
+const INTERACTIVE_LAYER_IDS = ['edges-core', 'edges-glow', 'trace-layer-core', 'trace-layer-glow'];
 
 const EDGES_GLOW_PAINT: any = {
-    'line-color': '#6366f1',
-    'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 16, 12],
-    'line-opacity': ['case', ['boolean', ['get', 'isSelected'], false], 0.3, 0.15]
+    'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#f59e0b', '#3b82f6'],
+    'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 12, 8],
+    'line-opacity': 0.3
 };
 const ROUND_LAYOUT: any = {'line-cap': 'round', 'line-join': 'round'};
 const EDGES_CORE_PAINT_VIEW: any = {
-    'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#f59e0b', '#6366f1'],
+    'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#fbbf24', '#60a5fa'],
     'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 6, 4],
-    'line-dasharray': [1]
+    'line-opacity': 1
 };
-const EDGES_CORE_PAINT_ADD: any = {...EDGES_CORE_PAINT_VIEW, 'line-dasharray': [2, 2]};
+const EDGES_CORE_PAINT_ADD: any = {...EDGES_CORE_PAINT_VIEW, 'line-dasharray': [2, 2], 'line-opacity': 0.8};
 
-const TEST_ROUTE_GLOW_PAINT: any = {'line-color': '#10b981', 'line-width': 14, 'line-opacity': 0.3};
+const TEST_ROUTE_GLOW_PAINT: any = {
+    'line-color': '#059669',
+    'line-width': 16, 
+    'line-opacity': 0.4
+};
 const TEST_ROUTE_PAINT: any = {
-    'line-color': '#10b981',
-    'line-width': 6,
-    'line-dasharray': [0.5, 1.5],
-    'line-opacity': 0.9
+    'line-color': '#34d399', 
+    'line-width': 8,
+    'line-opacity': 1
 };
 
 const SPONSOR_FILL_COLOR: any = [
@@ -121,14 +125,16 @@ const SPONSOR_CIRCUMFERENCE_PAINT: any = {
     'text-opacity': 0.8
 };
 
-
 const TRACE_GLOW_PAINT: any = {
     'line-color': '#ef4444',
-    'line-width': 8,
-    'line-opacity': 0.2,
-    'line-dasharray': [0.1, 1]
+    'line-width': 14,
+    'line-opacity': 0.3
 };
-const TRACE_CORE_PAINT: any = {'line-color': '#ef4444', 'line-width': 3, 'line-opacity': 0.8, 'line-dasharray': [1, 2]};
+const TRACE_CORE_PAINT: any = {
+    'line-color': '#f87171', 
+    'line-width': 6, 
+    'line-opacity': 1
+};
 
 const isSponsorFilled = (s: any) => !!(s.logo_asset || s.banner_asset || s.video_asset || s.tagline);
 
@@ -154,12 +160,10 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setSelectedNode,
         selectedEdge,
         setSelectedEdge,
-        edgeStartNode,
-        setEdgeStartNode,
-        testRoutePath,
-        setTestRoutePath,
-        testingStamp,
-        setTestingStamp,
+        edgeStartNode, setEdgeStartNode,
+        testRoutePath, setTestRoutePath,
+        testingStamp, setTestingStamp,
+        selectedTrace, setSelectedTrace,
         isLocked,
         setIsLocked
     } = editorState;
@@ -178,6 +182,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
     const [bearing, setBearing] = useState(0);
+
+    useEffect(() => {
+        if (isLocked && recording) {
+            setRecording(false);
+        }
+    }, [isLocked, recording]);
+
 
     const [lassoPoints, setLassoPoints] = useState<[number, number][]>([]);
     const [mergeModalOpen, setMergeModalOpen] = useState(false);
@@ -314,9 +325,12 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             setEdgeStartNode(newNode);
         } else if (mode === 'merge_nodes') {
             setLassoPoints(prev => [...prev, [latlng.lng, latlng.lat]]);
-        } else if (mode === 'view') {
+        } else {
+            setMode('view');
             setSelectedNode(null);
             setSelectedEdge(null);
+            setSelectedTrace(null);
+            setTestRoutePath(null);
         }
     };
 
@@ -593,14 +607,40 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsors, data.nodes]);
 
-    const traceGeoJSON = useMemo<GeoJSON.Feature>(() => ({
-        type: 'Feature',
-        properties: {},
-        geometry: {type: 'LineString', coordinates: rawTrace.map(t => [t.lng, t.lat])}
-    }), [rawTrace]);
+    const traceGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+        const features: GeoJSON.Feature[] = [];
+        if (data.rawTraces) {
+            data.rawTraces.forEach((trace: any, idx: number) => {
+                if (trace.length > 1) {
+                    let totalDistance = 0;
+                    for (let i = 1; i < trace.length; i++) {
+                        totalDistance += distanceInMeters(trace[i-1].lat, trace[i-1].lng, trace[i].lat, trace[i].lng);
+                    }
+                    features.push({
+                        type: 'Feature',
+                        properties: { isTrace: true, index: idx, distance_m: Math.round(totalDistance) },
+                        geometry: {type: 'LineString', coordinates: trace.map((t: any) => [t.lng, t.lat])}
+                    });
+                }
+            });
+        }
+        if (rawTrace.length > 1) {
+            let totalDistance = 0;
+            for (let i = 1; i < rawTrace.length; i++) {
+                totalDistance += distanceInMeters(rawTrace[i-1].lat, rawTrace[i-1].lng, rawTrace[i].lat, rawTrace[i].lng);
+            }
+            features.push({
+                type: 'Feature',
+                properties: { isTrace: true, index: -1, distance_m: Math.round(totalDistance) },
+                geometry: {type: 'LineString', coordinates: rawTrace.map(t => [t.lng, t.lat])}
+            });
+        }
+        return { type: 'FeatureCollection', features };
+    }, [data.rawTraces, rawTrace]);
 
     return (
         <div className="fixed inset-0 w-full font-sans text-slate-100 overflow-hidden bg-mesh-dark">
+            <PiPCamera />
             <div className="absolute inset-0 z-0">
                 {loadingGraph && (
                     <div
@@ -628,10 +668,19 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     dragPan={true}
                     onClick={(e) => {
                         if (mode === 'view') {
+                            const traceFeature = e.features?.find(f => f.layer.id === 'trace-layer-core' || f.layer.id === 'trace-layer-glow');
+                            if (traceFeature) {
+                                const {index, distance_m} = traceFeature.properties as any;
+                                setSelectedTrace({index, distance_m});
+                                setSelectedEdge(null);
+                                setSelectedNode(null);
+                                return;
+                            }
                             const edgeFeature = e.features?.find(f => f.layer.id === 'edges-core' || f.layer.id === 'edges-glow');
                             if (edgeFeature) {
                                 const {from, to, distance_m} = edgeFeature.properties as any;
                                 setSelectedEdge({from, to, distance_m});
+                                setSelectedTrace(null);
                                 setSelectedNode(null);
                                 return;
                             }
@@ -705,7 +754,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         </Source>
                     )}
 
-                    {layers.trace && rawTrace.length > 1 && (
+                    {layers.trace && traceGeoJSON.features.length > 0 && (
                         <Source id="trace-source" type="geojson" data={traceGeoJSON}>
                             <Layer id="trace-layer-glow" type="line" paint={TRACE_GLOW_PAINT} layout={ROUND_LAYOUT}/>
                             <Layer id="trace-layer-core" type="line" paint={TRACE_CORE_PAINT} layout={ROUND_LAYOUT}/>
@@ -809,6 +858,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setMode={setMode}
                 setEdgeStartNode={setEdgeStartNode}
                 isLocked={isLocked}
+                data={data}
+                setData={setData}
             />
 
             <EditorPanels
@@ -825,6 +876,19 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 testRoutePath={testRoutePath}
                 setTestRoutePath={setTestRoutePath}
                 availableTags={availableTags}
+                selectedTrace={selectedTrace}
+                setSelectedTrace={setSelectedTrace}
+                deleteTrace={(index) => {
+                    if (index === -1) {
+                        setRawTrace([]);
+                    } else {
+                        setData(prev => ({
+                            ...prev,
+                            rawTraces: prev.rawTraces?.filter((_, i) => i !== index)
+                        }));
+                    }
+                    setSelectedTrace(null);
+                }}
             />
 
             <MapBottomBar

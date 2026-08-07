@@ -39,6 +39,7 @@ export interface GraphData {
     edges: GraphEdge[];
     sponsors: SponsorZone[];
     defaultAds?: DefaultAd[];
+    rawTraces?: { lat: number; lng: number }[][];
 }
 
 export interface Stamp {

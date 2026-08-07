@@ -18,6 +18,8 @@ interface MapFloatingControlsProps {
     setMode: (mode: any) => void;
     setEdgeStartNode: (node: any) => void;
     isLocked: boolean;
+    data: any;
+    setData: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export function MapFloatingControls({
@@ -35,7 +37,9 @@ export function MapFloatingControls({
                                         mode,
                                         setMode,
                                         setEdgeStartNode,
-                                        isLocked
+                                        isLocked,
+                                        data,
+                                        setData
                                     }: Readonly<MapFloatingControlsProps>) {
     const getDirection = (b: number) => {
         const normalized = (b + 360) % 360;
@@ -80,16 +84,6 @@ export function MapFloatingControls({
             {/* Right Floating Action Buttons */}
             <div
                 className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] right-4 md:right-6 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black/60 backdrop-blur-3xl rounded-full">
-                {rawTrace.length > 0 && (
-                    <Button variant="ghost" size="icon" disabled={isLocked}
-                            className="rounded-full w-10 h-10 bg-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/40 transition-all border border-transparent hover:border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] disabled:opacity-30 disabled:cursor-not-allowed"
-                            onClick={() => {
-                                setRawTrace([]);
-                                toast.success('Cleared trace');
-                            }}>
-                        <Eraser className="w-5 h-5 drop-shadow-md"/>
-                    </Button>
-                )}
                 <Button variant="ghost" size="icon"
                         className="rounded-full w-10 h-10 bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/40 transition-all border border-transparent hover:border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
                         onClick={() => {

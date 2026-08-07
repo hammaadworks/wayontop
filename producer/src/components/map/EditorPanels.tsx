@@ -20,12 +20,16 @@ interface EditorPanelsProps {
     testRoutePath?: { path: any[]; totalDistance: number } | null;
     setTestRoutePath?: (path: any) => void;
     availableTags?: string[];
+    selectedTrace?: any;
+    setSelectedTrace?: (val: any) => void;
+    deleteTrace?: (index: number) => void;
 }
 
 export function EditorPanels({
                                  mode, selectedNode, selectedEdge, setSelectedEdge,
                                  deleteNode, deleteEdge, updateNode, isLocked,
-                                 setTestingStamp, testRoutePath, setTestRoutePath, availableTags
+                                 setTestingStamp, testRoutePath, setTestRoutePath, availableTags,
+                                 selectedTrace, setSelectedTrace, deleteTrace
                              }: Readonly<EditorPanelsProps>) {
     const [tagInput, setTagInput] = useState('');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -257,6 +261,66 @@ export function EditorPanels({
                                         className="text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-lg leading-none">
                                         {selectedEdge.distance_m}<span
                                         className="text-xl text-emerald-500/50 ml-0.5">m</span>
+                                    </div>
+                                </CardContent>
+                            </>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            {selectedTrace && mode === 'view' && !testRoutePath && (
+                <div
+                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-[4.5rem] right-[4.5rem] md:left-[5.5rem] md:right-[5.5rem] z-20 transition-all duration-300">
+                    <Card
+                        className="shadow-2xl glass-panel border-white/20 bg-[#09090b]/90 backdrop-blur-3xl text-white flex flex-col rounded-2xl overflow-hidden">
+
+                        {isLocked ? (
+                            <div className="p-2.5 flex items-center justify-between">
+                                <div className="flex flex-col gap-0.5">
+                                    <div
+                                        className="uppercase text-[9px] font-black text-red-400 tracking-widest flex items-center">
+                                        <Route className="w-3 h-3 mr-1"/> GPS Trace
+                                    </div>
+                                    <div
+                                        className="text-xl font-black tracking-tighter text-white drop-shadow-lg leading-none">
+                                        {selectedTrace.distance_m}<span
+                                        className="text-sm text-red-500/80 ml-0.5">m</span>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedTrace?.(null)}
+                                        className="h-7 w-7 text-slate-400 hover:text-white hover:bg-white/10 rounded-full shrink-0">
+                                    <X className="w-4 h-4"/>
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <CardHeader
+                                    className="py-1.5 px-3 flex flex-row items-center justify-between border-b border-white/10 shrink-0 bg-white/5">
+                                    <CardTitle
+                                        className="text-xs font-bold flex items-center text-white drop-shadow-md tracking-tight">
+                                        <Route className="w-3.5 h-3.5 mr-1.5 text-red-400"/> GPS Trace
+                                    </CardTitle>
+                                    <div className="flex gap-1">
+                                        <Button variant="ghost" size="icon" onClick={() => setSelectedTrace?.(null)}
+                                                className="h-6 w-6 text-slate-400 hover:text-white hover:bg-white/10">
+                                            <X className="w-3.5 h-3.5"/>
+                                        </Button>
+                                        <Button variant="ghost" size="icon"
+                                                onClick={() => deleteTrace?.(selectedTrace.index)}
+                                                className="h-6 w-6 text-red-500 hover:bg-red-500/20">
+                                            <Trash2 className="w-3.5 h-3.5"/>
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-2.5 flex-1 flex flex-col items-center justify-center gap-1.5">
+                                    <div
+                                        className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Distance
+                                    </div>
+                                    <div
+                                        className="text-4xl font-black text-red-400 tracking-tighter drop-shadow-lg leading-none">
+                                        {selectedTrace.distance_m}<span
+                                        className="text-xl text-red-500/50 ml-0.5">m</span>
                                     </div>
                                 </CardContent>
                             </>

@@ -14,16 +14,31 @@ export function useGeolocation(
     useEffect(() => {
         if (!recording) {
             lastRecordedNodeRef.current = null;
+            setRawTrace(currentTrace => {
+                if (currentTrace.length > 0) {
+                    setData(prev => ({
+                        ...prev,
+                        rawTraces: [...(prev.rawTraces || []), currentTrace]
+                    }));
+                }
+                return [];
+            });
         }
-    }, [recording]);
+    }, [recording, setData]);
 
     useEffect(() => {
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
+                const accuracy = position.coords.accuracy;
+                // Ignore completely wild readings
+                if (accuracy > 100) return;
+
                 const pos = {lat: position.coords.latitude, lng: position.coords.longitude};
                 setCurrentLocation(pos);
-                setCurrentAccuracy(position.coords.accuracy);
-                if (recording) {
+                setCurrentAccuracy(accuracy);
+                
+                // Trace points when recording (be forgiving for indoor/testing)
+                if (recording && accuracy <= 40) {
                     setRawTrace(prev => [...prev, pos]);
                 }
             },
@@ -35,7 +50,10 @@ export function useGeolocation(
     }, [recording]);
 
     useEffect(() => {
-        if (!currentLocation || !recording) return;
+        if (!currentLocation || !recording || currentAccuracy === null) return;
+        
+        // Check before dropping nodes for the graph to prevent zig-zags (forgiving threshold)
+        if (currentAccuracy > 40) return;
 
         const lastNode = lastRecordedNodeRef.current;
 
@@ -74,7 +92,7 @@ export function useGeolocation(
                 lastRecordedNodeRef.current = newNode;
             }
         }
-    }, [currentLocation, recording, setData]);
+    }, [currentLocation, currentAccuracy, recording, setData]);
 
     return {currentLocation, currentAccuracy, rawTrace, setRawTrace, lastRecordedNodeRef};
 }
