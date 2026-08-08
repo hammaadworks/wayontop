@@ -6,6 +6,7 @@ interface MapNodeMarkerProps {
     name?: string;
     isZoomedIn: boolean;
     isSelected?: boolean;
+    isLabelVisible?: boolean;
     opacity?: string;
 }
 
@@ -14,6 +15,7 @@ export function MapNodeMarker({
                                   name,
                                   isZoomedIn,
                                   isSelected = false,
+                                  isLabelVisible = true,
                                   opacity = 'opacity-100'
                               }: Readonly<MapNodeMarkerProps>) {
     const isNamed = name && name.trim() !== '';
@@ -63,7 +65,7 @@ export function MapNodeMarker({
         activeGlowClass = 'shadow-[0_0_20px_rgba(59,130,246,0.6)]';
     }
 
-    const showLabel = isZoomedIn && name;
+    const showLabel = isZoomedIn && name && isLabelVisible;
     const labelScale = showLabel ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-2 pointer-events-none';
 
     return (
@@ -72,7 +74,7 @@ export function MapNodeMarker({
             {/* Floating Glass Label */}
             <div
                 className={cn(
-                    "absolute bottom-[100%] mb-3 flex items-center px-3 py-1.5 rounded-full z-50",
+                    "absolute bottom-full mb-6 flex items-center px-3 py-1.5 rounded-full z-50",
                     "bg-[#1C1C1E]/90 backdrop-blur-2xl border border-white/10 shadow-2xl",
                     "transition-all duration-500 origin-bottom whitespace-nowrap",
                     labelScale,

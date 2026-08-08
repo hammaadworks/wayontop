@@ -212,19 +212,18 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
     const renderCameraInstructions = () => {
         if (gateState.camera === 'blocked') {
-            return <p>Uff, camera is busy elsewhere! 📸 Close that and try again.</p>;
+            return <p>Your camera is busy in another app right now! 📸 Close it out and let's try again.</p>;
         }
 
         if (os === 'ios') {
             if (browser === 'safari') {
                 return (
                     <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Tap the{" "}<strong>puzzle piece or icon</strong> in your search bar (prob at the
-                            bottom) &gt;{" "}
-                            <strong>Website Settings</strong> &gt; Allow Camera.
+                        <li>Tap the{" "}<strong>aA icon</strong> in your search bar &gt;{" "}
+                            <strong>Website Settings</strong> &gt; Allow Camera. 📸
                         </li>
-                        <li>If that's a vibe killer, just head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; Safari</strong> and flip the Camera switch! ✨
+                        <li>Or just head to your iPhone{" "}<strong>Settings
+                            ⚙️ &gt; Safari</strong> and toggle Camera on. ✨
                         </li>
                     </ul>
                 );
@@ -232,8 +231,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                 return (
                     <ul className="list-disc list-inside space-y-2 mt-2">
                         <li>Head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong>, and toggle that Camera on!
-                            📸
+                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> and toggle Camera on. 📸
                         </li>
                     </ul>
                 );
@@ -243,11 +241,10 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
         if (os === 'android') {
             return (
                 <ul className="list-disc list-inside space-y-2 mt-2">
-                    <li>Tap the{" "}<strong>lock 🔒 or settings icon</strong> up in the address bar &gt;{" "}
-                        <strong>Permissions</strong> &gt; Allow Camera.
+                    <li>Tap the{" "}<strong>lock 🔒 icon</strong> in your address bar &gt;{" "}
+                        <strong>Permissions</strong> &gt; Allow Camera. 📸
                     </li>
-                    <li>Or go the long way: phone{" "}<strong>Settings
-                        ⚙️ &gt; Apps &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> and grant access! 🚀
+                    <li>Or try this: Long-press the{" "}<strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> app icon &gt; tap <strong>ⓘ (App Info)</strong> &gt; Permissions &gt; Allow Camera. 🚀
                     </li>
                 </ul>
             );
@@ -255,9 +252,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
         return (
             <ul className="list-disc list-inside space-y-2 mt-2">
-                <li>Click the little{" "}<strong>lock 🔒 icon</strong> next to the website address and allow the Camera!
-                    Easy
-                    peasy. ✨
+                <li>Click the{" "}<strong>lock 🔒 icon</strong> next to the website address and allow Camera access. ✨
                 </li>
             </ul>
         );
@@ -265,18 +260,18 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
     const renderLocationInstructions = () => {
         if (gateState.location === 'blocked') {
-            return <p>We're lost! 🗺️ Make sure your phone's actual GPS/Location is turned on so we can find you.</p>;
+            return <p>We're a bit lost! 🗺️ Make sure your phone's actual GPS is turned on so we can find you.</p>;
         }
 
         if (os === 'ios') {
             if (browser === 'safari') {
                 return (
                     <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Tap the{" "}<strong>puzzle piece or icon</strong> in your search bar &gt;{" "}<strong>Website
-                            Settings</strong> &gt; Allow Location.
+                        <li>Tap the{" "}<strong>aA icon</strong> in your search bar &gt;{" "}<strong>Website
+                            Settings</strong> &gt; Allow Location. 📍
                         </li>
-                        <li>Too much work? Head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; Safari &gt; Location</strong> and allow it! 📍
+                        <li>Or just head to your iPhone{" "}<strong>Settings
+                            ⚙️ &gt; Safari &gt; Location</strong> and allow it. ✨
                         </li>
                     </ul>
                 );
@@ -284,8 +279,8 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                 return (
                     <ul className="list-disc list-inside space-y-2 mt-2">
                         <li>Open your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'} &gt; Location</strong>, and
-                            choose{" "}<strong>While Using the App</strong>! 📍
+                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'} &gt; Location</strong> and
+                            choose{" "}<strong>While Using the App</strong>. 📍
                         </li>
                     </ul>
                 );
@@ -295,12 +290,10 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
         if (os === 'android') {
             return (
                 <ul className="list-disc list-inside space-y-2 mt-2">
-                    <li>Tap the{" "}<strong>lock 🔒 or settings icon</strong> in the address bar &gt;{" "}
-                        <strong>Permissions</strong> &gt; Allow Location.
+                    <li>Tap the{" "}<strong>lock 🔒 icon</strong> in your address bar &gt;{" "}
+                        <strong>Permissions</strong> &gt; Allow Location. 📍
                     </li>
-                    <li>Or just head to your phone{" "}<strong>Settings
-                        ⚙️ &gt; Apps &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> &gt; Permissions &gt; Location!
-                        🚀
+                    <li>Or try this: Long-press the{" "}<strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> app icon &gt; tap <strong>ⓘ (App Info)</strong> &gt; Permissions &gt; Allow Location. 🚀
                     </li>
                 </ul>
             );
@@ -308,7 +301,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
         return (
             <ul className="list-disc list-inside space-y-2 mt-2">
-                <li>Click the{" "}<strong>lock 🔒 icon</strong> up top and allow Location! Boom, done. 🗺️</li>
+                <li>Click the{" "}<strong>lock 🔒 icon</strong> next to the website address and allow Location access. 🗺️</li>
             </ul>
         );
     };
@@ -364,12 +357,12 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
                 <div className="shrink-0">
                     <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center mb-1.5 tracking-tight flex items-center justify-center gap-2">
-                        {isPrimaryDenied ? 'We Need You Back 🥺' : 'Unlock the Magic ✨'}
+                        {isPrimaryDenied ? 'We Need You Back 🥺' : 'Unlock AR Mode ✨'}
                     </h2>
                     <p className="text-white/70 text-center mb-5 text-[13px] sm:text-sm leading-relaxed font-medium px-2">
                         {isPrimaryDenied
-                            ? "Your Lalbagh journey is paused! We need these permissions to guide you through the historic gardens in AR."
-                            : "To project magical crystal trails across Lalbagh Botanical Garden, we need a few permissions."}
+                            ? "Your Lalbagh journey is on pause! We need these permissions to guide you through the historic gardens in AR."
+                            : "To project AR trails across Lalbagh Botanical Garden, we need a few quick permissions."}
                     </p>
                 </div>
 
@@ -419,8 +412,8 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                         {gateState.compass === 'denied' && (
                             <div className="text-sm text-slate-300">
                                 <p className="font-bold text-white mb-1">Compass (Denied)</p>
-                                <p className="mb-3">Safari blocked the prompt because it was previously denied. We need
-                                    to reload the page to ask again.</p>
+                                <p className="mb-3">Safari blocked the prompt since it was denied earlier. We just need
+                                    to reload to ask again.</p>
                                 <button
                                     onClick={() => window.location.reload()}
                                     className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 w-full"
@@ -428,8 +421,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                                     <RefreshCw className="w-4 h-4"/>
                                     Reload Page to Retry
                                 </button>
-                                <p className="mt-3 text-xs opacity-70 leading-relaxed">If it still fails after
-                                    reloading, you may need to clear Safari Website Data in your Settings.</p>
+                                <p className="mt-3 text-xs opacity-70 leading-relaxed">If it still fails, you might need to clear Safari Website Data in your Settings.</p>
                             </div>
                         )}
                     </div>

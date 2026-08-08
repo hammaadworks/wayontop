@@ -27,6 +27,7 @@ import {useGeolocation} from '../hooks/useGeolocation';
 
 import {useMapEditorState} from '../hooks/useMapEditorState';
 import {MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
+import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 
 const SATELLITE_STYLE: any = {
     version: 8,
@@ -431,8 +432,34 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const showRoutes = zoom >= MAP_ZOOM_TIERS.ROUTES_MIN;
     const showMarkerNames = zoom >= MAP_ZOOM_TIERS.MARKER_NAMES_MIN;
     const showSponsorZones = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
-    const showSponsorRadiusText = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
     const showSponsorLogos = zoom >= MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
+
+    const sponsorMarkerData = useMemo(() => {
+        return data.sponsors.map(sponsor => {
+            const node = data.nodes.find(n => n.id === sponsor.poi_id);
+            if (!node) return null;
+            if (node.type === 'track' && !sponsor.logo_asset) return null;
+            
+            const hash = sponsor.id.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+            const randomDist = (Math.abs(hash) % 100) / 100;
+            const randomAngle = Math.abs(hash) % 360;
+            const distance_m = sponsor.radius_m * (0.4 + (randomDist * 0.4));
+            const destination = turf.destination([node.lng, node.lat], distance_m, randomAngle, {units: 'meters'});
+            const [lng, lat] = destination.geometry.coordinates;
+            return { id: `sponsor-${sponsor.id}`, lat, lng, sponsor, node };
+        }).filter(Boolean) as any[];
+    }, [data.sponsors, data.nodes]);
+
+    const collisionNodes = useMemo(() => [...data.nodes, ...sponsorMarkerData], [data.nodes, sponsorMarkerData]);
+    const { visibleLabels, calculateCollisions } = useMarkerCollision(mapRef, collisionNodes, showMarkerNames || showSponsorLogos);
+
+    useEffect(() => {
+        const raf = requestAnimationFrame(() => calculateCollisions());
+        return () => cancelAnimationFrame(raf);
+    }, [zoom, collisionNodes, showMarkerNames, showSponsorLogos, calculateCollisions]);
 
     const nodeMarkers = useMemo(() => {
         if (!showMarkers) return null;
@@ -457,6 +484,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         type={node.type}
                         name={node.name}
                         isZoomedIn={showMarkerNames}
+                        isLabelVisible={visibleLabels.has(node.id)}
                         isSelected={isSelected}
                         opacity={opacity}
                     />
@@ -464,7 +492,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             );
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMarkerNames, showMarkers]);
+    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMarkerNames, showMarkers, visibleLabels]);
 
     const sponsorMarkers = useMemo(() => {
         if (!showSponsorLogos) return null;
@@ -521,38 +549,34 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 return null;
             }
 
-            // Calculate deterministic offset based on sponsor ID to place it randomly but consistently inside the zone
-            const hash = sponsor.id.split('').reduce((a, b) => {
-                a = ((a << 5) - a) + b.charCodeAt(0);
-                return a & a;
-            }, 0);
-            const randomDist = (Math.abs(hash) % 100) / 100; // 0 to 0.99
-            const randomAngle = Math.abs(hash) % 360; // 0 to 359
-
-            // Move the blob outwards by 40% to 80% of the radius
-            const distance_m = sponsor.radius_m * (0.4 + (randomDist * 0.4));
-            const center = [node.lng, node.lat];
-            const destination = turf.destination(center, distance_m, randomAngle, {units: 'meters'});
-            const [blobLng, blobLat] = destination.geometry.coordinates;
+            const isLabelVisible = visibleLabels.has(id);
 
             return (
-                <Marker key={`sponsor-label-${sponsor.id}`} longitude={blobLng} latitude={blobLat} anchor="center">
+                <Marker key={id} longitude={lng} latitude={lat} anchor="center">
                     <div
-                        className={`pointer-events-none flex flex-col items-center justify-center transition-all duration-300 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        className={`relative pointer-events-none flex flex-col items-center justify-center transition-all duration-300 z-50 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        
+                        {/* Sponsor Floating Name Label */}
+                        <div className={`absolute bottom-full mb-2 flex items-center px-3 py-1.5 rounded-full z-50 bg-[#1C1C1E]/90 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-500 whitespace-nowrap ${isLabelVisible && sponsor.name ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-75 translate-y-2 pointer-events-none'}`}>
+                            <span className={`text-[10px] font-black tracking-widest uppercase drop-shadow-md ${textClass}`}>
+                                {sponsor.name || 'Unnamed'}
+                            </span>
+                        </div>
+
                         <div className={`rounded-full border shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center justify-center overflow-hidden
-                            ${sponsor.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
+                            ${sponsor.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 w-10 h-10 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
                             {sponsor.logo_asset ? (
                                 <img src={sponsor.logo_asset} alt="Sponsor Logo"
                                      className="w-full h-full object-cover"/>
                             ) : (
-                                <Icon className={`w-4 h-4 ${textClass}`}/>
+                                <Icon className={`w-5 h-5 ${textClass}`}/>
                             )}
                         </div>
                     </div>
                 </Marker>
             );
         });
-    }, [data.sponsors, data.nodes, layers.filledSponsors, layers.openSponsors, showSponsorLogos]);
+    }, [sponsorMarkerData, layers.filledSponsors, layers.openSponsors, showSponsorLogos, visibleLabels]);
 
     const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
@@ -737,9 +761,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         <Source id="filled-sponsors-source" type="geojson" data={filledSponsorsGeoJSON}>
                             <Layer id="filled-sponsors-layer" type="fill" paint={FILLED_SPONSORS_PAINT}/>
                             <Layer id="filled-sponsors-outline" type="line" paint={FILLED_SPONSORS_OUTLINE_PAINT}/>
-                            {showSponsorRadiusText && <Layer id="filled-sponsors-circumference" type="symbol"
-                                                             layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
-                                                             paint={SPONSOR_CIRCUMFERENCE_PAINT}/>}
                         </Source>
                     )}
 
@@ -747,9 +768,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         <Source id="open-sponsors-source" type="geojson" data={openSponsorsGeoJSON}>
                             <Layer id="open-sponsors-layer" type="fill" paint={OPEN_SPONSORS_PAINT}/>
                             <Layer id="open-sponsors-outline" type="line" paint={OPEN_SPONSORS_OUTLINE_PAINT}/>
-                            {showSponsorRadiusText && <Layer id="open-sponsors-circumference" type="symbol"
-                                                             layout={SPONSOR_CIRCUMFERENCE_LAYOUT}
-                                                             paint={SPONSOR_CIRCUMFERENCE_PAINT}/>}
                         </Source>
                     )}
 
