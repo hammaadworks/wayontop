@@ -969,12 +969,21 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 <CameraView stampName={testingStamp.name || 'Unknown Stamp'} onClose={() => setTestingStamp(null)}/>
             )}
 
-            <SponsorReelsModal
-                isOpen={!!selectedSponsorForModal}
-                onClose={() => setSelectedSponsorForModal(null)}
-                slideItems={selectedSponsorForModal ? [selectedSponsorForModal] : []}
-                initialSlideIndex={0}
-            />
+            {(() => {
+                const modalSponsors = data.sponsors || [];
+                const initialIndex = selectedSponsorForModal 
+                    ? Math.max(0, modalSponsors.findIndex(s => s.id === selectedSponsorForModal.id)) 
+                    : 0;
+                
+                return (
+                    <SponsorReelsModal
+                        isOpen={!!selectedSponsorForModal}
+                        onClose={() => setSelectedSponsorForModal(null)}
+                        slideItems={modalSponsors.length > 0 ? modalSponsors : (selectedSponsorForModal ? [selectedSponsorForModal] : [])}
+                        initialSlideIndex={initialIndex}
+                    />
+                );
+            })()}
         </div>
     );
 }
