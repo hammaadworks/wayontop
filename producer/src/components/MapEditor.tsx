@@ -141,7 +141,7 @@ const TRACE_CORE_PAINT: any = {
     'line-opacity': 1
 };
 
-const isSponsorFilled = (s: any) => !!(s.logo_asset || s.banner_asset || s.video_asset || s.tagline);
+const isSponsorFilled = (mappedSponsor: any) => !!(mappedSponsor && (mappedSponsor.logo_asset || mappedSponsor.creative_asset || mappedSponsor.tagline));
 
 export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue, onBack: () => void }>) {
     const mapRef = useRef<any>(null);
@@ -428,48 +428,75 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     latestFns.current = {updateNodePosition, handleNodeClick};
 
     const showVenuePin = zoom < MAP_ZOOM_TIERS.VENUE_PIN_MAX;
-    const showMarkers = zoom >= MAP_ZOOM_TIERS.MARKERS_MIN;
+    const showMajorPins = zoom >= MAP_ZOOM_TIERS.MAJOR_PINS_MIN;
+    const showAllPins = zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN;
     const showRoutes = zoom >= MAP_ZOOM_TIERS.ROUTES_MIN;
-    const showMarkerNames = zoom >= MAP_ZOOM_TIERS.MARKER_NAMES_MIN;
+    const showMajorNames = zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN;
+    const showAllNames = zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
     const showSponsorZones = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
     const showSponsorLogos = zoom >= MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
 
     const sponsorMarkerData = useMemo(() => {
-        return data.sponsors.map(sponsor => {
-            const node = data.nodes.find(n => n.id === sponsor.poi_id);
-            if (!node) return null;
-            if (node.type === 'track' && !sponsor.logo_asset) return null;
+        return (data.sponsorZones || []).flatMap(zone => {
+            const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
+            if (nodes.length === 0) return [];
             
-            const hash = sponsor.id.split('').reduce((a, b) => {
-                a = ((a << 5) - a) + b.charCodeAt(0);
-                return a & a;
-            }, 0);
-            const randomDist = (Math.abs(hash) % 100) / 100;
-            const randomAngle = Math.abs(hash) % 360;
-            const distance_m = sponsor.radius_m * (0.4 + (randomDist * 0.4));
-            const destination = turf.destination([node.lng, node.lat], distance_m, randomAngle, {units: 'meters'});
-            const [lng, lat] = destination.geometry.coordinates;
-            return { id: `sponsor-${sponsor.id}`, lat, lng, sponsor, node };
+            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
+            const mappedSponsors = sponsorIds.length > 0 
+                ? sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)).filter(Boolean)
+                : [undefined];
+                
+            return nodes.flatMap(node => {
+                return mappedSponsors.map((mappedSponsor, idx) => {
+                    if (node.type === 'track' && !mappedSponsor?.logo_asset) return null;
+                    
+                    const hash = `${zone.id}-${node.id}`.split('').reduce((a, b) => {
+                        a = ((a << 5) - a) + b.charCodeAt(0);
+                        return a & a;
+                    }, 0);
+                    const randomDist = (Math.abs(hash) % 100) / 100;
+                    
+                    // Distribute bubbles evenly in a circle to prevent overlap
+                    const baseAngle = (360 / mappedSponsors.length) * idx;
+                    const angleOffset = (Math.abs(hash) % 30) - 15; // slight random jitter
+                    const angle = baseAngle + angleOffset;
+
+                    // Place them at 50% to 80% of the radius to keep them inside the zone but not on dead center
+                    const distance_m = zone.radius_m * (0.5 + (randomDist * 0.3));
+                    
+                    const destination = turf.destination([node.lng, node.lat], distance_m, angle, {units: 'meters'});
+                    const [lng, lat] = destination.geometry.coordinates;
+                    return { id: `sponsor-${zone.id}-${node.id}-${idx}`, lat, lng, zone, mappedSponsor, node };
+                });
+            });
         }).filter(Boolean) as any[];
-    }, [data.sponsors, data.nodes]);
+    }, [data.sponsorZones, data.sponsors, data.nodes]);
 
     const collisionNodes = useMemo(() => [...data.nodes, ...sponsorMarkerData], [data.nodes, sponsorMarkerData]);
-    const { visibleLabels, calculateCollisions } = useMarkerCollision(mapRef, collisionNodes, showMarkerNames || showSponsorLogos);
+    const { visibleLabels, calculateCollisions } = useMarkerCollision(mapRef, collisionNodes, showMajorNames || showSponsorLogos);
 
     useEffect(() => {
         const raf = requestAnimationFrame(() => calculateCollisions());
         return () => cancelAnimationFrame(raf);
-    }, [zoom, collisionNodes, showMarkerNames, showSponsorLogos, calculateCollisions]);
+    }, [zoom, collisionNodes, showMajorNames, showAllNames, showSponsorLogos, calculateCollisions]);
 
     const nodeMarkers = useMemo(() => {
-        if (!showMarkers) return null;
+        if (!showMajorPins) return null;
         return data.nodes.filter(n => {
             if (!layers.pois && (n.type === 'poi' || n.type === 'stamp' || n.type === 'gate' || n.type === 'facility')) return false;
-            return !(!layers.tracks && n.type === 'track');
+            if (!layers.tracks && n.type === 'track') return false;
+            
+            const isMajorNode = n.type === 'poi' || n.type === 'facility' || n.type === 'gate';
+            if (!isMajorNode && !showAllPins) return false;
 
+            return true;
         }).map(node => {
             const isSelected = selectedNode?.id === node.id;
             const opacity = mode === 'add_edge' && edgeStartNode?.id === node.id ? 'opacity-50' : 'opacity-100';
+            
+            const isMajorNode = node.type === 'poi' || node.type === 'facility' || node.type === 'gate';
+            const showThisMarkerName = isMajorNode ? showMajorNames : showAllNames;
+
             return (
                 <Marker
                     key={node.id} longitude={node.lng} latitude={node.lat} anchor="center"
@@ -483,7 +510,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     <MapNodeMarker
                         type={node.type}
                         name={node.name}
-                        isZoomedIn={showMarkerNames}
+                        isZoomedIn={showThisMarkerName}
                         isLabelVisible={visibleLabels.has(node.id)}
                         isSelected={isSelected}
                         opacity={opacity}
@@ -492,19 +519,16 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             );
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMarkerNames, showMarkers, visibleLabels]);
+    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMajorNames, showAllNames, showMajorPins, showAllPins, visibleLabels]);
 
     const sponsorMarkers = useMemo(() => {
         if (!showSponsorLogos) return null;
         if (!layers.filledSponsors && !layers.openSponsors) return null;
 
-        return (data.sponsors || []).map(sponsor => {
-            const isFilled = isSponsorFilled(sponsor);
-            if (!isFilled) return null; // Unsponsored zones have no bubbles
-            if (!layers.filledSponsors) return null;
-
-            const node = (data.nodes || []).find(n => n.id === sponsor.poi_id);
-            if (!node) return null;
+        return sponsorMarkerData.map(({id, lat, lng, zone, mappedSponsor, node}) => {
+            const isFilled = isSponsorFilled(mappedSponsor);
+            if (!isFilled && !layers.openSponsors) return null;
+            if (isFilled && !layers.filledSponsors) return null;
 
             const type = node.type || 'unknown';
             let Icon = AlertTriangle;
@@ -545,28 +569,22 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 shadowClass = 'shadow-blue-500/20';
             }
 
-            if (type === 'track' && !sponsor.logo_asset) {
+            if (type === 'track' && !mappedSponsor?.logo_asset) {
                 return null;
             }
 
             const isLabelVisible = visibleLabels.has(id);
+            const displayName = mappedSponsor?.name || zone.name || 'Unnamed';
 
             return (
                 <Marker key={id} longitude={lng} latitude={lat} anchor="center">
                     <div
                         className={`relative pointer-events-none flex flex-col items-center justify-center transition-all duration-300 z-50 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
                         
-                        {/* Sponsor Floating Name Label */}
-                        <div className={`absolute bottom-full mb-2 flex items-center px-3 py-1.5 rounded-full z-50 bg-[#1C1C1E]/90 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-500 whitespace-nowrap ${isLabelVisible && sponsor.name ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-75 translate-y-2 pointer-events-none'}`}>
-                            <span className={`text-[10px] font-black tracking-widest uppercase drop-shadow-md ${textClass}`}>
-                                {sponsor.name || 'Unnamed'}
-                            </span>
-                        </div>
-
                         <div className={`rounded-full border shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center justify-center overflow-hidden
-                            ${sponsor.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 w-10 h-10 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
-                            {sponsor.logo_asset ? (
-                                <img src={sponsor.logo_asset} alt="Sponsor Logo"
+                            ${mappedSponsor?.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 w-10 h-10 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
+                            {mappedSponsor?.logo_asset ? (
+                                <img src={mappedSponsor.logo_asset} alt="Sponsor Logo"
                                      className="w-full h-full object-cover"/>
                             ) : (
                                 <Icon className={`w-5 h-5 ${textClass}`}/>
@@ -606,29 +624,44 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
     const filledSponsorsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
-        features: data.sponsors.filter(isSponsorFilled).map(sponsor => {
-            const node = data.nodes.find(n => n.id === sponsor.poi_id);
-            if (!node) return null;
-            return turf.circle([node.lng, node.lat], sponsor.radius_m, {
+        features: (data.sponsorZones || []).filter(z => {
+            const sponsorIds = z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : []);
+            const sponsors = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id));
+            return sponsors.some(sp => isSponsorFilled(sp));
+        }).flatMap(zone => {
+            const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
+            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
+            const names = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)?.name).filter(Boolean);
+            const title = names.length > 0 ? names.join(', ') : zone.name || 'Unnamed';
+            
+            return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m, type: node.type}
-            });
+                properties: {name: title, radius: zone.radius_m, type: node.type}
+            }));
         }).filter(Boolean) as GeoJSON.Feature[]
-    }), [data.sponsors, data.nodes]);
+    }), [data.sponsorZones, data.sponsors, data.nodes]);
 
     const openSponsorsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
-        features: data.sponsors.filter(s => !isSponsorFilled(s)).map(sponsor => {
-            const node = data.nodes.find(n => n.id === sponsor.poi_id);
-            if (!node) return null;
-            return turf.circle([node.lng, node.lat], sponsor.radius_m, {
+        features: (data.sponsorZones || []).filter(z => {
+            const sponsorIds = z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : []);
+            if (sponsorIds.length === 0) return true;
+            const sponsors = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id));
+            return !sponsors.some(sp => isSponsorFilled(sp));
+        }).flatMap(zone => {
+            const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
+            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
+            const names = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)?.name).filter(Boolean);
+            const title = names.length > 0 ? names.join(', ') : zone.name || 'Unnamed';
+
+            return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: sponsor.name || 'Unnamed', radius: sponsor.radius_m, type: node.type}
-            });
+                properties: {name: title, radius: zone.radius_m, type: node.type}
+            }));
         }).filter(Boolean) as GeoJSON.Feature[]
-    }), [data.sponsors, data.nodes]);
+    }), [data.sponsorZones, data.sponsors, data.nodes]);
 
     const traceGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
         const features: GeoJSON.Feature[] = [];

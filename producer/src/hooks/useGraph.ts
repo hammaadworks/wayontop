@@ -12,7 +12,7 @@ export function useGraph(currentVenue: Venue | null) {
         history: GraphData[];
         historyIndex: number;
     }>({
-        data: {nodes: [], edges: [], sponsors: [], defaultAds: []},
+        data: {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: []},
         history: [],
         historyIndex: -1
     });
@@ -70,6 +70,46 @@ export function useGraph(currentVenue: Venue | null) {
     const [syncState, setSyncState] = useState<SyncState>('idle');
     const [timeUntilSync, setTimeUntilSync] = useState<number | null>(null);
     const lastSavedData = useRef<string>('');
+    
+    // Migration helper
+    const migrateGraphData = (dataToMigrate: any): GraphData => {
+        const migrated = { ...dataToMigrate };
+        if (!migrated.sponsorZones) migrated.sponsorZones = [];
+        if (!migrated.sponsors) migrated.sponsors = [];
+        
+        if (migrated.sponsors && migrated.sponsors.length > 0 && typeof migrated.sponsors[0].poi_id !== 'undefined') {
+            // Old format detected
+            const oldSponsors = migrated.sponsors;
+            migrated.sponsorZones = oldSponsors.map((s: any) => {
+                const isFilled = s.logo_asset || s.creative_asset || s.tagline;
+                const spId = isFilled ? `sp_${s.id}` : undefined;
+                return {
+                    id: s.id,
+                    name: s.name,
+                    poi_ids: [s.poi_id],
+                    radius_m: s.radius_m,
+                    sponsor_ids: spId ? [spId] : []
+                };
+            });
+            migrated.sponsors = oldSponsors.filter((s: any) => s.logo_asset || s.creative_asset || s.tagline).map((s: any) => ({
+                id: `sp_${s.id}`,
+                name: s.name,
+                logo_asset: s.logo_asset,
+                creative_asset: s.creative_asset,
+                tagline: s.tagline,
+                cta_link: '',
+                is_default_ad: false
+            }));
+        } else {
+            // Ensure poi_ids and sponsor_ids exist on existing zones
+            migrated.sponsorZones = migrated.sponsorZones.map((z: any) => ({
+                ...z,
+                poi_ids: z.poi_ids || (z.poi_id ? [z.poi_id] : []),
+                sponsor_ids: z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : [])
+            }));
+        }
+        return migrated;
+    };
 
     const loadGraph = useCallback(async () => {
         if (!currentVenue) return;
@@ -87,7 +127,7 @@ export function useGraph(currentVenue: Venue | null) {
         if (error && error.code !== 'PGRST116') {
             toast.error('Failed to load graph: ' + error.message);
         } else if (blob?.data) {
-            remoteData = blob.data as GraphData;
+            remoteData = migrateGraphData(blob.data);
             remoteTimestamp = new Date(blob.updated_at).getTime();
         }
 
@@ -99,7 +139,7 @@ export function useGraph(currentVenue: Venue | null) {
             try {
                 const parsed = JSON.parse(localRaw);
                 if (parsed.data && parsed.timestamp) {
-                    localData = parsed.data;
+                    localData = migrateGraphData(parsed.data);
                     localTimestamp = parsed.timestamp;
                 }
             } catch (e) {
@@ -159,7 +199,7 @@ export function useGraph(currentVenue: Venue | null) {
                 timestamp: remoteTimestamp
             }));
         } else {
-            finalData = {nodes: [], edges: [], sponsors: [], defaultAds: []};
+            finalData = {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: []};
             lastSavedData.current = JSON.stringify(finalData);
         }
 

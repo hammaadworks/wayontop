@@ -6,8 +6,10 @@ import {Card, CardContent, CardHeader, CardTitle} from '@wayontop/ui/components/
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Label} from '@wayontop/ui/components/ui/label';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
+import {Checkbox} from '@wayontop/ui/components/ui/checkbox';
+import {ScrollArea} from '@wayontop/ui/components/ui/scroll-area';
 import {toast} from 'sonner';
-import type {DefaultAd, GraphData, SponsorZone} from '@wayontop/ui/lib/types';
+import type {GraphData, SponsorZone, Sponsor} from '@wayontop/ui/lib/types';
 import {supabase} from '@wayontop/ui/lib/supabase';
 
 interface SponsorManagerProps {
@@ -17,19 +19,24 @@ interface SponsorManagerProps {
 
 export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'sponsors' | 'defaultAds'>('sponsors');
-    const [editingSponsorId, setEditingSponsorId] = useState<string | null>(null);
-    const [sponsorForm, setSponsorForm] = useState<Partial<SponsorZone>>({});
-    const [showSponsorForm, setShowSponsorForm] = useState(false);
+    const [activeTab, setActiveTab] = useState<'zones' | 'sponsors'>('zones');
+    
+    // Zone Form
+    const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
+    const [zoneForm, setZoneForm] = useState<Partial<SponsorZone>>({});
+    const [showZoneForm, setShowZoneForm] = useState(false);
 
-    const [editingAdId, setEditingAdId] = useState<string | null>(null);
-    const [adForm, setAdForm] = useState<Partial<DefaultAd>>({});
-    const [showAdForm, setShowAdForm] = useState(false);
+    // Sponsor Form
+    const [editingSponsorId, setEditingSponsorId] = useState<string | null>(null);
+    const [sponsorForm, setSponsorForm] = useState<Partial<Sponsor>>({});
+    const [showSponsorForm, setShowSponsorForm] = useState(false);
 
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingCreative, setUploadingCreative] = useState(false);
 
-    const handleFileUpload = async (file: File, type: 'logo' | 'creative', isAdForm: boolean = false) => {
+    const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: 'zone' | 'sponsor'; id: string; name: string } | null>(null);
+
+    const handleFileUpload = async (file: File, type: 'logo' | 'creative') => {
         if (type === 'logo') {
             if (!file.type.startsWith('image/')) {
                 toast.error('Logo must be an image file.');
@@ -70,13 +77,9 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
 
             const url = publicUrlData.publicUrl;
 
-            if (isAdForm) {
-                if (type === 'logo') setAdForm(s => ({...s, logo_asset: url}));
-                else setAdForm(s => ({...s, creative_asset: url}));
-            } else {
-                if (type === 'logo') setSponsorForm(s => ({...s, logo_asset: url}));
-                else setSponsorForm(s => ({...s, creative_asset: url}));
-            }
+            if (type === 'logo') setSponsorForm(s => ({...s, logo_asset: url}));
+            else setSponsorForm(s => ({...s, creative_asset: url}));
+            
             toast.success(`${type === 'logo' ? 'Logo' : 'Creative'} uploaded successfully!`);
         } catch (err: any) {
             console.error('Upload error:', err);
@@ -86,21 +89,69 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
         }
     };
 
+    const saveZone = () => {
+        if (!zoneForm.poi_ids?.length || !zoneForm.name || zoneForm.radius_m === undefined || zoneForm.radius_m <= 0) {
+            toast.error('Name, at least one Center Node, and a valid Radius are required.');
+            return;
+        }
+
+        if (editingZoneId) {
+            setData(prev => ({
+                ...prev,
+                sponsorZones: (prev.sponsorZones || []).map(z => z.id === editingZoneId ? {...z, ...zoneForm} as SponsorZone : z)
+            }));
+        } else {
+            setData(prev => ({
+                ...prev,
+                sponsorZones: [...(prev.sponsorZones || []), {id: `sz_${Date.now()}`, ...zoneForm} as SponsorZone]
+            }));
+        }
+        setEditingZoneId(null);
+        setZoneForm({});
+        setShowZoneForm(false);
+    };
+
+    const deleteZone = (id: string, name: string) => {
+        setDeleteConfirm({ isOpen: true, type: 'zone', id, name });
+    };
+
+    const confirmDelete = () => {
+        if (!deleteConfirm) return;
+        if (deleteConfirm.type === 'zone') {
+            setData(prev => ({
+                ...prev,
+                sponsorZones: (prev.sponsorZones || []).filter(z => z.id !== deleteConfirm.id)
+            }));
+            toast.success(`Zone deleted`);
+        } else {
+            setData(prev => ({
+                ...prev,
+                sponsors: (prev.sponsors || []).filter(s => s.id !== deleteConfirm.id),
+                sponsorZones: (prev.sponsorZones || []).map(z => ({
+                    ...z,
+                    sponsor_ids: z.sponsor_ids?.filter(sid => sid !== deleteConfirm.id) || []
+                }))
+            }));
+            toast.success(`Sponsor deleted`);
+        }
+        setDeleteConfirm(null);
+    };
+
     const saveSponsor = () => {
-        if (!sponsorForm.poi_id || !sponsorForm.name || sponsorForm.radius_m === undefined || sponsorForm.radius_m <= 0) {
-            toast.error('Name, Location, and a valid Radius are required.');
+        if (!sponsorForm.name) {
+            toast.error('Sponsor name is required.');
             return;
         }
 
         if (editingSponsorId) {
             setData(prev => ({
                 ...prev,
-                sponsors: prev.sponsors.map(s => s.id === editingSponsorId ? {...s, ...sponsorForm} as SponsorZone : s)
+                sponsors: (prev.sponsors || []).map(s => s.id === editingSponsorId ? {...s, ...sponsorForm} as Sponsor : s)
             }));
         } else {
             setData(prev => ({
                 ...prev,
-                sponsors: [...prev.sponsors, {id: `s_${Date.now()}`, ...sponsorForm} as SponsorZone]
+                sponsors: [...(prev.sponsors || []), {id: `sp_${Date.now()}`, ...sponsorForm} as Sponsor]
             }));
         }
         setEditingSponsorId(null);
@@ -108,41 +159,12 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
         setShowSponsorForm(false);
     };
 
-    const deleteSponsor = (id: string) => {
-        setData(prev => ({
-            ...prev,
-            sponsors: prev.sponsors.filter(s => s.id !== id)
-        }));
+    const deleteSponsor = (id: string, name: string) => {
+        setDeleteConfirm({ isOpen: true, type: 'sponsor', id, name });
     };
 
-    const saveAd = () => {
-        if (!adForm.name) {
-            toast.error('Name is required for a default ad.');
-            return;
-        }
-
-        if (editingAdId) {
-            setData(prev => ({
-                ...prev,
-                defaultAds: (prev.defaultAds || []).map(a => a.id === editingAdId ? {...a, ...adForm} as DefaultAd : a)
-            }));
-        } else {
-            setData(prev => ({
-                ...prev,
-                defaultAds: [...(prev.defaultAds || []), {id: `ad_${Date.now()}`, ...adForm} as DefaultAd]
-            }));
-        }
-        setEditingAdId(null);
-        setAdForm({});
-        setShowAdForm(false);
-    };
-
-    const deleteAd = (id: string) => {
-        setData(prev => ({
-            ...prev,
-            defaultAds: (prev.defaultAds || []).filter(a => a.id !== id)
-        }));
-    };
+    const sponsorZones = data.sponsorZones || [];
+    const sponsors = data.sponsors || [];
 
     return (
         <>
@@ -163,10 +185,9 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                         <div className="px-4 sm:px-6 pb-4 flex justify-between items-center">
                             <div>
                                 <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                                    <Megaphone className="w-5 h-5 text-emerald-400"/> Marketing & Ads
+                                    <Megaphone className="w-5 h-5 text-emerald-400"/> Sponsors & Zones
                                 </h2>
-                                <p className="text-sm text-slate-400 mt-1">Manage geofenced sponsor activations and
-                                    global ads.</p>
+                                <p className="text-sm text-slate-400 mt-1">Manage geofenced sponsor zones and map sponsors to them.</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}
                                     className="rounded-full hover:bg-white/10">
@@ -175,23 +196,201 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                         </div>
                         <div className="flex gap-6 px-4 sm:px-6">
                             <button
-                                onClick={() => setActiveTab('sponsors')}
-                                className={`pb-3 text-sm font-bold transition-all border-b-2 ${activeTab === 'sponsors' ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-300'}`}>
+                                onClick={() => setActiveTab('zones')}
+                                className={`pb-3 text-sm font-bold transition-all border-b-2 ${activeTab === 'zones' ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-300'}`}>
                                 Sponsor Zones
                             </button>
                             <button
-                                onClick={() => setActiveTab('defaultAds')}
-                                className={`pb-3 text-sm font-bold transition-all border-b-2 ${activeTab === 'defaultAds' ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-300'}`}>
-                                Default Ads
+                                onClick={() => setActiveTab('sponsors')}
+                                className={`pb-3 text-sm font-bold transition-all border-b-2 ${activeTab === 'sponsors' ? 'border-emerald-400 text-white' : 'border-transparent text-slate-400 hover:text-slate-300'}`}>
+                                Sponsors & Default Ads
                             </button>
                         </div>
                     </div>
                     <div className="p-4 sm:p-6 space-y-4 max-w-2xl mx-auto w-full">
-                        {activeTab === 'sponsors' ? (
+                        {activeTab === 'zones' ? (
                             <>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-semibold text-slate-300">Active Sponsors
-                                        ({data.sponsors.length})</h3>
+                                    <h3 className="text-sm font-semibold text-slate-300">Active Zones ({sponsorZones.length})</h3>
+                                    <Button size="sm"
+                                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-md border-0"
+                                            onClick={() => {
+                                                setEditingZoneId(null);
+                                                setZoneForm({});
+                                                setShowZoneForm(true);
+                                            }}>
+                                        <Plus className="w-4 h-4 mr-1"/> Create Zone
+                                    </Button>
+                                </div>
+
+                                {showZoneForm && (
+                                    <Card className="bg-black/60 border-emerald-500/30 shadow-inner">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base text-white">{editingZoneId ? 'Edit Zone' : 'New Sponsor Zone'}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Zone Name (Internal)</Label>
+                                                <Input className="bg-black/50 border-white/20 text-white"
+                                                       value={zoneForm.name || ''}
+                                                       onChange={e => setZoneForm(s => ({...s, name: e.target.value}))}/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Center Nodes (Select multiple)</Label>
+                                                <ScrollArea className="h-40 bg-black/50 border border-white/10 rounded-md p-2">
+                                                    <div className="space-y-2">
+                                                        {(() => {
+                                                            const assignedNodeIds = new Set(
+                                                                (data.sponsorZones || [])
+                                                                    .filter(z => z.id !== editingZoneId)
+                                                                    .flatMap(z => z.poi_ids || [])
+                                                            );
+                                                            const availableNodes = data.nodes.filter(n => n.type !== 'track' || (n.type === 'track' && n.name && n.name.trim() !== ''));
+                                                            const unassignedNodes = availableNodes.filter(n => !assignedNodeIds.has(n.id));
+                                                            const assignedNodes = availableNodes.filter(n => assignedNodeIds.has(n.id));
+                                                            
+                                                            return [...unassignedNodes, ...assignedNodes].map(n => {
+                                                                const isAssigned = assignedNodeIds.has(n.id);
+                                                                return (
+                                                                    <label key={n.id} className={`flex items-center gap-2 py-1 rounded px-2 ${isAssigned ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5'}`}>
+                                                                        <Checkbox
+                                                                            checked={zoneForm.poi_ids?.includes(n.id) || false}
+                                                                            disabled={isAssigned}
+                                                                            onCheckedChange={(checked) => {
+                                                                                if (isAssigned) return;
+                                                                                setZoneForm(s => {
+                                                                                    const current = s.poi_ids || [];
+                                                                                    return {
+                                                                                        ...s,
+                                                                                        poi_ids: checked ? [...current, n.id] : current.filter(id => id !== n.id)
+                                                                                    };
+                                                                                });
+                                                                            }}
+                                                                            className="border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                                                        />
+                                                                        <span className="text-sm text-slate-300">
+                                                                            {n.name || 'Unnamed Node'} {isAssigned && <span className="text-[10px] text-slate-500 ml-1">(Assigned)</span>}
+                                                                        </span>
+                                                                    </label>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Radius (meters)</Label>
+                                                <Input type="number" value={zoneForm.radius_m || ''}
+                                                       onChange={e => setZoneForm(s => ({...s, radius_m: Number(e.target.value)}))} 
+                                                       className="bg-black/50 border-white/20 text-white"/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Map to Sponsors (Select multiple)</Label>
+                                                <ScrollArea className="h-40 bg-black/50 border border-white/10 rounded-md p-2">
+                                                    <div className="space-y-2">
+                                                        {sponsors.map(sp => (
+                                                            <label key={sp.id} className="flex items-center gap-2 cursor-pointer py-1 hover:bg-white/5 rounded px-2">
+                                                                <Checkbox
+                                                                    checked={zoneForm.sponsor_ids?.includes(sp.id) || false}
+                                                                    onCheckedChange={(checked) => {
+                                                                        setZoneForm(s => {
+                                                                            const current = s.sponsor_ids || [];
+                                                                            return {
+                                                                                ...s,
+                                                                                sponsor_ids: checked ? [...current, sp.id] : current.filter(id => id !== sp.id)
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                    className="border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                                                />
+                                                                <span className="text-sm text-slate-300">
+                                                                    {sp.name} {sp.is_default_ad ? <span className="text-[10px] text-slate-500 ml-1">(Default Ad)</span> : ''}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                        {sponsors.length === 0 && (
+                                                            <p className="text-xs text-slate-500 italic p-2">No sponsors created yet.</p>
+                                                        )}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
+                                            <div className="flex gap-2 pt-2">
+                                                <Button onClick={saveZone} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save Zone</Button>
+                                                <Button variant="outline" className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                                                        onClick={() => {
+                                                            setEditingZoneId(null);
+                                                            setZoneForm({});
+                                                            setShowZoneForm(false);
+                                                        }}>Cancel</Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                <div className="space-y-3">
+                                    {sponsorZones.map(zone => {
+                                        const mappedSponsors = (zone.sponsor_ids || []).map(id => sponsors.find(s => s.id === id)).filter(Boolean) as Sponsor[];
+                                        const nodeNames = (zone.poi_ids || []).map(id => data.nodes.find(n => n.id === id)?.name || 'Unknown Node');
+                                        return (
+                                            <div key={zone.id} className="bg-black/40 border border-slate-500/30 rounded-xl p-3 flex flex-col gap-2">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1 pr-2">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <p className="font-bold text-emerald-400">{zone.name}</p>
+                                                            {mappedSponsors.length > 0 ? (
+                                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+                                                                    {mappedSponsors.length} Allocated
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-500/20 text-slate-400 border border-slate-500/30 uppercase tracking-wider">
+                                                                    Open
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-slate-400">Radius: {zone.radius_m}m around {nodeNames.join(', ')}</p>
+                                                        {mappedSponsors.length > 0 && (
+                                                            <div className="text-xs text-emerald-300 mt-2 flex flex-col gap-1">
+                                                                <span className="text-[10px] uppercase text-emerald-500/70 font-bold tracking-wider">Sponsors</span>
+                                                                {mappedSponsors.map(sp => (
+                                                                    <p key={sp.id} className="flex items-center gap-1">↳ {sp.name}</p>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-1 shrink-0">
+                                                        <Button variant="ghost" size="icon" onClick={() => {
+                                                            setEditingZoneId(zone.id);
+                                                            setZoneForm({
+                                                                ...zone, 
+                                                                poi_ids: zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []),
+                                                                sponsor_ids: zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : [])
+                                                            });
+                                                            setShowZoneForm(true);
+                                                        }}>
+                                                            <Pencil className="w-4 h-4 text-slate-300"/>
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon"
+                                                                className="text-red-500 hover:text-red-700 hover:bg-red-500/20"
+                                                                onClick={() => deleteZone(zone.id, zone.name)}>
+                                                            <Trash2 className="w-4 h-4"/>
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {sponsorZones.length === 0 && !showZoneForm && (
+                                        <div className="text-center py-8 text-slate-500 text-sm">
+                                            No sponsor zones defined yet.
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-slate-300">Sponsors & Ads ({sponsors.length})</h3>
                                     <Button size="sm"
                                             className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-md border-0"
                                             onClick={() => {
@@ -199,108 +398,72 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                 setSponsorForm({});
                                                 setShowSponsorForm(true);
                                             }}>
-                                        <Plus className="w-4 h-4 mr-1"/> Add
+                                        <Plus className="w-4 h-4 mr-1"/> Create Sponsor
                                     </Button>
                                 </div>
 
                                 {showSponsorForm && (
-                                    <Card className="bg-black/60 border-emerald-500/30 shadow-inner">
+                                    <Card className="bg-black/60 border-emerald-500/30 shadow-inner mb-6">
                                         <CardHeader className="pb-3">
-                                            <CardTitle
-                                                className="text-base text-white">{editingSponsorId ? 'Edit Sponsor' : 'New Sponsor'}</CardTitle>
+                                            <CardTitle className="text-base text-white">{editingSponsorId ? 'Edit Sponsor' : 'New Sponsor / Ad'}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-4">
                                             <div className="space-y-2">
-                                                <Label className="text-slate-300">Sponsor Name</Label>
+                                                <Label className="text-slate-300">Sponsor/Brand Name</Label>
                                                 <Input className="bg-black/50 border-white/20 text-white"
                                                        value={sponsorForm.name || ''}
-                                                       onChange={e => setSponsorForm(s => ({
-                                                           ...s,
-                                                           name: e.target.value
-                                                       }))}/>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Center Node (Zone Origin)</Label>
-                                                <Select value={sponsorForm.poi_id}
-                                                        onValueChange={v => setSponsorForm(s => ({
-                                                            ...s,
-                                                            poi_id: v || undefined
-                                                        }))}>
-                                                    <SelectTrigger
-                                                        className="bg-black/50 border-white/20 text-white font-medium">
-                                                        <SelectValue placeholder="Select a Node"/>
-                                                    </SelectTrigger>
-                                                    <SelectContent
-                                                        className="bg-black/90 border-white/20 text-white max-h-60 z-[10000]">
-                                                        {data.nodes.filter(n => n.type !== 'track' || (n.type === 'track' && n.name && n.name.trim() !== '')).map(n => (
-                                                            <SelectItem key={n.id} value={n.id}
-                                                                        className="hover:bg-white/10">
-                                                                {n.name || `Unnamed Node`}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Radius (meters)</Label>
-                                                <Input type="number" value={sponsorForm.radius_m || ''}
-                                                       onChange={e => setSponsorForm(s => ({
-                                                           ...s,
-                                                           radius_m: Number(e.target.value)
-                                                       }))} className="bg-black/50 border-white/20 text-white"/>
+                                                       onChange={e => setSponsorForm(s => ({...s, name: e.target.value}))}/>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-slate-300">Tagline / Message</Label>
                                                 <Input value={sponsorForm.tagline || ''}
-                                                       onChange={e => setSponsorForm(s => ({
-                                                           ...s,
-                                                           tagline: e.target.value
-                                                       }))}
+                                                       onChange={e => setSponsorForm(s => ({...s, tagline: e.target.value}))}
                                                        className="bg-black/50 border-white/20 text-white"/>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-slate-300">Logo Asset (1:1
-                                                    Image, &lt; 500KB)</Label>
+                                                <Label className="text-slate-300">CTA Link (URL)</Label>
+                                                <Input type="url" placeholder="https://..." value={sponsorForm.cta_link || ''}
+                                                       onChange={e => setSponsorForm(s => ({...s, cta_link: e.target.value}))}
+                                                       className="bg-black/50 border-white/20 text-white"/>
+                                                <p className="text-[10px] text-slate-400">Customers will be routed here. Clicks are logged to analytics.</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <input type="checkbox" id="is_default_ad" 
+                                                       checked={sponsorForm.is_default_ad || false}
+                                                       onChange={e => setSponsorForm(s => ({...s, is_default_ad: e.target.checked}))}
+                                                       className="rounded bg-black/50 border-white/20 text-emerald-500 focus:ring-emerald-500"/>
+                                                <Label htmlFor="is_default_ad" className="text-slate-300">This is a Default Ad (fallback for open zones)</Label>
+                                            </div>
+
+                                            <div className="space-y-2 pt-2">
+                                                <Label className="text-slate-300">Logo Asset (1:1 Image, &lt; 500KB)</Label>
                                                 <div className="flex items-center gap-2">
                                                     <Input type="file" accept="image/*" onChange={e => {
                                                         const file = e.target.files?.[0];
-                                                        if (file) handleFileUpload(file, 'logo', false);
+                                                        if (file) handleFileUpload(file, 'logo');
                                                     }} className="bg-black/50 border-white/20 text-white flex-1"
                                                            disabled={uploadingLogo}/>
-                                                    {uploadingLogo &&
-                                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
+                                                    {uploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
                                                 </div>
                                                 {sponsorForm.logo_asset &&
-                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a
-                                                        href={sponsorForm.logo_asset} target="_blank" rel="noreferrer"
-                                                        className="underline hover:text-emerald-300">{sponsorForm.logo_asset}</a>
-                                                    </p>}
+                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a href={sponsorForm.logo_asset} target="_blank" rel="noreferrer" className="underline hover:text-emerald-300">{sponsorForm.logo_asset}</a></p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-slate-300">Creative Asset (9:16
-                                                    MP4, &lt; 10MB)</Label>
+                                                <Label className="text-slate-300">Creative Asset (9:16 MP4, &lt; 10MB)</Label>
                                                 <div className="flex items-center gap-2">
                                                     <Input type="file" accept="video/mp4" onChange={e => {
                                                         const file = e.target.files?.[0];
-                                                        if (file) handleFileUpload(file, 'creative', false);
+                                                        if (file) handleFileUpload(file, 'creative');
                                                     }} className="bg-black/50 border-white/20 text-white flex-1"
                                                            disabled={uploadingCreative}/>
-                                                    {uploadingCreative &&
-                                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
+                                                    {uploadingCreative && <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
                                                 </div>
                                                 {sponsorForm.creative_asset &&
-                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a
-                                                        href={sponsorForm.creative_asset} target="_blank"
-                                                        rel="noreferrer"
-                                                        className="underline hover:text-emerald-300">{sponsorForm.creative_asset}</a>
-                                                    </p>}
+                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a href={sponsorForm.creative_asset} target="_blank" rel="noreferrer" className="underline hover:text-emerald-300">{sponsorForm.creative_asset}</a></p>}
                                             </div>
                                             <div className="flex gap-2 pt-2">
-                                                <Button onClick={saveSponsor}
-                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save
-                                                    Zone</Button>
-                                                <Button variant="outline"
-                                                        className="border-white/20 text-white hover:bg-white/10"
+                                                <Button onClick={saveSponsor} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save Sponsor</Button>
+                                                <Button variant="outline" className="border-red-500/50 text-red-500 hover:bg-red-500/10"
                                                         onClick={() => {
                                                             setEditingSponsorId(null);
                                                             setSponsorForm({});
@@ -312,222 +475,45 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                 )}
 
                                 <div className="space-y-3">
-                                    {(() => {
-                                        const typeColors: Record<string, string> = {
-                                            poi: 'text-amber-400',
-                                            stamp: 'text-fuchsia-400',
-                                            gate: 'text-emerald-400',
-                                            facility: 'text-rose-400',
-                                            track: 'text-blue-400',
-                                            unknown: 'text-slate-400'
-                                        };
-                                        const typeBorders: Record<string, string> = {
-                                            poi: 'border-amber-500/30',
-                                            stamp: 'border-fuchsia-500/30',
-                                            gate: 'border-emerald-500/30',
-                                            facility: 'border-rose-500/30',
-                                            track: 'border-blue-500/30',
-                                            unknown: 'border-slate-500/30'
-                                        };
-                                        const typeBGs: Record<string, string> = {
-                                            poi: 'bg-amber-500/20',
-                                            stamp: 'bg-fuchsia-500/20',
-                                            gate: 'bg-emerald-500/20',
-                                            facility: 'bg-rose-500/20',
-                                            track: 'bg-blue-500/20',
-                                            unknown: 'bg-slate-500/20'
-                                        };
-
-                                        const sponsors = data.sponsors || [];
-                                        const grouped = sponsors.reduce((acc, sponsor) => {
-                                            const node = (data.nodes || []).find(n => n.id === sponsor.poi_id);
-                                            const type = node?.type || 'unknown';
-                                            if (!acc[type]) acc[type] = [];
-                                            acc[type].push(sponsor);
-                                            return acc;
-                                        }, {} as Record<string, typeof sponsors>);
-
-                                        const sortedTypes = Object.keys(grouped).sort();
-
-                                        return sortedTypes.map(type => (
-                                            <div key={type} className="mb-6 space-y-3">
-                                                <h4 className={`text-xs font-bold uppercase tracking-widest ${typeColors[type] || typeColors.unknown}`}>
-                                                    {type} Nodes
-                                                </h4>
-                                                {grouped[type].map(sponsor => {
-                                                    const isFilled = !!(sponsor.logo_asset || sponsor.creative_asset || sponsor.tagline);
-                                                    const borderColor = typeBorders[type] || typeBorders.unknown;
-                                                    const textColor = typeColors[type] || typeColors.unknown;
-                                                    const bgColor = typeBGs[type] || typeBGs.unknown;
-
-                                                    return (
-                                                        <div key={sponsor.id}
-                                                             className={`bg-black/40 border rounded-xl p-3 flex flex-col gap-2 ${borderColor}`}>
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <p className={`font-bold ${textColor}`}>{sponsor.name || 'Unnamed Slot'}</p>
-                                                                        {isFilled ? (
-                                                                            <span
-                                                                                className={`px-1.5 py-0.5 rounded text-[9px] font-black ${bgColor} ${textColor} border ${borderColor} uppercase tracking-wider`}>Filled</span>
-                                                                        ) : (
-                                                                            <span
-                                                                                className="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-500/20 text-slate-400 border border-slate-500/30 uppercase tracking-wider">Open</span>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className="text-xs text-slate-400">Zone: {sponsor.radius_m}m
-                                                                        around {(data.nodes || []).find(n => n.id === sponsor.poi_id)?.name || 'Unknown'}</p>
-                                                                </div>
-                                                                <div className="flex gap-1">
-                                                                    <Button variant="ghost" size="icon" onClick={() => {
-                                                                        setEditingSponsorId(sponsor.id);
-                                                                        setSponsorForm(sponsor);
-                                                                        setShowSponsorForm(true);
-                                                                    }}>
-                                                                        <Pencil className="w-4 h-4 text-slate-300"/>
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="icon"
-                                                                            className="text-red-500 hover:text-red-700 hover:bg-red-500/20"
-                                                                            onClick={() => deleteSponsor(sponsor.id)}>
-                                                                        <Trash2 className="w-4 h-4"/>
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                            {isFilled && sponsor.tagline &&
-                                                                <p className={`text-sm italic ${textColor} opacity-80`}>"{sponsor.tagline}"</p>}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ));
-                                    })()}
-
-                                    {(data.sponsors || []).length === 0 && !showSponsorForm && (
-                                        <div className="text-center py-8 text-slate-500 text-sm">
-                                            No sponsor zones defined yet.
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-semibold text-slate-300">Default Ads
-                                        ({(data.defaultAds || []).length})</h3>
-                                    <Button size="sm"
-                                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-md border-0"
-                                            onClick={() => {
-                                                setEditingAdId(null);
-                                                setAdForm({});
-                                                setShowAdForm(true);
-                                            }}>
-                                        <Plus className="w-4 h-4 mr-1"/> Add Ad
-                                    </Button>
-                                </div>
-
-                                {showAdForm && (
-                                    <Card className="bg-black/60 border-emerald-500/30 shadow-inner mb-6">
-                                        <CardHeader className="pb-3">
-                                            <CardTitle
-                                                className="text-base text-white">{editingAdId ? 'Edit Default Ad' : 'New Default Ad'}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Ad Name / Campaign</Label>
-                                                <Input className="bg-black/50 border-white/20 text-white"
-                                                       value={adForm.name || ''}
-                                                       onChange={e => setAdForm(s => ({...s, name: e.target.value}))}/>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Tagline / Message</Label>
-                                                <Input value={adForm.tagline || ''}
-                                                       onChange={e => setAdForm(s => ({...s, tagline: e.target.value}))}
-                                                       className="bg-black/50 border-white/20 text-white"/>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Logo Asset (1:1
-                                                    Image, &lt; 500KB)</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input type="file" accept="image/*" onChange={e => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) handleFileUpload(file, 'logo', true);
-                                                    }} className="bg-black/50 border-white/20 text-white flex-1"
-                                                           disabled={uploadingLogo}/>
-                                                    {uploadingLogo &&
-                                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
-                                                </div>
-                                                {adForm.logo_asset &&
-                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a
-                                                        href={adForm.logo_asset} target="_blank" rel="noreferrer"
-                                                        className="underline hover:text-emerald-300">{adForm.logo_asset}</a>
-                                                    </p>}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Creative Asset (9:16
-                                                    MP4, &lt; 10MB)</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Input type="file" accept="video/mp4" onChange={e => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) handleFileUpload(file, 'creative', true);
-                                                    }} className="bg-black/50 border-white/20 text-white flex-1"
-                                                           disabled={uploadingCreative}/>
-                                                    {uploadingCreative &&
-                                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-400"/>}
-                                                </div>
-                                                {adForm.creative_asset &&
-                                                    <p className="text-xs text-emerald-400 truncate mt-1">Uploaded: <a
-                                                        href={adForm.creative_asset} target="_blank" rel="noreferrer"
-                                                        className="underline hover:text-emerald-300">{adForm.creative_asset}</a>
-                                                    </p>}
-                                            </div>
-                                            <div className="flex gap-2 pt-2">
-                                                <Button onClick={saveAd}
-                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save
-                                                    Ad</Button>
-                                                <Button variant="outline"
-                                                        className="border-white/20 text-white hover:bg-white/10"
-                                                        onClick={() => {
-                                                            setEditingAdId(null);
-                                                            setAdForm({});
-                                                            setShowAdForm(false);
-                                                        }}>Cancel</Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
-
-                                <div className="space-y-3">
-                                    {(data.defaultAds || []).map(ad => (
-                                        <div key={ad.id}
-                                             className="bg-black/40 border border-slate-500/30 rounded-xl p-3 flex flex-col gap-2">
+                                    {sponsors.map(sp => (
+                                        <div key={sp.id} className="bg-black/40 border border-slate-500/30 rounded-xl p-3 flex flex-col gap-2">
                                             <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="font-bold text-emerald-400">{ad.name}</p>
-                                                    <p className="text-xs text-slate-400">Global Default Ad</p>
+                                                <div className="flex gap-3">
+                                                    {sp.logo_asset && (
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0">
+                                                            <img src={sp.logo_asset} className="w-full h-full object-cover" alt="Logo" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-bold text-amber-400 flex items-center gap-2">
+                                                            {sp.name}
+                                                            {sp.is_default_ad && <span className="text-[9px] bg-slate-700 text-white px-1.5 py-0.5 rounded uppercase tracking-wider">Default Ad</span>}
+                                                        </p>
+                                                        {sp.tagline && <p className="text-xs text-slate-300 opacity-90 mt-0.5">"{sp.tagline}"</p>}
+                                                        {sp.cta_link && <p className="text-[10px] text-blue-400 mt-1 truncate max-w-[200px]">{sp.cta_link}</p>}
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-1 shrink-0">
                                                     <Button variant="ghost" size="icon" onClick={() => {
-                                                        setEditingAdId(ad.id);
-                                                        setAdForm(ad);
-                                                        setShowAdForm(true);
+                                                        setEditingSponsorId(sp.id);
+                                                        setSponsorForm(sp);
+                                                        setShowSponsorForm(true);
                                                     }}>
                                                         <Pencil className="w-4 h-4 text-slate-300"/>
                                                     </Button>
                                                     <Button variant="ghost" size="icon"
                                                             className="text-red-500 hover:text-red-700 hover:bg-red-500/20"
-                                                            onClick={() => deleteAd(ad.id)}>
+                                                            onClick={() => deleteSponsor(sp.id, sp.name)}>
                                                         <Trash2 className="w-4 h-4"/>
                                                     </Button>
                                                 </div>
                                             </div>
-                                            {ad.tagline &&
-                                                <p className="text-sm italic text-slate-300 opacity-80">"{ad.tagline}"</p>}
                                         </div>
                                     ))}
 
-                                    {(data.defaultAds || []).length === 0 && !showAdForm && (
+                                    {sponsors.length === 0 && !showSponsorForm && (
                                         <div className="text-center py-8 text-slate-500 text-sm">
-                                            No default ads defined yet.
+                                            No sponsors or default ads created yet.
                                         </div>
                                     )}
                                 </div>
@@ -536,6 +522,30 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                     </div>
                 </div>
                 , document.body)}
+
+            {deleteConfirm && createPortal(
+                <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4">
+                    <Card className="w-full max-w-sm bg-[#1C1C1E] border-white/10 shadow-2xl">
+                        <CardHeader>
+                            <CardTitle className="text-white">Delete {deleteConfirm.type === 'zone' ? 'Zone' : 'Sponsor'}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-slate-300 text-sm mb-6">
+                                Are you sure you want to delete <span className="font-bold text-white">"{deleteConfirm.name}"</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
+                                    Yes, Delete
+                                </Button>
+                                <Button className="flex-1 bg-white/10 hover:bg-white/20 text-white border-0" onClick={() => setDeleteConfirm(null)}>
+                                    Cancel
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>,
+                document.body
+            )}
         </>
     );
 }
