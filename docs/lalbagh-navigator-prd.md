@@ -167,14 +167,23 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
       "distance_m": 40
     }
   ],
+  "sponsorZones": [
+    {
+      "id": "sz1",
+      "name": "MTR Zone",
+      "poi_id": "n1",
+      "radius_m": 20,
+      "sponsor_id": "s1"
+    }
+  ],
   "sponsors": [
     {
       "id": "s1",
       "name": "MTR",
-      "poi_id": "n1",
-      "radius_m": 20,
       "logo_asset": "https://.../mtr-logo.jpg",
-      "creative_asset": "https://.../mtr-ad.mp4"
+      "creative_asset": "https://.../mtr-ad.mp4",
+      "cta_link": "https://mtr.com",
+      "is_default_ad": false
     }
   ]
 }

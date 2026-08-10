@@ -16,14 +16,24 @@ export interface GraphEdge {
     distance_m: number;
 }
 
+export interface Sponsor {
+    id: string;
+    name: string;
+    logo_asset?: string;
+    creative_asset?: string;
+    tagline?: string;
+    cta_link?: string;
+    is_default_ad?: boolean;
+}
+
 export interface SponsorZone {
     id: string;
     name: string;
-    poi_id: string;
+    poi_id?: string; // legacy
+    poi_ids: string[];
     radius_m: number;
-    creative_asset?: string;
-    tagline?: string;
-    logo_asset?: string;
+    sponsor_id?: string; // legacy
+    sponsor_ids?: string[];
 }
 
 export interface DefaultAd {
@@ -37,9 +47,11 @@ export interface DefaultAd {
 export interface GraphData {
     nodes: GraphNode[];
     edges: GraphEdge[];
-    sponsors: SponsorZone[];
+    sponsorZones: SponsorZone[];
+    sponsors: Sponsor[];
     defaultAds?: DefaultAd[];
     rawTraces?: { lat: number; lng: number }[][];
+    goldenStampName?: string;
 }
 
 export interface Stamp {

@@ -74,7 +74,7 @@ export function MapNodeMarker({
             {/* Floating Glass Label */}
             <div
                 className={cn(
-                    "absolute bottom-full mb-6 flex items-center px-3 py-1.5 rounded-full z-50",
+                    "absolute bottom-full mb-3 flex items-center px-3 py-1.5 rounded-full z-50",
                     "bg-[#1C1C1E]/90 backdrop-blur-2xl border border-white/10 shadow-2xl",
                     "transition-all duration-500 origin-bottom whitespace-nowrap",
                     labelScale,
