@@ -8,7 +8,7 @@ setWorkerUrl(workerUrl);
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
 import {toast} from 'sonner';
-import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
+import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake} from 'lucide-react';
 import {BaseModal} from '@wayontop/ui/components/BaseModal';
 
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
@@ -24,9 +24,10 @@ import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 import type {Venue} from '../hooks/useVenues';
 import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
-
 import {useMapEditorState} from '../hooks/useMapEditorState';
-import {MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
+import {Save, Map as MapIcon, RotateCcw, MousePointer2, Plus, PenTool, Trash2, Undo2, MapPin, Navigation, Tag, Loader2, Store, Users, MapPinOff, Layers} from 'lucide-react';
+import {SponsorReelsModal} from '@wayontop/ui/components/SponsorReelsModal';
+import {PRODUCER_MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 
 const SATELLITE_STYLE: any = {
@@ -109,7 +110,7 @@ const SPONSOR_FILL_COLOR: any = [
 const FILLED_SPONSORS_PAINT: any = {'fill-color': SPONSOR_FILL_COLOR, 'fill-opacity': 0.25};
 const FILLED_SPONSORS_OUTLINE_PAINT: any = {'line-color': SPONSOR_FILL_COLOR, 'line-width': 2};
 
-const OPEN_SPONSORS_PAINT: any = {'fill-color': '#ffffff', 'fill-opacity': 0.1};
+const OPEN_SPONSORS_PAINT: any = {'fill-color': '#ffffff', 'fill-opacity': 0.3};
 const OPEN_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 4]};
 
 const SPONSOR_CIRCUMFERENCE_LAYOUT: any = {
@@ -183,6 +184,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     });
     const [mapSkin, setMapSkin] = useState<'satellite' | 'animated'>('satellite');
     const [zoom, setZoom] = useState(currentVenue.zoom);
+    const [showLayerMenu, setShowLayerMenu] = useState(false);
+    const [selectedSponsorForModal, setSelectedSponsorForModal] = useState<any>(null);
 
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
@@ -427,14 +430,14 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const latestFns = useRef({updateNodePosition, handleNodeClick});
     latestFns.current = {updateNodePosition, handleNodeClick};
 
-    const showVenuePin = zoom < MAP_ZOOM_TIERS.VENUE_PIN_MAX;
-    const showMajorPins = zoom >= MAP_ZOOM_TIERS.MAJOR_PINS_MIN;
-    const showAllPins = zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN;
-    const showRoutes = zoom >= MAP_ZOOM_TIERS.ROUTES_MIN;
-    const showMajorNames = zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN;
-    const showAllNames = zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
-    const showSponsorZones = zoom >= MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
-    const showSponsorLogos = zoom >= MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
+    const showVenuePin = zoom < PRODUCER_MAP_ZOOM_TIERS.VENUE_PIN_MAX;
+    const showMajorPins = zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_PINS_MIN;
+    const showAllPins = zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_PINS_MIN;
+    const showRoutes = zoom >= PRODUCER_MAP_ZOOM_TIERS.ROUTES_MIN;
+    const showMajorNames = zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_NAMES_MIN;
+    const showAllNames = zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_NAMES_MIN;
+    const showSponsorZones = zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
+    const showSponsorLogos = zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
 
     const sponsorMarkerData = useMemo(() => {
         return (data.sponsorZones || []).flatMap(zone => {
@@ -579,7 +582,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return (
                 <Marker key={id} longitude={lng} latitude={lat} anchor="center">
                     <div
-                        className={`relative pointer-events-none flex flex-col items-center justify-center transition-all duration-300 z-50 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (mappedSponsor) {
+                                setSelectedSponsorForModal(mappedSponsor);
+                            }
+                        }}
+                        className={`relative pointer-events-auto cursor-pointer flex flex-col items-center justify-center transition-all duration-300 z-50 ${showSponsorLogos ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
                         
                         <div className={`rounded-full border shadow-[0_0_20px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center justify-center overflow-hidden
                             ${mappedSponsor?.logo_asset ? 'w-12 h-12 bg-black/80' : `p-2 w-10 h-10 ${isFilled ? bgClass : 'bg-black/60'}`} ${borderClass} ${shadowClass}`}>
@@ -959,6 +968,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             {testingStamp && (
                 <CameraView stampName={testingStamp.name || 'Unknown Stamp'} onClose={() => setTestingStamp(null)}/>
             )}
+
+            <SponsorReelsModal
+                isOpen={!!selectedSponsorForModal}
+                onClose={() => setSelectedSponsorForModal(null)}
+                slideItems={selectedSponsorForModal ? [selectedSponsorForModal] : []}
+                initialSlideIndex={0}
+            />
         </div>
     );
 }

@@ -12,7 +12,7 @@ import {Gamification} from '../lib/gamification';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 import {useMemo} from 'react';
-import {MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
+import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 import {LocateFixed} from 'lucide-react';
 
 const LALBAGH_CENTER = {lat: 12.9500, lng: 77.5850};

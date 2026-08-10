@@ -1,17 +1,19 @@
-// Configuration for progressive display of map elements based on zoom level
-export const MAP_ZOOM_TIERS = {
+export const CONSUMER_MAP_ZOOM_TIERS = {
     VENUE_PIN_MAX: 14.5,
     ROUTES_MIN: 14.5,
     
     // PINS
-    MAJOR_PINS_MIN: 15.0, // gate, poi, facility
-    ALL_PINS_MIN: 15.5,   // track, stamp, default
+    MAJOR_PINS_MIN: 15.0,
+    ALL_PINS_MIN: 15.5,
 
     // NAMES
-    MAJOR_NAMES_MIN: 16.0, // gate, poi, facility
-    ALL_NAMES_MIN: 17.0,   // track, stamp, default
+    MAJOR_NAMES_MIN: 16.0,
+    ALL_NAMES_MIN: 17.0,
+};
 
-    // SPONSORS
-    SPONSOR_ZONES_AND_RADIUS_MIN: 18.5,
-    SPONSOR_LOGOS_MIN: 17.5
+export const PRODUCER_MAP_ZOOM_TIERS = {
+    ...CONSUMER_MAP_ZOOM_TIERS,
+    // Show sponsors much earlier in the editor so producers can see them
+    SPONSOR_ZONES_AND_RADIUS_MIN: 16.0,
+    SPONSOR_LOGOS_MIN: 16.0
 };
