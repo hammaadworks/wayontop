@@ -160,7 +160,7 @@ export function StampReveal({stamp, onClose, initialScratched = false}: StampRev
                     {/* Image Title */}
                     <div className="absolute bottom-8 left-6 right-6">
                         <h2 className="text-4xl font-extrabold text-white tracking-tight leading-none drop-shadow-lg font-serif">
-                            {stamp.name}
+                            {t(stamp.name)}
                         </h2>
                     </div>
 
@@ -197,9 +197,9 @@ export function StampReveal({stamp, onClose, initialScratched = false}: StampRev
                         ) : (
                             <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-8">
                                 <div>
-                                    <h3 className="text-slate-900 text-xl font-bold mb-3">About this Discovery</h3>
+                                    <h3 className="text-slate-900 text-xl font-bold mb-3">{t('about_discovery', 'About this Discovery')}</h3>
                                     <p className="text-slate-600 leading-relaxed text-[16px]">
-                                        {stamp.description || `You discovered the incredible ${stamp.name}. This is a rare find in Lalbagh Botanical Garden. Keep exploring to collect more unique stamps!`}
+                                        {t(stamp.description || `You discovered the incredible ${t(stamp.name)}. This is a rare find in Lalbagh Botanical Garden. Keep exploring to collect more unique stamps!`)}
                                     </p>
                                 </div>
 

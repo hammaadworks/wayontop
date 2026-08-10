@@ -1,11 +1,19 @@
 import Map, {Layer, Marker, Source} from 'react-map-gl/maplibre';
+import { setWorkerUrl } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {useEffect, useRef, useState} from 'react';
+
+setWorkerUrl(workerUrl);
 import type * as GeoJSON from 'geojson';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
 import {useLocation} from '../hooks/useLocation';
 import {Gamification} from '../lib/gamification';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
+import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
+import {useMemo} from 'react';
+import {MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
+import {LocateFixed} from 'lucide-react';
 
 const LALBAGH_CENTER = {lat: 12.9500, lng: 77.5850};
 
@@ -14,15 +22,16 @@ type MapViewProps = Readonly<{
     activeRoute: { path: GraphNode[]; totalDistance: number } | null;
     stamps?: Stamp[];
     isRadar?: boolean;
+    mode?: 'map' | 'satellite' | 'ar';
 }>;
 
-export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapViewProps) {
+export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode = 'map'}: MapViewProps) {
     const {location} = useLocation();
     const collectedStampIds = Gamification.getCollectedStamps();
     const [activePopup, setActivePopup] = useState<string | null>(null);
     const mapRef = useRef<any>(null);
 
-    const [mapSkin, setMapSkin] = useState<'animated' | 'satellite'>('animated');
+    const actualSkin = mode === 'satellite' ? 'satellite' : 'animated';
     const [zoom, setZoom] = useState(isRadar ? 16.5 : 16);
 
     useEffect(() => {
@@ -33,6 +42,19 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
             });
         }
     }, [location, isRadar]);
+
+    const nodesAndStamps = useMemo(() => {
+        if (!graph) return [];
+        const visibleNodes = graph.nodes.filter(n => n.type !== 'track').map(n => ({...n, priority: n.type === 'gate' ? 10 : 5}));
+        const visibleStamps = stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(s => ({...s, priority: 8}));
+        return [...visibleNodes, ...visibleStamps];
+    }, [graph, stamps, collectedStampIds]);
+
+    const { visibleLabels, calculateCollisions } = useMarkerCollision(mapRef, nodesAndStamps, zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN);
+
+    useEffect(() => {
+        calculateCollisions();
+    }, [zoom, nodesAndStamps, calculateCollisions]);
 
     if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
@@ -108,16 +130,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
 
     return (
         <div className="relative w-full h-full">
-            {!isRadar && (
-                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                    <button
-                        onClick={() => setMapSkin(s => s === 'animated' ? 'satellite' : 'animated')}
-                        className="bg-white/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200/50 p-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center min-w-9"
-                    >
-                        {mapSkin === 'animated' ? '🌍 Sat' : '🗺️ Map'}
-                    </button>
-                </div>
-            )}
+
             <Map
                 ref={mapRef}
                 attributionControl={isRadar ? false : undefined}
@@ -128,7 +141,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
                     pitch: 0,
                     bearing: 0
                 }}
-                mapStyle={mapSkin === 'animated' ? animatedStyle : satelliteStyle}
+                mapStyle={actualSkin === 'animated' ? animatedStyle : satelliteStyle}
                 style={{width: '100%', height: '100%'}}
                 pitchWithRotate={true}
                 dragRotate={true}
@@ -156,7 +169,16 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
                 )}
 
                 {/* Nodes */}
-                {graph.nodes.filter(n => n.type !== 'track').map(node => (
+                {graph.nodes.filter(n => {
+                    if (n.type === 'track') return false;
+                    const isMajorNode = n.type === 'poi' || n.type === 'facility' || n.type === 'gate';
+                    if (!isMajorNode && zoom < MAP_ZOOM_TIERS.ALL_PINS_MIN) return false;
+                    if (isMajorNode && zoom < MAP_ZOOM_TIERS.MAJOR_PINS_MIN) return false;
+                    return true;
+                }).map(node => {
+                    const isMajorNode = node.type === 'poi' || node.type === 'facility' || node.type === 'gate';
+                    const showThisMarkerName = isMajorNode ? zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN : zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
+                    return (
                     <Marker key={node.id} longitude={node.lng} latitude={node.lat} anchor="center">
                         <div
                             role="button"
@@ -172,15 +194,17 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
                             <MapNodeMarker
                                 type={node.type}
                                 name={node.name}
-                                isZoomedIn={zoom >= 16}
+                                isZoomedIn={showThisMarkerName}
+                                isLabelVisible={visibleLabels.has(node.id)}
                                 isSelected={activePopup === node.id}
                             />
                         </div>
                     </Marker>
-                ))}
+                    );
+                })}
 
                 {/* Stamps */}
-                {stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(stamp => (
+                {zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN && stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(stamp => (
                     <Marker key={stamp.id} longitude={stamp.lng} latitude={stamp.lat} anchor="center">
                         <div
                             role="button"
@@ -196,7 +220,8 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
                             <MapNodeMarker
                                 type="stamp"
                                 name={stamp.name}
-                                isZoomedIn={zoom >= 16}
+                                isZoomedIn={zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN}
+                                isLabelVisible={visibleLabels.has(stamp.id)}
                                 isSelected={activePopup === stamp.id}
                             />
                         </div>
@@ -212,6 +237,26 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false}: MapV
                     </Marker>
                 )}
             </Map>
+
+            {/* Recenter Button */}
+            {!isRadar && (
+                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7.5rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto">
+                    <button
+                        className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                        onClick={() => {
+                            if (mapRef.current && location) {
+                                mapRef.current.flyTo({
+                                    center: [location.lng, location.lat],
+                                    zoom: 18,
+                                    essential: true
+                                });
+                            }
+                        }}
+                    >
+                        <LocateFixed className="w-6 h-6 drop-shadow-md" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

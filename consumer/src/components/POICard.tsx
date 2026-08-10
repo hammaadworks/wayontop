@@ -34,11 +34,11 @@ export function POICard({ poi, onClose, onNavigate }: POICardProps) {
             <X className="w-5 h-5" />
           </Button>
           <div className="absolute bottom-4 left-4">
-            <h2 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">{poi.name}</h2>
+            <h2 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">{t(poi.name)}</h2>
             <div className="flex gap-2 mt-2">
-              {poi.tags.map(tag => (
+              {poi.tags && poi.tags.map(tag => (
                 <span key={tag} className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs text-white/90 capitalize">
-                  {tag}
+                  {t(tag)}
                 </span>
               ))}
             </div>

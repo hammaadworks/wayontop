@@ -212,7 +212,7 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
                         </div>
 
                         <h3 className="text-4xl tracking-tight font-extrabold text-white mb-3 relative z-10">{t('claimed')}</h3>
-                        <p className="text-emerald-200 mb-10 font-medium text-lg relative z-10">{justClaimedStamp.name}</p>
+                        <p className="text-emerald-200 mb-10 font-medium text-lg relative z-10">{t(justClaimedStamp.name)}</p>
 
                         <div className="space-y-4 relative z-10">
                             <button
@@ -222,7 +222,7 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
                                 }}
                                 className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-amber-950 font-bold py-4 px-8 rounded-full shadow-[0_10px_30px_rgba(251,191,36,0.4)] active:scale-95 transition-all duration-300 text-lg"
                             >
-                                View Details
+                                {t('view_details', 'View Details')}
                             </button>
                             <button
                                 onClick={() => setJustClaimedStamp(null)}
@@ -259,7 +259,7 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
                                     {infoStamp.rarity} Stamp
                                 </div>
                                 <h2 className="text-3xl font-extrabold text-white tracking-tight leading-none drop-shadow-md">
-                                    {infoStamp.name}
+                                    {t(infoStamp.name)}
                                 </h2>
                             </div>
                         </div>
@@ -267,14 +267,14 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
                         {/* Body */}
                         <div className="p-6 bg-slate-900 flex-1 overflow-y-auto max-h-[40vh]">
                             <p className="text-slate-300 leading-relaxed text-[15px] mb-8">
-                                {infoStamp.description || `You discovered the incredible ${infoStamp.name}. Keep exploring to collect more stamps around Lalbagh!`}
+                                {t(infoStamp.description || `You discovered the incredible ${t(infoStamp.name)}. Keep exploring to collect more stamps around Lalbagh!`)}
                             </p>
 
                             <button
-                                onClick={() => ViralSharing.shareAchievement(infoStamp.name)}
+                                onClick={() => ViralSharing.shareAchievement(t(infoStamp.name))}
                                 className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-200 text-slate-900 font-bold py-4 px-8 rounded-full active:scale-95 transition-all duration-300 text-lg shadow-[0_5px_15px_rgba(255,255,255,0.1)]"
                             >
-                                <Share2 className="w-5 h-5"/> Share Discovery
+                                <Share2 className="w-5 h-5"/> {t('share_discovery', 'Share Discovery')}
                             </button>
                         </div>
                     </div>
