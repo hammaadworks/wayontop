@@ -1,4 +1,4 @@
-import {Circle, DoorClosed, Gem, HeartHandshake, MapPin} from 'lucide-react';
+import {Circle, DoorClosed, Gem, HeartHandshake, MapPin, Trash2, Coins} from 'lucide-react';
 import {cn} from '../lib/utils';
 
 interface MapNodeMarkerProps {
@@ -8,6 +8,7 @@ interface MapNodeMarkerProps {
     isSelected?: boolean;
     isLabelVisible?: boolean;
     opacity?: string;
+    tags?: string[];
 }
 
 export function MapNodeMarker({
@@ -16,7 +17,8 @@ export function MapNodeMarker({
                                   isZoomedIn,
                                   isSelected = false,
                                   isLabelVisible = true,
-                                  opacity = 'opacity-100'
+                                  opacity = 'opacity-100',
+                                  tags = []
                               }: Readonly<MapNodeMarkerProps>) {
     const isNamed = name && name.trim() !== '';
 
@@ -52,7 +54,7 @@ export function MapNodeMarker({
         ringColorClass = 'border-emerald-500/30';
         activeGlowClass = 'shadow-[0_0_20px_rgba(52,211,153,0.6)]';
     } else if (type === 'facility') {
-        Icon = HeartHandshake;
+        Icon = tags.includes('garbage') ? Trash2 : HeartHandshake;
         iconColorClass = 'text-rose-400';
         glowColorClass = 'bg-rose-500/20';
         ringColorClass = 'border-rose-500/30';
@@ -119,6 +121,13 @@ export function MapNodeMarker({
                         isSelected ? "w-5 h-5" : "w-4 h-4"
                     )} strokeWidth={2.5}/>
                 </div>
+
+                {/* Paid Superscript Indicator */}
+                {tags.includes('paid') && (
+                    <div className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                        <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                    </div>
+                )}
 
                 {/* Minimalist Pin Stem */}
                 <div className={cn(

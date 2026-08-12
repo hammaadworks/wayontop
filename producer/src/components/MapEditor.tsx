@@ -403,6 +403,14 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         toast.success('Edge deleted');
     };
 
+    const updateEdge = (from: string, to: string, updates: Partial<GraphEdge>) => {
+        setData(prev => ({
+            ...prev,
+            edges: prev.edges.map(e => (e.from === from && e.to === to) ? { ...e, ...updates } : e)
+        }));
+        setSelectedEdge(prev => (prev?.from === from && prev?.to === to) ? { ...prev, ...updates } : prev);
+    };
+
     const updateNodePosition = (id: string, lat: number, lng: number) => {
         setData(prev => {
             const newNodes = prev.nodes.map(n => n.id === id ? {...n, lat, lng} : n);
@@ -517,6 +525,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         isLabelVisible={visibleLabels.has(node.id)}
                         isSelected={isSelected}
                         opacity={opacity}
+                        tags={node.tags}
                     />
                 </Marker>
             );
@@ -927,6 +936,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setSelectedEdge={setSelectedEdge}
                 deleteNode={deleteNode}
                 deleteEdge={deleteEdge}
+                updateEdge={updateEdge}
                 updateNode={updateNode}
                 isLocked={isLocked}
                 setTestingStamp={setTestingStamp}

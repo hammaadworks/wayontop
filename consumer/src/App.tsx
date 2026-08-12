@@ -540,7 +540,23 @@ export default function App() {
                     supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'stamps').maybeSingle()
                 ]);
 
-                const activeGraph = graphRes.data?.data ? (graphRes.data.data as GraphData) : null;
+                let activeGraph = graphRes.data?.data ? (graphRes.data.data as GraphData) : null;
+
+                if (activeGraph) {
+                    const now = new Date().toISOString().split('T')[0]; // Current date as YYYY-MM-DD
+                    const validNodes = activeGraph.nodes.filter(node => {
+                        if (node.active_from && node.active_from > now) return false;
+                        if (node.active_to && node.active_to < now) return false;
+                        return true;
+                    });
+                    
+                    if (validNodes.length !== activeGraph.nodes.length) {
+                        const validNodeIds = new Set(validNodes.map(n => n.id));
+                        const validEdges = activeGraph.edges.filter(e => validNodeIds.has(e.from) && validNodeIds.has(e.to));
+                        activeGraph = { ...activeGraph, nodes: validNodes, edges: validEdges };
+                    }
+                }
+
                 setPrefetchedGraph(activeGraph);
 
                 let loadedStamps = stampsRes.data?.data ? ((stampsRes.data.data as any).stamps || []) : [];

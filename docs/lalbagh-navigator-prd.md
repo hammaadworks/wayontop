@@ -130,29 +130,31 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
       "type": "gate",
       "tags": [
         "entrance",
-        "exit",
         "parking"
       ]
     },
     {
       "id": "n2",
-      "name": "Glass House",
+      "name": "Flower Show (Seasonal)",
       "lat": 12.9495,
       "lng": 77.5847,
       "type": "poi",
       "tags": [
-        "flower show",
-        "famous",
-        "glass"
-      ]
+        "flower_show"
+      ],
+      "active_from": "2024-01-15",
+      "active_to": "2024-01-30"
     },
     {
       "id": "n3",
-      "name": "Path Junction A",
+      "name": "Public Toilet",
       "lat": 12.9497,
       "lng": 77.5849,
-      "type": "junction",
-      "tags": []
+      "type": "facility",
+      "tags": [
+        "toilet",
+        "paid"
+      ]
     }
   ],
   "edges": [
@@ -164,7 +166,8 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
     {
       "from": "n3",
       "to": "n2",
-      "distance_m": 40
+      "distance_m": 40,
+      "is_hidden": true
     }
   ],
   "sponsorZones": [
@@ -189,8 +192,11 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
 }
 ```
 
-- `type: "junction"` nodes exist purely for routing — not shown to the user as a destination, just used by A* to route
+- `type: "track"` (formerly `junction`) nodes exist purely for routing — not shown to the user as a destination, just used by A* to route
   through the actual path shape.
+- **Seasonal Nodes:** Nodes can optionally have `active_from` and `active_to` (YYYY-MM-DD) string dates. If outside this range, the Consumer app will filter them out before rendering or routing to prevent ghost nodes.
+- **Hidden Edges (`is_hidden: true`):** Allows creating "Spur" connections to off-track POIs that are used by the routing algorithm to calculate distance and pathing, but are not visibly drawn as a path line on the map.
+- **System Tags:** While `tags` is an open string array, mappers should prefer `SYSTEM_TAGS` for special UI treatments (e.g. `'garbage'`, `'paid'`, `'free'`, `'toilet'`, `'drinking_water'`, `'wheelchair_accessible'`). A node with the `'paid'` tag gets a coin superscript badge on the map.
 - **Sponsor Zones:** Defined by a central `poi_id` and a `radius_m` (e.g., 20 meters). This creates a geofenced zone. If
   the user's GPS falls within this radius, the sponsor's brand activates.
 

@@ -58,14 +58,48 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
 
     if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
-    const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString> | null = activeRoute ? {
-        type: "Feature",
-        geometry: {
-            type: "LineString",
-            coordinates: activeRoute.path.map(n => [n.lng, n.lat])
-        },
-        properties: {}
-    } : null;
+    const routeGeoJSON = useMemo(() => {
+        if (!activeRoute || !graph) return null;
+        const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+        let currentSegment: number[][] = [];
+        
+        for (let i = 0; i < activeRoute.path.length; i++) {
+            currentSegment.push([activeRoute.path[i].lng, activeRoute.path[i].lat]);
+            
+            if (i < activeRoute.path.length - 1) {
+                const nodeA = activeRoute.path[i];
+                const nodeB = activeRoute.path[i+1];
+                const edge = graph.edges.find(e => 
+                    (e.from === nodeA.id && e.to === nodeB.id) || 
+                    (e.to === nodeA.id && e.from === nodeB.id)
+                );
+                
+                if (edge?.is_hidden) {
+                    if (currentSegment.length > 1) {
+                        features.push({
+                            type: "Feature",
+                            geometry: { type: "LineString", coordinates: currentSegment },
+                            properties: {}
+                        });
+                    }
+                    currentSegment = [];
+                }
+            }
+        }
+        
+        if (currentSegment.length > 1) {
+            features.push({
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: currentSegment },
+                properties: {}
+            });
+        }
+        
+        return {
+            type: "FeatureCollection",
+            features
+        } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
+    }, [activeRoute, graph]);
 
     const animatedStyle: any = {
         version: 8,
@@ -197,6 +231,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                                 isZoomedIn={showThisMarkerName}
                                 isLabelVisible={visibleLabels.has(node.id)}
                                 isSelected={activePopup === node.id}
+                                tags={node.tags}
                             />
                         </div>
                     </Marker>

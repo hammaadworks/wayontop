@@ -6,6 +6,7 @@ import {Input} from '@wayontop/ui/components/ui/input';
 import {Label} from '@wayontop/ui/components/ui/label';
 import {BaseModal} from '@wayontop/ui/components/BaseModal';
 import {toast} from 'sonner';
+import {supabase} from '@wayontop/ui/lib/supabase';
 import type {Venue} from '../hooks/useVenues';
 
 interface VenueSelectorProps {
@@ -50,9 +51,27 @@ export function VenueSelector({
     };
 
     const verifyAndEnter = async () => {
-        if (!passkeyModalVenue || isVerifying) return;
+        if (!passkeyModalVenue || isVerifying || !passkeyInput) return;
         setIsVerifying(true);
-        // Bypassed for playwright testing
+        
+        const { data, error } = await supabase
+            .from('venues')
+            .select('passkey')
+            .eq('id', passkeyModalVenue.id)
+            .single();
+            
+        if (error) {
+            toast.error('Error verifying passkey');
+            setIsVerifying(false);
+            return;
+        }
+        
+        if (data?.passkey !== passkeyInput) {
+            toast.error('Invalid passkey');
+            setIsVerifying(false);
+            return;
+        }
+        
         setIsVerifying(false);
         onSelectVenue(passkeyModalVenue);
         setPasskeyModalVenue(null);

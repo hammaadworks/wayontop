@@ -8,13 +8,15 @@ import { InAppBrowserBlocker } from './components/InAppBrowserBlocker.tsx'
 
 const LandingPage = lazy(() => import('./pages/LandingPage.tsx'))
 const SponsorsPortal = lazy(() => import('./pages/SponsorsPortal.tsx'))
+const SponsorsLogin = lazy(() => import('./pages/SponsorsLogin.tsx'))
+const SponsorsDashboard = lazy(() => import('./pages/SponsorsDashboard.tsx'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <InAppBrowserBlocker>
       <BrowserRouter>
         <Suspense fallback={
-          <div className="flex h-screen w-full flex-col items-center justify-center bg-black">
+          <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
             <p className="mt-4 text-emerald-500 font-medium animate-pulse">Loading experience...</p>
           </div>
@@ -23,6 +25,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<App />} />
             <Route path="/about" element={<LandingPage />} />
             <Route path="/sponsors" element={<SponsorsPortal />} />
+            <Route path="/sponsors/login" element={<SponsorsLogin />} />
+            <Route path="/sponsors/dashboard" element={<SponsorsDashboard />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

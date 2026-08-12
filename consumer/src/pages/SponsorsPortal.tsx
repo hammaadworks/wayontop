@@ -1,279 +1,440 @@
-import { useState } from 'react';
-import { Navigation, Play, CheckCircle2, MapPin, Target, LineChart, Sparkles, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navigation, Target, LineChart, MapPin, ArrowRight, Plus, Maximize, Minimize } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@wayontop/ui/components/ui/button';
 import { Card } from '@wayontop/ui/components/ui/card';
+import { supabase } from '@wayontop/ui/lib/supabase';
+import type { GraphData } from '@wayontop/ui/lib/types';
+import Map, { Layer, Source, Marker } from 'react-map-gl/maplibre';
+import { setWorkerUrl } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { ReportModal } from '../components/ReportModal';
+
+setWorkerUrl(workerUrl);
+
+const LALBAGH_CENTER = {lat: 12.9500, lng: 77.5850};
 
 export default function SponsorsPortal() {
   const [showContactModal, setShowContactModal] = useState(false);
+  const [prefilledMessage, setPrefilledMessage] = useState('');
+  const [graph, setGraph] = useState<GraphData | null>(null);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.from('venue_content')
+      .select('data')
+      .eq('venue_key', 'lalbagh')
+      .eq('content_type', 'graph')
+      .maybeSingle()
+      .then(res => {
+        if (res.data?.data) {
+          setGraph(res.data.data as GraphData);
+        }
+      });
+      
+    supabase.from('sponsors').select('*').then(res => {
+      if (res.data) setSponsors(res.data);
+    });
+  }, []);
+
+  const handleLogin = () => {
+    navigate('/sponsors/login');
+  };
+
+  // Generate GeoJSON for zones
+  const zonesGeoJSON = {
+    type: 'FeatureCollection',
+    features: (graph?.sponsorZones || []).map(zone => {
+      const isFilled = zone.sponsor_ids && zone.sponsor_ids.length > 0;
+      const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
+      const poiId = zonePoiIds[0];
+      const poi = graph?.nodes.find(n => n.id === poiId);
+      if (!poi) return null;
+
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [poi.lng, poi.lat]
+        },
+        properties: {
+          id: zone.id,
+          radius_m: zone.radius_m,
+          color: isFilled ? '#ef4444' : '#10b981', // red for filled, green for available
+        }
+      };
+    }).filter(Boolean)
+  };
+
+  // Calculate bounds from all nodes to auto-focus map
+  const bounds = graph?.nodes.reduce((acc, node) => {
+    return [
+      Math.min(acc[0], node.lng),
+      Math.min(acc[1], node.lat),
+      Math.max(acc[2], node.lng),
+      Math.max(acc[3], node.lat)
+    ];
+  }, [180, 90, -180, -90]);
+
+  // Fallback to center if bounds calculation fails or nodes are empty
+  const mapBounds = bounds && bounds[0] !== 180 ? bounds : [
+    LALBAGH_CENTER.lng - 0.01, LALBAGH_CENTER.lat - 0.01,
+    LALBAGH_CENTER.lng + 0.01, LALBAGH_CENTER.lat + 0.01
+  ];
+
+  // Add some padding for the hard pan limit so users can still see the edges comfortably
+  const maxPanBounds = [
+    mapBounds[0] - 0.01,
+    mapBounds[1] - 0.01,
+    mapBounds[2] + 0.01,
+    mapBounds[3] + 0.01,
+  ];
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-emerald-500/30 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-              <Navigation className="w-5 h-5 text-black fill-black" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <Navigation className="w-5 h-5 text-emerald-600 fill-emerald-600" />
             </div>
-            <span className="font-bold text-xl tracking-tight">WayOnTop <span className="text-emerald-400">For Brands</span></span>
+            <span className="font-bold tracking-tight">WayOnTop <span className="text-emerald-600">Brands</span></span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button 
+              onClick={handleLogin}
+              variant="ghost"
+              className="font-bold text-slate-600 hover:text-slate-900"
+            >
+              Login
+            </Button>
             <Button 
               onClick={() => setShowContactModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-full px-6 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-full px-4 sm:px-6 transition-all shadow-md"
             >
-              Contact Sales
+              Sponsor
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section with Video Background */}
-      <section className="relative pt-32 pb-32 px-6 flex items-center justify-center min-h-[90vh]">
-        {/* Placeholder for Video Background */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden -z-20">
-          <div className="absolute inset-0 bg-black/60 z-10" />
-          <img 
-            src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070&auto=format&fit=crop" 
-            alt="Crowd at event" 
-            className="w-full h-full object-cover opacity-50"
-          />
-        </div>
-        
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/30 via-black/80 to-black -z-10" />
-        
-        <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md animate-in slide-in-from-bottom-4 duration-700">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-bold text-emerald-400 tracking-wide uppercase">The Future of Out-Of-Home Advertising</span>
-          </div>
+      {/* Main Content Layout */}
+      <main className="pt-20 px-4 sm:px-6 max-w-7xl mx-auto pb-24">
+        <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-start relative">
           
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[1.05] animate-in slide-in-from-bottom-8 duration-700 delay-100">
-            Own the Map.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">
-              Capture the Footfall.
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto leading-relaxed animate-in slide-in-from-bottom-8 duration-700 delay-200">
-            Traditional billboards are dead. Turn high-traffic zones in Lalbagh Botanical Garden into interactive AR storefronts. Track every impression, engagement, and walk-in.
-          </p>
-          
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4 animate-in slide-in-from-bottom-8 duration-700 delay-300">
-            <Button 
-              onClick={() => setShowContactModal(true)}
-              className="h-14 px-8 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-lg w-full sm:w-auto shadow-[0_0_40px_rgba(16,185,129,0.4)]"
-            >
-              Secure Your Zone <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="h-14 px-8 rounded-full bg-white/5 hover:bg-white/10 text-white border-white/10 font-bold text-lg w-full sm:w-auto backdrop-blur-md"
-            >
-              See How It Works
-            </Button>
-          </div>
-        </div>
-      </section>
+          {/* Map Column (Sticky, Right on PC) */}
+          <div className={`w-full md:w-1/2 md:sticky md:top-24 z-40 transition-all duration-300 ease-in-out md:order-2 ${isFullscreen ? 'fixed inset-0 z-[100] h-[100dvh] w-screen rounded-none bg-slate-900' : 'h-[45vh] md:h-[calc(100vh-8rem)] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-200 sticky top-20'}`}>
+            {graph ? (
+              <>
+                <Map
+                  initialViewState={{
+                    longitude: LALBAGH_CENTER.lng,
+                    latitude: LALBAGH_CENTER.lat,
+                    zoom: 14.5,
+                    pitch: 0
+                  }}
+                  maxBounds={maxPanBounds as [number, number, number, number]}
+                  minZoom={14.5}
+                  maxZoom={18}
+                  mapStyle={{
+                      version: 8,
+                      sources: {
+                          'osm': {
+                              type: 'raster',
+                              tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                              tileSize: 256, maxzoom: 19, scheme: "xyz"
+                          }
+                      },
+                      layers: [
+                          {
+                              id: 'osm-base',
+                              type: 'raster',
+                              source: 'osm',
+                              paint: {
+                                  "raster-opacity": 1,
+                                  "raster-saturation": -0.2,
+                                  "raster-contrast": 0.05,
+                                  "raster-fade-duration": 300
+                              }
+                          }
+                      ]
+                  }}
+                  style={{width: '100%', height: '100%'}}
+                >
+                  <Source id="zones" type="geojson" data={zonesGeoJSON as any}>
+                    <Layer
+                      id="zone-circles"
+                      type="circle"
+                      paint={{
+                        'circle-radius': [
+                          'interpolate', ['exponential', 2], ['zoom'],
+                          0, 0,
+                          20, ['*', ['get', 'radius_m'], 2]
+                        ],
+                        'circle-color': ['get', 'color'],
+                        'circle-opacity': 0.2,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': ['get', 'color']
+                      }}
+                    />
+                  </Source>
 
-      {/* The Problem / Solution Section */}
-      <section className="py-32 px-6 border-t border-white/5 bg-black relative overflow-hidden">
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full -z-10" />
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-8">
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
-              Physical Ads.<br/>
-              <span className="text-white/40">Digital Accountability.</span>
-            </h2>
-            <p className="text-xl text-white/60 leading-relaxed">
-              Stop guessing if your OOH marketing works. WayOnTop bridges the physical-digital divide by placing your brand in our AR navigation layer. When users navigate the park, they see, interact with, and walk to your zone.
-            </p>
-            <ul className="space-y-6">
-              {[
-                { icon: Target, title: 'Hyper-Local Targeting', desc: 'Reach users exactly when they are 50 meters away from your activation.' },
-                { icon: LineChart, title: '100% Trackable ROI', desc: 'Track impressions, click-through rates, and physical walk-ins in real-time.' },
-                { icon: MapPin, title: 'Premium Real Estate', desc: 'Claim exclusive zones like the Glass House or Main Gate Hub.' }
-              ].map((item, i) => (
-                <li key={i} className="flex gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                    <item.icon className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-white mb-1">{item.title}</h4>
-                    <p className="text-white/60 leading-relaxed">{item.desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  {/* Markers for Sponsors and Available Zones */}
+                  {(graph.sponsorZones || []).map(zone => {
+                    const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
+                    const poi = graph.nodes.find(n => n.id === zonePoiIds[0]);
+                    if (!poi) return null;
+                    
+                    const isFilled = zone.sponsor_ids && zone.sponsor_ids.length > 0;
+                    const activeSponsors = isFilled ? zone.sponsor_ids!.map(id => sponsors.find(s => s.id === id)).filter(Boolean) : [];
+
+                    return (
+                      <Marker key={zone.id} longitude={poi.lng} latitude={poi.lat} anchor="center">
+                        <div className="flex flex-col items-center drop-shadow-md">
+                          {isFilled ? (
+                            <div className="flex -space-x-2 relative z-10">
+                              {activeSponsors.map((sp: any) => (
+                                <div key={sp.id} className="w-10 h-10 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm flex items-center justify-center">
+                                  {sp.logo_asset ? (
+                                    <img src={sp.logo_asset} alt={sp.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-bold text-xs text-slate-800">{sp.name.substring(0, 2)}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full border-2 border-white bg-emerald-500 shadow-sm flex items-center justify-center text-white">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 border shadow-sm ${isFilled ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                            {zone.name}
+                          </div>
+                        </div>
+                      </Marker>
+                    );
+                  })}
+                </Map>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="absolute bottom-4 right-4 z-10 shadow-lg bg-white/90 backdrop-blur hover:bg-white text-slate-900"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                >
+                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </Button>
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
-          
-          {/* Media Placeholder: Video/Image of AR interaction */}
-          <div className="relative rounded-[2.5rem] border border-white/10 bg-white/5 p-4 backdrop-blur-xl shadow-2xl overflow-hidden aspect-[4/5] lg:aspect-square flex flex-col justify-center items-center group">
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1616423640778-28d1b53229bd?q=80&w=1974&auto=format&fit=crop')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+          {/* Right/Bottom Column: Scrollable Content */}
+          <div className="w-full md:w-1/2 space-y-24 z-10 pt-4 md:pt-12 md:order-1">
             
-            <div className="relative z-10 text-center space-y-4">
-              <div className="w-20 h-20 mx-auto bg-emerald-500/20 backdrop-blur-md border border-emerald-500/40 rounded-full flex items-center justify-center animate-pulse">
-                <Play className="w-8 h-8 text-emerald-400 ml-1" />
+            {/* Hero Copy */}
+            <section className="text-center md:text-left space-y-6">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 leading-tight">
+                Own the Map.<br />
+                Capture the Footfall.
+              </h1>
+              <p className="text-xl text-slate-600 max-w-lg mx-auto md:mx-0">
+                Turn high-traffic zones in Lalbagh Botanical Garden into interactive AR storefronts. Secure the green zones before they turn red.
+              </p>
+              <div className="pt-4 flex justify-center md:justify-start gap-4">
+                <Button 
+                  onClick={() => setShowContactModal(true)}
+                  className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg shadow-lg"
+                >
+                  Sponsor a Zone <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
               </div>
-              <p className="font-bold text-lg tracking-widest uppercase text-emerald-400 drop-shadow-md">Play Demo Video</p>
-            </div>
-          </div>
-        </div>
-      </section>
+            </section>
 
-      {/* Pricing Section (The Core Offer) */}
-      <section id="pricing" className="py-32 px-6 border-t border-white/5 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 to-black -z-10" />
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black">Secure Your Zone</h2>
-            <p className="text-xl text-emerald-400 font-bold uppercase tracking-widest">Season: Aug 2026 - Dec 2026 (5 Months)</p>
-            <p className="text-white/60 max-w-2xl mx-auto">Lock in your premium real estate in Lalbagh Botanical Garden before the festive season rush.</p>
-          </div>
+            {/* Pricing Packages */}
+            <section className="space-y-8">
+              <div className="text-center md:text-left">
+                <h2 className="text-4xl font-black text-slate-900 mb-4">Transparent Pricing</h2>
+                <p className="text-lg text-slate-600 max-w-lg mx-auto md:mx-0">Choose a plan that fits your campaign goals. No hidden fees. Secure your AR real estate across Lalbagh.</p>
+              </div>
+              
+              <div className="grid gap-8">
+                {/* August Pack */}
+                <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Most Popular</div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Independence August Pack</h3>
+                  <p className="text-slate-500 mb-6">Short-term burst campaign for August only.</p>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                      <div>
+                        <h4 className="font-bold text-lg text-blue-700">Blue Pack</h4>
+                        <p className="text-xs md:text-sm text-slate-600">Choose any 2 zones across Lalbagh</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl md:text-2xl font-black text-slate-900">₹1,500</div>
+                        <Button 
+                          size="sm" 
+                          className="mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs md:text-sm"
+                          onClick={() => {
+                            setPrefilledMessage("Interested in Blue Pack\nBrand Name: ");
+                            setShowContactModal(true);
+                          }}
+                        >Select</Button>
+                      </div>
+                    </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Shared Zone */}
-            <Card className="bg-black/50 border-white/10 rounded-[2rem] p-8 md:p-12 backdrop-blur-xl flex flex-col transition-all hover:border-white/20">
-              <div className="mb-8">
-                <span className="px-4 py-1.5 rounded-full bg-white/10 text-white/70 text-sm font-bold tracking-wide uppercase mb-6 inline-block">Shared Zone</span>
-                <div className="flex items-baseline gap-2 text-white">
-                  <span className="text-5xl font-black">₹5,000</span>
-                  <span className="text-white/50 font-medium">/ 5 months</span>
+                    <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 flex items-center justify-between group hover:border-slate-300 transition-colors">
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-700">White Pack</h4>
+                        <p className="text-xs md:text-sm text-slate-600">Choose any 5 zones across Lalbagh</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl md:text-2xl font-black text-slate-900">₹2,000</div>
+                        <Button 
+                          size="sm" 
+                          className="mt-2 bg-slate-800 hover:bg-slate-900 text-white rounded-full text-xs md:text-sm"
+                          onClick={() => {
+                            setPrefilledMessage("Interested in White Pack\nBrand Name: ");
+                            setShowContactModal(true);
+                          }}
+                        >Select</Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-white/50 mt-4 leading-relaxed">Perfect for local businesses wanting high-visibility at a fraction of the cost.</p>
-              </div>
-              
-              <ul className="space-y-4 mb-10 flex-1">
-                {[
-                  'Shared with up to 3 non-competing brands',
-                  'Rotating AR billboard',
-                  'Basic footfall analytics',
-                  '1 tap-to-action link',
-                  'Live Aug - Dec 2026'
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-white/80">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button 
-                onClick={() => setShowContactModal(true)}
-                className="w-full h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-lg"
-              >
-                Request Shared Zone
-              </Button>
-            </Card>
 
-            {/* Dedicated Zone */}
-            <Card className="bg-gradient-to-b from-emerald-900/40 to-black/50 border-emerald-500/30 rounded-[2rem] p-8 md:p-12 backdrop-blur-xl flex flex-col relative overflow-hidden transition-all hover:border-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.1)] hover:shadow-[0_0_60px_rgba(16,185,129,0.2)]">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-[50px] -z-10" />
-              
-              <div className="mb-8">
-                <span className="px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-bold tracking-wide uppercase mb-6 inline-block">Dedicated Zone (Premium)</span>
-                <div className="flex items-baseline gap-2 text-white">
-                  <span className="text-5xl font-black">₹10,000</span>
-                  <span className="text-emerald-400/70 font-medium">/ 5 months</span>
-                </div>
-                <p className="text-white/70 mt-4 leading-relaxed">Absolute exclusivity. Dominate a major hub like the Glass House and own 100% of the attention.</p>
-              </div>
-              
-              <ul className="space-y-4 mb-10 flex-1">
-                {[
-                  '100% Exclusivity in your 50m radius',
-                  'Custom 3D AR Assets & Branding',
-                  'Advanced Real-time Analytics Dashboard',
-                  'Gamified "Stamp" integration to drive footfall',
-                  'Priority placement in search',
-                  'Live Aug - Dec 2026'
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-white">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span className="font-medium">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button 
-                onClick={() => setShowContactModal(true)}
-                className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-bold text-lg shadow-lg"
-              >
-                Claim Dedicated Zone
-              </Button>
-            </Card>
-          </div>
-        </div>
-      </section>
+                {/* Saver Bundle */}
+                <div className="bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-xl relative overflow-hidden text-white">
+                  <div className="absolute top-0 right-0 bg-yellow-400 text-slate-900 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Best Value</div>
+                  <h3 className="text-2xl font-bold text-white mb-2">2026 Saver Bundle Pack</h3>
+                  <p className="text-slate-400 mb-6">Long-term brand presence from August to December.</p>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-white/5 rounded-2xl p-4 md:p-5 border border-white/10 flex items-center justify-between group hover:border-slate-400 transition-colors">
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-300">Silver Pack</h4>
+                        <p className="text-xs md:text-sm text-slate-400">Choose any 2 zones across Lalbagh</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl md:text-2xl font-black text-white">₹5,000</div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="mt-2 border-slate-500 hover:bg-slate-800 text-white rounded-full text-xs md:text-sm"
+                          onClick={() => {
+                            setPrefilledMessage("Interested in Silver Pack\nBrand Name: ");
+                            setShowContactModal(true);
+                          }}
+                        >Select</Button>
+                      </div>
+                    </div>
 
-      {/* Media / Visual Evidence Section */}
-      <section className="py-24 px-6 border-t border-white/5 bg-black">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">See It In Action</h2>
-            <p className="text-white/50 text-lg">Watch how users interact with sponsor zones in real-time.</p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="relative aspect-[9/16] rounded-3xl overflow-hidden bg-white/5 border border-white/10 group cursor-pointer">
-                {/* Placeholders for Vertical Videos */}
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40 group-hover:scale-105 transition-transform duration-700" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:bg-emerald-500 group-hover:text-black group-hover:border-emerald-400 transition-all">
-                    <Play className="w-6 h-6 ml-1" />
+                    <div className="bg-white/5 rounded-2xl p-4 md:p-5 border border-white/10 flex items-center justify-between group hover:border-yellow-400 transition-colors">
+                      <div>
+                        <h4 className="font-bold text-lg text-yellow-500">Gold Pack</h4>
+                        <p className="text-xs md:text-sm text-slate-400">Choose any 5 zones across Lalbagh</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl md:text-2xl font-black text-white">₹7,500</div>
+                        <Button 
+                          size="sm" 
+                          className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold rounded-full text-xs md:text-sm"
+                          onClick={() => {
+                            setPrefilledMessage("Interested in Gold Pack\nBrand Name: ");
+                            setShowContactModal(true);
+                          }}
+                        >Select</Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </section>
 
-      {/* Final CTA */}
-      <section className="py-32 px-6 border-t border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-emerald-950/40 -z-10" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/20 blur-[150px] rounded-full pointer-events-none" />
-        
-        <div className="max-w-3xl mx-auto text-center space-y-8 relative z-10">
-          <h2 className="text-5xl md:text-7xl font-black tracking-tight">Ready to map your brand?</h2>
-          <p className="text-xl text-white/70">
-            Inventory is strictly limited to maintain user experience. Secure your zone for the Aug-Dec 2026 season today.
-          </p>
-          <div className="pt-4">
-            <Button 
-              onClick={() => setShowContactModal(true)}
-              className="h-16 px-10 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xl shadow-[0_0_50px_rgba(16,185,129,0.5)] hover:scale-105 transition-transform"
-            >
-              Let's Talk Numbers
-            </Button>
+            {/* Why Sponsor Section */}
+            <section className="space-y-8">
+              <div className="text-center md:text-left">
+                <h2 className="text-4xl font-bold text-slate-900 mb-4">Real ROI. Not Just Views.</h2>
+                <p className="text-lg text-slate-600 max-w-lg mx-auto md:mx-0">Physical billboards are dead. Our AR layers capture attention when intent is highest and track every single interaction.</p>
+              </div>
+              <div className="grid gap-6">
+                <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex gap-4 items-start">
+                  <div className="bg-emerald-100 p-3 rounded-xl shrink-0"><Target className="w-6 h-6 text-emerald-600" /></div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">Hyper-Targeted</h4>
+                    <p className="text-slate-600 text-sm">Users only see your AR ad when they are physically within your zone.</p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 flex gap-4 items-start">
+                  <div className="bg-blue-100 p-3 rounded-xl shrink-0"><MapPin className="w-6 h-6 text-blue-600" /></div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">Guaranteed Walk-ins</h4>
+                    <p className="text-slate-600 text-sm">Gamified stamps actively route users directly to your physical activation.</p>
+                  </div>
+                </div>
+                <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100 flex gap-4 items-start">
+                  <div className="bg-indigo-100 p-3 rounded-xl shrink-0"><LineChart className="w-6 h-6 text-indigo-600" /></div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">100% Trackable</h4>
+                    <p className="text-slate-600 text-sm">Live dashboard showing impressions, clicks, and physical footfall.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Final Contact */}
+            <section className="bg-slate-900 text-white text-center rounded-3xl p-8 border border-slate-800 shadow-2xl">
+              <h2 className="text-3xl font-bold mb-4">Secure your zones today.</h2>
+              <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6">
+                <Button 
+                  onClick={() => {
+                    setPrefilledMessage("");
+                    setShowContactModal(true);
+                  }}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold rounded-full px-8 h-12"
+                >
+                  Contact Sales
+                </Button>
+                <Button 
+                  onClick={handleLogin}
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10 rounded-full px-8 h-12"
+                >
+                  Login to Dashboard
+                </Button>
+              </div>
+              <p className="text-slate-400 text-sm">
+                WhatsApp: +91 8310428923 <br className="sm:hidden"/> <span className="hidden sm:inline">&nbsp;|&nbsp;</span> Email: hammaadworks@gmail.com
+              </p>
+            </section>
+
           </div>
         </div>
-      </section>
+      </main>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/5 bg-black">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Navigation className="w-6 h-6 text-emerald-500 fill-emerald-500" />
-            <span className="font-bold text-xl tracking-tight">wayon.top</span>
-          </div>
-          <div className="text-sm text-white/40 font-medium">
-            © 2026 WayOnTop. All rights reserved. Lalbagh Botanical Garden.
-          </div>
-        </div>
+      <footer className="py-8 text-center text-slate-500 bg-slate-950 text-sm">
+        <p>© 2026 WayOnTop. All rights reserved.</p>
       </footer>
 
-      {/* Reused Report Modal but configured for Sales/Sponsors */}
+      {/* Contact Modal */}
       {showContactModal && (
         <ReportModal 
-          onClose={() => setShowContactModal(false)} 
-          defaultIssueType="sponsor"
+          onClose={() => {
+            setShowContactModal(false);
+            setPrefilledMessage('');
+          }} 
+          defaultIssueType="sponsor" 
           fixedIssueType={true}
+          defaultMessage={prefilledMessage}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ interface EditorPanelsProps {
     setSelectedEdge: (edge: any) => void;
     deleteNode: (id: string) => void;
     deleteEdge: (from: string, to: string) => void;
+    updateEdge: (from: string, to: string, updates: any) => void;
     updateNode: (id: string, updates: any) => void;
     isLocked: boolean;
     setTestingStamp: (node: any) => void;
@@ -27,7 +28,7 @@ interface EditorPanelsProps {
 
 export function EditorPanels({
                                  mode, selectedNode, selectedEdge, setSelectedEdge,
-                                 deleteNode, deleteEdge, updateNode, isLocked,
+                                 deleteNode, deleteEdge, updateEdge, updateNode, isLocked,
                                  setTestingStamp, testRoutePath, setTestRoutePath, availableTags,
                                  selectedTrace, setSelectedTrace, deleteTrace
                              }: Readonly<EditorPanelsProps>) {
@@ -140,6 +141,27 @@ export function EditorPanels({
                                                     onCheckedChange={(checked: boolean) => updateNode(selectedNode.id, {has_stamp: checked})}/>
                                         </div>
                                     )}
+                                    
+                                    {/* Seasonal Dates */}
+                                    <div className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5 mt-1">
+                                        <span className="text-[10px] font-bold text-slate-300">ACTIVE FROM</span>
+                                        <Input 
+                                            type="date" 
+                                            value={selectedNode.active_from || ''} 
+                                            onChange={e => updateNode(selectedNode.id, {active_from: e.target.value})}
+                                            className="h-5 text-[10px] font-bold bg-transparent border-0 text-right w-24 p-0 text-white [&::-webkit-calendar-picker-indicator]:invert"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5">
+                                        <span className="text-[10px] font-bold text-slate-300">ACTIVE TO</span>
+                                        <Input 
+                                            type="date" 
+                                            value={selectedNode.active_to || ''} 
+                                            onChange={e => updateNode(selectedNode.id, {active_to: e.target.value})}
+                                            className="h-5 text-[10px] font-bold bg-transparent border-0 text-right w-24 p-0 text-white [&::-webkit-calendar-picker-indicator]:invert"
+                                        />
+                                    </div>
+
                                     <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2 mt-2">
                                         <span className="text-[10px] font-bold text-slate-300">TAGS</span>
                                         <div className="flex flex-wrap gap-1">
@@ -261,6 +283,14 @@ export function EditorPanels({
                                         className="text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-lg leading-none">
                                         {selectedEdge.distance_m}<span
                                         className="text-xl text-emerald-500/50 ml-0.5">m</span>
+                                    </div>
+                                    <div
+                                        className="flex items-center w-full justify-between bg-black/40 border border-white/10 h-8 rounded-md px-2.5 mt-2">
+                                        <span
+                                            className="text-[10px] font-bold text-slate-300">HIDDEN (ROUTING ONLY)</span>
+                                        <Switch className="scale-[0.65] origin-right"
+                                                checked={!!selectedEdge.is_hidden}
+                                                onCheckedChange={(checked: boolean) => updateEdge(selectedEdge.from, selectedEdge.to, {is_hidden: checked})}/>
                                     </div>
                                 </CardContent>
                             </>
