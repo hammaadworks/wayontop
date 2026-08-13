@@ -88,8 +88,10 @@ beacon-based instead of GPS-based) while reusing the same consumer app shell.
 | Media Assets | Supabase Storage Buckets (Shielded by Cloudflare CDN) | Stores `.mp4` video ads and `.png`/`.jpg` logo and banner assets for sponsors. **Crucial:** Media URLs are routed through the Cloudflare proxy to cache videos at the edge, drastically reducing Supabase bandwidth (egress) usage to stay within the 50GB Free Tier limit. |
 
 ### 5.1 Database Schema Notes
-- **`venues` table:** The primary entity. Contains an `id` (the `venue_key`), `name`, and a **`public` (boolean)** flag. The Consumer app dynamically queries `public=true` venues to populate its venue switcher, meaning unlaunched venues remain hidden.
+- **`venues` table:** The primary entity. Contains an `id` (uuid), a **`key`** (text, acts as the unique `venue_key`), `name`, `passkey` for producer access, and a **`public` (boolean)** flag. The Consumer app dynamically queries `public=true` venues to populate its venue switcher.
 - **`venue_content` table:** Stores `jsonb` blobs (like `graph` and `stamps`) keyed by `venue_key` and `content_type`.
+- **`sponsors` & `sponsor_analytics` tables:** Unlike the initial design of keeping sponsors only in the graph JSON, there is now a dedicated relational structure for sponsors (with fields like `email`, `plan`, `days_left`, and `zone_ids`) and an analytics table (`impressions`, `clicks`, `walk_ins`) mapped by date.
+- **`analytics_events`, `golden_stamps`, `leaderboard` tables:** Specialized tables explicitly created to handle the telemetry, leaderboard gamification, and atomic claims for golden stamps.
 
 ### Pragmatic shortcuts (single-venue jugaad — intentional, not laziness)
 
@@ -196,7 +198,9 @@ Goal: Successfully onboard 20 sponsors with 5K investment each or hit 100K monet
   through the actual path shape.
 - **Seasonal Nodes:** Nodes can optionally have `active_from` and `active_to` (YYYY-MM-DD) string dates. If outside this range, the Consumer app will filter them out before rendering or routing to prevent ghost nodes.
 - **Hidden Edges (`is_hidden: true`):** Allows creating "Spur" connections to off-track POIs that are used by the routing algorithm to calculate distance and pathing, but are not visibly drawn as a path line on the map.
-- **System Tags:** While `tags` is an open string array, mappers should prefer `SYSTEM_TAGS` for special UI treatments (e.g. `'garbage'`, `'paid'`, `'free'`, `'toilet'`, `'drinking_water'`, `'wheelchair_accessible'`). A node with the `'paid'` tag gets a coin superscript badge on the map.
+- **System Tags:** While `tags` is an open string array, mappers should prefer `SYSTEM_TAGS` for special UI treatments. 
+  - General Tags: `'garbage'`, `'paid'`, `'free'`, `'toilet'`, `'drinking_water'`, `'wheelchair_accessible'`. A node with the `'paid'` tag gets a coin superscript badge on the map.
+  - Dynamic Explore Icons: Tags like `'food'`, `'coffee'`, `'restaurant'`, `'photo'`, `'scenic'`, `'historic'`, `'monument'`, `'garden'`, `'nature'`, `'tree'` dynamically render appropriate icons and colors in the Explore search results (e.g., orange Coffee cup, emerald Camera, purple Landmark). Nodes with the `'garbage'` tag are explicitly filtered out from Explore search results.
 - **Sponsor Zones:** Defined by a central `poi_id` and a `radius_m` (e.g., 20 meters). This creates a geofenced zone. If
   the user's GPS falls within this radius, the sponsor's brand activates.
 

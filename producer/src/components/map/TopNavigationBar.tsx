@@ -1,4 +1,4 @@
-import {Combine, Layers} from 'lucide-react';
+import {Combine, Layers, Camera} from 'lucide-react';
 import {Popover, PopoverContent, PopoverTrigger} from '@wayontop/ui/components/ui/popover';
 
 interface TopNavigationBarProps {
@@ -33,9 +33,9 @@ export function TopNavigationBar({
                                      togglePip
                                  }: Readonly<TopNavigationBarProps>) {
     const getAccuracyClass = (acc: number) => {
-        if (acc <= 5) return 'bg-emerald-400 text-emerald-400';
-        if (acc <= 15) return 'bg-amber-400 text-amber-400';
-        return 'bg-red-500 text-red-500 animate-pulse';
+        if (acc <= 5) return 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.8)]';
+        if (acc <= 15) return 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]';
+        return 'text-red-500 animate-pulse drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]';
     };
 
     return (
@@ -169,8 +169,8 @@ export function TopNavigationBar({
                 <div
                     onClick={togglePip}
                     className={`pointer-events-auto mt-2 mx-auto w-fit glass-pill px-3 py-1.5 shadow-lg border flex items-center gap-2 backdrop-blur-3xl rounded-full transition-all cursor-pointer hover:bg-white/10 active:scale-95 ${pipVisible ? 'bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-black/60 border-white/10'}`}>
-                    <div
-                        className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${getAccuracyClass(currentAccuracy)}`}/>
+                    <Camera
+                        className={`w-4 h-4 transition-colors ${getAccuracyClass(currentAccuracy)}`}/>
                     <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
                         GPS: {Math.round(currentAccuracy)}m
                     </span>

@@ -11,6 +11,7 @@ import Map, { Layer, Source, Marker } from 'react-map-gl/maplibre';
 import { setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import * as turf from '@turf/turf';
 
 setWorkerUrl(workerUrl);
 const LALBAGH_CENTER = {lat: 12.9500, lng: 77.5850};
@@ -125,27 +126,54 @@ export default function SponsorsDashboard() {
   // Generate GeoJSON for zones
   const zonesGeoJSON = {
     type: 'FeatureCollection',
-    features: (graph?.sponsorZones || []).map(zone => {
+    features: (graph?.sponsorZones || []).flatMap(zone => {
       const isOwned = sponsor?.zone_ids?.includes(zone.id);
       const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
-      const poiId = zonePoiIds[0];
-      const poi = graph?.nodes.find(n => n.id === poiId);
-      if (!poi) return null;
+      const nodes = graph?.nodes.filter(n => zonePoiIds.includes(n.id)) || [];
+      if (nodes.length === 0) return [];
 
-      return {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [poi.lng, poi.lat]
-        },
+      return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
+        units: 'meters',
+        steps: 64,
         properties: {
           id: zone.id,
           radius_m: zone.radius_m,
           color: isOwned ? '#10b981' : '#94a3b8',
         }
-      };
-    }).filter(Boolean)
+      }));
+    }).filter(Boolean) as any[]
   };
+
+  const sponsorMarkerData = (graph?.sponsorZones || []).flatMap(zone => {
+      const isOwned = sponsor?.zone_ids?.includes(zone.id);
+      if (!isOwned) return [];
+
+      const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
+      const nodes = graph?.nodes.filter(n => zonePoiIds.includes(n.id)) || [];
+      if (nodes.length === 0) return [];
+      
+      const mappedSponsors = [sponsor];
+      
+      return nodes.flatMap(node => {
+          return mappedSponsors.map((mappedSponsor, idx) => {
+              const hash = `${zone.id}-${node.id}`.split('').reduce((a, b) => {
+                  a = ((a << 5) - a) + b.charCodeAt(0);
+                  return a & a;
+              }, 0);
+              const randomDist = (Math.abs(hash) % 100) / 100;
+              
+              const baseAngle = (360 / mappedSponsors.length) * idx;
+              const angleOffset = (Math.abs(hash) % 30) - 15;
+              const angle = baseAngle + angleOffset;
+
+              const distance_m = zone.radius_m * (0.5 + (randomDist * 0.3));
+              
+              const destination = turf.destination([node.lng, node.lat], distance_m, angle, {units: 'meters'});
+              const [lng, lat] = destination.geometry.coordinates;
+              return { id: `sponsor-${zone.id}-${node.id}-${idx}`, lat, lng, zone, mappedSponsor, node };
+          });
+      });
+  });
 
   const mapBounds = graph?.nodes.reduce((acc, node) => {
     return [
@@ -240,33 +268,57 @@ export default function SponsorsDashboard() {
                 >
                   <Source id="zones" type="geojson" data={zonesGeoJSON as any}>
                     <Layer
-                      id="zone-circles"
-                      type="circle"
+                      id="zone-fill"
+                      type="fill"
                       paint={{
-                        'circle-radius': [
-                          'interpolate', ['exponential', 2], ['zoom'],
-                          0, 0,
-                          20, ['*', ['get', 'radius_m'], 2]
-                        ],
-                        'circle-color': ['get', 'color'],
-                        'circle-opacity': 0.4,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': ['get', 'color']
+                        'fill-color': ['get', 'color'],
+                        'fill-opacity': 0.2
                       }}
                     />
+                    <Layer
+                      id="zone-outline"
+                      type="line"
+                      paint={{
+                        'line-color': ['get', 'color'],
+                        'line-width': 2,
+                        'line-dasharray': [2, 2]
+                      }}
+                    />
+                    <Layer
+                        id="zone-radius-label"
+                        type="symbol"
+                        layout={{
+                            'symbol-placement': 'line',
+                            'symbol-spacing': 250,
+                            'text-field': ['concat', ['get', 'radius_m'], 'm Zone • '],
+                            'text-size': 12,
+                            'text-transform': 'uppercase',
+                            'text-letter-spacing': 0.2,
+                            'text-keep-upright': true
+                        }}
+                        paint={{
+                            'text-color': ['get', 'color'],
+                            'text-halo-color': 'rgba(255,255,255,0.9)',
+                            'text-halo-width': 2
+                        }}
+                    />
                   </Source>
-                  {(graph.sponsorZones || []).map(zone => {
-                    const isOwned = sponsor?.zone_ids?.includes(zone.id);
-                    if (!isOwned) return null;
-                    const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
-                    const poi = graph.nodes.find(n => n.id === zonePoiIds[0]);
-                    if (!poi) return null;
-                    return (
-                      <Marker key={zone.id} longitude={poi.lng} latitude={poi.lat} anchor="center">
-                        <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-md animate-pulse"></div>
-                      </Marker>
-                    );
-                  })}
+                  {sponsorMarkerData.map(({ id, lat, lng, mappedSponsor }) => (
+                    <Marker key={id} longitude={lng} latitude={lat} anchor="center">
+                      <div className="relative flex flex-col items-center justify-center pointer-events-auto cursor-pointer group">
+                        <div className="w-10 h-10 bg-white rounded-full shadow-[0_8px_16px_rgba(0,0,0,0.15)] border-2 border-emerald-500 overflow-hidden flex items-center justify-center hover:scale-110 transition-transform">
+                          {mappedSponsor.logo_asset ? (
+                            <img src={mappedSponsor.logo_asset} alt={mappedSponsor.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-emerald-500 font-bold text-[10px] uppercase tracking-wider">{mappedSponsor.name?.substring(0, 2) || 'SP'}</span>
+                          )}
+                        </div>
+                        <div className="absolute top-12 bg-black/90 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-bold text-white whitespace-nowrap border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                           {mappedSponsor.name}
+                        </div>
+                      </div>
+                    </Marker>
+                  ))}
                 </Map>
               ) : null}
             </div>

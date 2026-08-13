@@ -1,5 +1,6 @@
-import {Circle, DoorClosed, Gem, HeartHandshake, MapPin, Trash2, Coins} from 'lucide-react';
+import {Circle, Coins} from 'lucide-react';
 import {cn} from '../lib/utils';
+import {getPOIStyle} from '../lib/poiStyles';
 
 interface MapNodeMarkerProps {
     type: 'poi' | 'stamp' | 'gate' | 'track' | 'facility' | (string & {});
@@ -35,37 +36,7 @@ export function MapNodeMarker({
         );
     }
 
-    let Icon = MapPin;
-    let iconColorClass = 'text-amber-400';
-    let glowColorClass = 'bg-amber-500/20';
-    let ringColorClass = 'border-amber-500/30';
-    let activeGlowClass = 'shadow-[0_0_20px_rgba(251,191,36,0.6)]';
-
-    if (type === 'stamp') {
-        Icon = Gem;
-        iconColorClass = 'text-fuchsia-400';
-        glowColorClass = 'bg-fuchsia-500/20';
-        ringColorClass = 'border-fuchsia-500/30';
-        activeGlowClass = 'shadow-[0_0_20px_rgba(232,121,249,0.6)]';
-    } else if (type === 'gate') {
-        Icon = DoorClosed;
-        iconColorClass = 'text-emerald-400';
-        glowColorClass = 'bg-emerald-500/20';
-        ringColorClass = 'border-emerald-500/30';
-        activeGlowClass = 'shadow-[0_0_20px_rgba(52,211,153,0.6)]';
-    } else if (type === 'facility') {
-        Icon = tags.includes('garbage') ? Trash2 : HeartHandshake;
-        iconColorClass = 'text-rose-400';
-        glowColorClass = 'bg-rose-500/20';
-        ringColorClass = 'border-rose-500/30';
-        activeGlowClass = 'shadow-[0_0_20px_rgba(244,63,94,0.6)]';
-    } else if (type === 'track') {
-        Icon = Circle;
-        iconColorClass = 'text-blue-400';
-        glowColorClass = 'bg-blue-500/20';
-        ringColorClass = 'border-blue-500/30';
-        activeGlowClass = 'shadow-[0_0_20px_rgba(59,130,246,0.6)]';
-    }
+    const { icon: Icon, iconColor: iconColorClass, glowColor: glowColorClass, ringColor: ringColorClass, activeGlow: activeGlowClass } = getPOIStyle({ type, tags });
 
     const showLabel = isZoomedIn && name && isLabelVisible;
     const labelScale = showLabel ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-2 pointer-events-none';
@@ -123,7 +94,7 @@ export function MapNodeMarker({
                 </div>
 
                 {/* Paid Superscript Indicator */}
-                {tags.includes('paid') && (
+                {(tags || []).includes('paid') && (
                     <div className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
                         <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3} />
                     </div>

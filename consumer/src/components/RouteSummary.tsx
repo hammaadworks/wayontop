@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Flame, Footprints, Layers, Share2, Timer, X, Play, Pause, Square, ImagePlus, BatteryWarning} from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wayontop/ui/components/ui/sheet';
 import {ViralSharing} from '../lib/sharing';
 import {Gamification} from '../lib/gamification';
 import {useTranslation} from 'react-i18next';
@@ -125,18 +126,16 @@ export function RouteSummary({
     };
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-3xl p-4 animate-in fade-in duration-500 font-sans">
+        <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
+            <SheetContent side="bottom" className="h-[95dvh] bg-transparent border-0 p-0 text-white !shadow-none z-[100] flex flex-col">
+                <div className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)]">
+                    <SheetHeader className="p-6 pb-2 relative border-b border-white/10 shrink-0">
+                        <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4"></div>
+                        <SheetTitle className="sr-only">Route Summary</SheetTitle>
+                    </SheetHeader>
+                    
+                    <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col items-center">
             
-            {!isCapturing && (
-                <button
-                    onClick={onClose}
-                    className="absolute top-8 right-5 z-50 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                >
-                    <X className="w-5 h-5"/>
-                </button>
-            )}
-
             {/* Background Toggle (Hidden during capture) */}
             {!isCapturing && (
                 <div
@@ -342,6 +341,9 @@ export function RouteSummary({
                     </div>
                 )}
             </div>
-        </div>
+            </div>
+            </div>
+            </SheetContent>
+        </Sheet>
     );
 }

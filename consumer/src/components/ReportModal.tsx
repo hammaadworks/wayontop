@@ -22,8 +22,9 @@ export function ReportModal({ onClose, defaultIssueType = 'bug', fixedIssueType 
 
   const isValidContact = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[\d\s\+\-\(\)]{7,15}$/;
-    return emailRegex.test(value) || phoneRegex.test(value);
+    const cleanPhone = value.replace(/[\s\-\(\)]/g, '');
+    const phoneRegex = /^(?:\+91|91)?[6-9]\d{9}$/;
+    return emailRegex.test(value) || phoneRegex.test(cleanPhone);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

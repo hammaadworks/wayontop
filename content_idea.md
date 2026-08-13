@@ -63,3 +63,7 @@ so strict. need to be super empathtic to the user, how he feels how can he use i
   import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
   setWorkerUrl(workerUrl);
   ```
+
+---
+
+What is snapping and spurring?

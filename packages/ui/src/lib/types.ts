@@ -7,13 +7,21 @@ export type NodeType = 'gate' | 'poi' | 'track' | 'stamp' | 'facility';
 export const SYSTEM_TAGS = [
     'garbage',
     'paid',
-    'free',
     'toilet',
     'drinking_water',
     'wheelchair_accessible',
+    'food_stall',
+    'canteen',
 ] as const;
 
 export type SystemTag = typeof SYSTEM_TAGS[number];
+
+export const TAG_SYNONYMS: Record<string, string[]> = {
+    'garbage': ['trash', 'bin', 'dustbin', 'waste'],
+    'restroom': ['toilet', 'washroom', 'bathroom', 'loo'],
+    'food_stall': ['snack', 'eat', 'hungry', 'food', 'juice'],
+    'water': ['drink', 'thirsty']
+};
 
 export interface GraphNode {
     id: string;
@@ -25,6 +33,10 @@ export interface GraphNode {
     has_stamp?: boolean; // For POIs that also act as stamps
     active_from?: string; // ISO date string (YYYY-MM-DD) for seasonal nodes
     active_to?: string;   // ISO date string (YYYY-MM-DD) for seasonal nodes
+    
+    // POI Content Metadata
+    image_url?: string;
+    extra_info?: string;
 }
 
 export interface GraphEdge {

@@ -195,3 +195,21 @@ export function findShortestPath(
   // No path found
   return null;
 }
+
+// Find the closest node on the graph to a given coordinate
+export function findNearestNode(graph: GraphData, lat: number, lng: number): GraphNode | null {
+  if (!graph.nodes || graph.nodes.length === 0) return null;
+  
+  let nearestNode: GraphNode | null = null;
+  let minDistance = Infinity;
+
+  for (const node of graph.nodes) {
+    const dist = distanceInMeters(lat, lng, node.lat, node.lng);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearestNode = node;
+    }
+  }
+
+  return nearestNode;
+}

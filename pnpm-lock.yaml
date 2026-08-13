@@ -19,6 +19,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.111.0
         version: 2.112.1
+      '@turf/turf':
+        specifier: ^7.4.0
+        version: 7.4.0
       '@wayontop/ui':
         specifier: workspace:*
         version: link:../packages/ui

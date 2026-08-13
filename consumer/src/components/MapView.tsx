@@ -56,8 +56,6 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
         calculateCollisions();
     }, [zoom, nodesAndStamps, calculateCollisions]);
 
-    if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
-
     const routeGeoJSON = useMemo(() => {
         if (!activeRoute || !graph) return null;
         const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
@@ -100,6 +98,8 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
     }, [activeRoute, graph]);
+
+    if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
     const animatedStyle: any = {
         version: 8,

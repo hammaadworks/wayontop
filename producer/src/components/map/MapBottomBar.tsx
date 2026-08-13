@@ -1,12 +1,12 @@
-import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, WifiOff} from 'lucide-react';
+import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, WifiOff, Eraser} from 'lucide-react';
 import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {SponsorManager} from '../SponsorManager';
 import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 
 interface MapBottomBarProps {
-    mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes';
-    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes') => void;
+    mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase';
+    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase') => void;
     isLocked: boolean;
     setIsLocked: (val: boolean) => void;
     edgeStartNode: GraphNode | null;
@@ -57,6 +57,12 @@ export function MapBottomBar({
                 visible={mode === 'add_node'}
                 message="Tap to place"
                 icon={<MapPin className="w-4 h-4"/>}
+            />
+
+            <SpecialToast
+                visible={mode === 'erase'}
+                message="Tap track node or path to erase"
+                icon={<Eraser className="w-4 h-4"/>}
             />
 
             <div
@@ -178,16 +184,34 @@ export function MapBottomBar({
                     <SponsorManager data={data} setData={setData}/>
                 </div>
 
-                <Button variant="ghost"
-                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'test_route' ? 'bg-emerald-600/20 text-emerald-400' : 'text-white hover:text-white hover:bg-white/10'}`}
-                        onClick={() => {
-                            setMode('test_route');
-                            setEdgeStartNode(null);
-                            setTestRoutePath(null);
-                            setSelectedNode(null);
-                        }}>
-                    <ArrowRight className="w-5 h-5"/> <span className="text-[10px] font-bold">Route</span>
-                </Button>
+                {isLocked ? (
+                    <Button variant="ghost"
+                            className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'test_route' ? 'bg-emerald-600/20 text-emerald-400' : 'text-white hover:text-white hover:bg-white/10'}`}
+                            onClick={() => {
+                                setMode('test_route');
+                                setEdgeStartNode(null);
+                                setTestRoutePath(null);
+                                setSelectedNode(null);
+                            }}>
+                        <ArrowRight className="w-5 h-5"/> <span className="text-[10px] font-bold">Route</span>
+                    </Button>
+                ) : (
+                    <Button variant="ghost"
+                            className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'erase' ? 'bg-red-600/20 text-red-400 shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'text-white hover:text-white hover:bg-white/10'}`}
+                            onClick={() => {
+                                if (mode === 'erase') {
+                                    setMode('view');
+                                } else {
+                                    setMode('erase');
+                                    setEdgeStartNode(null);
+                                    setTestRoutePath(null);
+                                    setSelectedNode(null);
+                                    setSelectedEdge(null);
+                                }
+                            }}>
+                        <Eraser className="w-5 h-5"/> <span className="text-[10px] font-bold">Eraser</span>
+                    </Button>
+                )}
             </div>
         </div>
     );

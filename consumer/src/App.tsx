@@ -26,7 +26,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wa
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {supabase} from '@wayontop/ui/lib/supabase';
-import {findShortestPath} from '@wayontop/ui/lib/routing';
+import {findShortestPath, distanceInMeters} from '@wayontop/ui/lib/routing';
 import {useLocation} from './hooks/useLocation';
 import {PermissionGate} from '@wayontop/ui/components/PermissionGate';
 import {InAppBrowserBlocker} from './components/InAppBrowserBlocker';
@@ -40,6 +40,7 @@ import {showAlert} from './lib/events';
 import {Gamification} from './lib/gamification';
 import {NavigationSheet} from './components/NavigationSheet';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
+import {TAG_SYNONYMS} from '@wayontop/ui/lib/types';
 import {INITIAL_VENUE, LAST_VENUE_STORAGE_KEY} from './lib/constants';
 
 
@@ -123,15 +124,51 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
 
     const pois = useMemo(() => {
         if (!graph) return [];
-        return graph.nodes.filter(n => n.type !== 'track');
+        const today = new Date().toISOString().split('T')[0];
+
+        return graph.nodes.filter(n => {
+            if (n.type === 'track') return false;
+            if (n.active_from && today < n.active_from) return false;
+            if (n.active_to && today > n.active_to) return false;
+            return true;
+        }).map(n => {
+            let searchAliases: string[] = [];
+            (n.tags || []).forEach(tag => {
+                if (TAG_SYNONYMS[tag]) {
+                    searchAliases.push(...TAG_SYNONYMS[tag]);
+                }
+            });
+            return {
+                ...n,
+                searchTags: [...(n.tags || []), ...searchAliases]
+            };
+        });
     }, [graph]);
 
-    const fuse = useMemo(() => new Fuse(pois, {keys: ['name', 'tags'], threshold: 0.3}), [pois]);
+    const fuse = useMemo(() => new Fuse(pois, {keys: ['name', 'searchTags'], threshold: 0.3}), [pois]);
 
     const searchResults = useMemo(() => {
-        if (!searchQuery) return pois;
-        return fuse.search(searchQuery).map(res => res.item);
-    }, [searchQuery, pois, fuse]);
+        let results = pois;
+        if (searchQuery) {
+            results = fuse.search(searchQuery).map(res => res.item);
+        }
+        
+        // Filter out garbage unless explicitly searched for
+        const isSearchingTrash = searchQuery && /garbage|trash|bin|waste|dustbin/i.test(searchQuery);
+        if (!isSearchingTrash) {
+            results = results.filter(poi => !poi.tags?.includes('garbage'));
+        }
+        
+        // Calculate distance and sort
+        if (location) {
+            results = results.map(poi => ({
+                ...poi,
+                distance: distanceInMeters(location.lat, location.lng, poi.lat, poi.lng)
+            })).sort((a: any, b: any) => a.distance - b.distance);
+        }
+        
+        return results;
+    }, [searchQuery, pois, fuse, location]);
 
     const handleRoute = (fromNode: GraphNode, toNode: GraphNode) => {
         if (!graph) return;
@@ -290,22 +327,25 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </Sheet>
                     </div>
 
-                    {/* Status Pills (Stamps & Accuracy) */}
-                    <div className="flex justify-center gap-2 pointer-events-auto" data-html2canvas-ignore={isCapturing}>
-                        <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-lg text-xs font-semibold text-white/90">
-                            <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                                <Sparkles className="w-3 h-3 text-amber-400"/>
-                            </div>
-                            <span className="text-white font-bold">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
-                            <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
-                        </div>
-
+                    {/* Status Pills (Accuracy) */}
+                    <div className="flex justify-center pointer-events-auto mt-1" data-html2canvas-ignore={isCapturing}>
                         <div 
-                            className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-lg text-xs text-white/90 font-medium cursor-pointer hover:bg-white/10 transition-all active:scale-95"
-                            onClick={() => setMode(mode === 'ar' ? 'map' : 'ar')}
+                            className="glass-pill bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
                         >
-                            <Camera className={`w-3.5 h-3.5 ${!location ? 'text-amber-500 animate-pulse drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]' : location.accuracy < 15 ? 'text-emerald-500 drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]' : location.accuracy < 30 ? 'text-amber-400' : 'text-red-500'}`} />
-                            {!location ? 'Connecting GPS...' : `Acc: ${Math.round(location.accuracy)}m`}
+                            <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${!location ? 'bg-amber-500 text-amber-500 animate-pulse' : location.accuracy < 15 ? 'bg-emerald-400 text-emerald-400' : location.accuracy < 30 ? 'bg-amber-400 text-amber-400' : 'bg-red-500 text-red-500 animate-pulse'}`} />
+                            <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
+                                {!location ? 'Connecting GPS...' : `GPS: ${Math.round(location.accuracy)}m`}
+                            </span>
+                            {location && location.accuracy > 15 && (
+                                <span className="text-[10px] text-red-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
+                                    Move outdoors / Calibrate compass
+                                </span>
+                            )}
+                            {location && location.accuracy > 5 && location.accuracy <= 15 && (
+                                <span className="text-[10px] text-amber-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
+                                    Stay still to improve
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -351,6 +391,17 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </div>
                     </div>
                 )}
+
+                {/* Stamps Pill (Bottom Left) */}
+                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7.5rem)] left-4 z-10 pointer-events-auto" data-html2canvas-ignore={isCapturing}>
+                    <div className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
+                        <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
+                        </div>
+                        <span className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
+                        <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
+                    </div>
+                </div>
 
                 {/* Unified Consumer Bottom (Sponsor Marquee + Bottom Bar) */}
                 <ConsumerBottom

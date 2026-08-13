@@ -2,7 +2,7 @@ import {useState} from 'react';
 import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 
 export function useMapEditorState() {
-    const [mode, setMode] = useState<'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes'>('view');
+    const [mode, setMode] = useState<'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase'>('view');
     const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
     const [selectedEdge, setSelectedEdge] = useState<GraphEdge | null>(null);
     const [edgeStartNode, setEdgeStartNode] = useState<GraphNode | null>(null);

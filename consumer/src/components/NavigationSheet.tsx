@@ -6,6 +6,7 @@ import { Search, MapPin, X, ArrowDownUp, Navigation, LocateFixed } from 'lucide-
 import { useTranslation } from 'react-i18next';
 import Fuse from 'fuse.js';
 import type { GraphData, GraphNode } from '@wayontop/ui/lib/types';
+import { findNearestNode } from '@wayontop/ui/lib/routing';
 import { showAlert } from '../lib/events';
 
 interface NavigationSheetProps {
@@ -90,16 +91,8 @@ export function NavigationSheet({ isOpen, onClose, graph, initialToNode, locatio
                 return;
             }
 
-            // Find nearest node
-            let nearestStart: GraphNode | null = null;
-            let minDistance = Infinity;
-            graph?.nodes.forEach(n => {
-                const dist = Math.hypot(n.lat - location.lat, n.lng - location.lng);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestStart = n;
-                }
-            });
+            // Find nearest node using Haversine distance
+            const nearestStart = graph ? findNearestNode(graph, location.lat, location.lng) : null;
 
             if (nearestStart) {
                 onStartNavigation(nearestStart, toNode);

@@ -20,12 +20,12 @@ import {PiPCamera} from './PiPCamera';
 import {MapBottomBar} from './map/MapBottomBar';
 import {EditorPanels} from './map/EditorPanels';
 import {distanceInMeters, findShortestPath} from '@wayontop/ui/lib/routing';
-import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
+import {SYSTEM_TAGS, type GraphEdge, type GraphNode} from '@wayontop/ui/lib/types';
 import type {Venue} from '../hooks/useVenues';
 import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
 import {useMapEditorState} from '../hooks/useMapEditorState';
-import {Save, Map as MapIcon, RotateCcw, MousePointer2, Plus, PenTool, Trash2, Undo2, MapPin, Navigation, Tag, Loader2, Store, Users, MapPinOff, Layers} from 'lucide-react';
+import {Save, Map as MapIcon, RotateCcw, MousePointer2, Plus, PenTool, Trash2, Undo2, MapPin, Navigation, Tag, Loader2, Store, Users, MapPinOff, Layers, Eraser} from 'lucide-react';
 import {SponsorReelsModal} from '@wayontop/ui/components/SponsorReelsModal';
 import {PRODUCER_MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
@@ -73,13 +73,23 @@ const ANIMATED_MAP_STYLE: any = {
 const INTERACTIVE_LAYER_IDS = ['edges-core', 'edges-glow', 'trace-layer-core', 'trace-layer-glow'];
 
 const EDGES_GLOW_PAINT: any = {
-    'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#f59e0b', '#3b82f6'],
+    'line-color': [
+        'case', 
+        ['boolean', ['get', 'isSelected'], false], '#f59e0b', 
+        ['boolean', ['get', 'is_hidden'], false], '#fb923c',
+        '#3b82f6'
+    ],
     'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 12, 8],
     'line-opacity': 0.3
 };
 const ROUND_LAYOUT: any = {'line-cap': 'round', 'line-join': 'round'};
 const EDGES_CORE_PAINT_VIEW: any = {
-    'line-color': ['case', ['boolean', ['get', 'isSelected'], false], '#fbbf24', '#60a5fa'],
+    'line-color': [
+        'case', 
+        ['boolean', ['get', 'isSelected'], false], '#fbbf24', 
+        ['boolean', ['get', 'is_hidden'], false], '#f97316',
+        '#60a5fa'
+    ],
     'line-width': ['case', ['boolean', ['get', 'isSelected'], false], 6, 4],
     'line-opacity': 1
 };
@@ -291,7 +301,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     }, [currentVenue]);
 
     const availableTags = useMemo(() => {
-        const tags = new Set<string>();
+        const tags = new Set<string>(SYSTEM_TAGS);
         data.nodes.forEach(n => n.tags?.forEach(t => tags.add(t)));
         return Array.from(tags).sort();
     }, [data.nodes]);
@@ -374,7 +384,35 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     };
 
     const handleNodeClick = (node: GraphNode) => {
-        if (mode === 'add_edge') {
+        if (mode === 'erase') {
+            if (node.type === 'track') {
+                if (mapRef.current) {
+                    const pt = mapRef.current.project([node.lng, node.lat]);
+                    const bbox: [number, number][] = [
+                        [pt.x - 10, pt.y - 10],
+                        [pt.x + 10, pt.y + 10]
+                    ];
+                    const features = mapRef.current.queryRenderedFeatures(bbox, { layers: INTERACTIVE_LAYER_IDS });
+                    
+                    const traceFeature = features.find((f: any) => f.layer.id === 'trace-layer-core' || f.layer.id === 'trace-layer-glow');
+                    if (traceFeature) {
+                        const {index} = traceFeature.properties as any;
+                        deleteTracePoint(index, node.lat, node.lng);
+                        return;
+                    }
+
+                    const orangeEdge = features.find((f: any) => (f.layer.id === 'edges-core' || f.layer.id === 'edges-glow') && f.properties.is_hidden);
+                    if (orangeEdge) {
+                        const {from, to} = orangeEdge.properties as any;
+                        deleteEdge(from, to);
+                        return;
+                    }
+                }
+                deleteNode(node.id);
+            } else {
+                toast.error('Eraser tool only works on track nodes or paths');
+            }
+        } else if (mode === 'add_edge') {
             handleAddEdgeModeClick(node);
         } else if (mode === 'test_route') {
             handleTestRouteModeClick(node);
@@ -401,6 +439,52 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }));
         setSelectedEdge(null);
         toast.success('Edge deleted');
+    };
+
+    const deleteTracePoint = (index: number, clickLat: number, clickLng: number) => {
+        if (index === -1) {
+            if (rawTrace.length === 0) return;
+            let nearestIdx = 0;
+            let minDistance = Infinity;
+            rawTrace.forEach((pt, i) => {
+                const dist = distanceInMeters(clickLat, clickLng, pt.lat, pt.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestIdx = i;
+                }
+            });
+            const newTrace = [...rawTrace];
+            newTrace.splice(nearestIdx, 1);
+            setRawTrace(newTrace);
+            toast.success('Trace point erased');
+        } else {
+            setData(prev => {
+                if (!prev.rawTraces || !prev.rawTraces[index]) return prev;
+                const trace = prev.rawTraces[index];
+                let nearestIdx = 0;
+                let minDistance = Infinity;
+                trace.forEach((pt: any, i: number) => {
+                    const dist = distanceInMeters(clickLat, clickLng, pt.lat, pt.lng);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestIdx = i;
+                    }
+                });
+                
+                const newTraces = [...prev.rawTraces];
+                const modifiedTrace = [...trace];
+                modifiedTrace.splice(nearestIdx, 1);
+                
+                if (modifiedTrace.length < 2) {
+                    newTraces.splice(index, 1);
+                } else {
+                    newTraces[index] = modifiedTrace;
+                }
+                
+                return { ...prev, rawTraces: newTraces };
+            });
+            toast.success('Trace point erased');
+        }
     };
 
     const updateEdge = (from: string, to: string, updates: Partial<GraphEdge>) => {
@@ -435,8 +519,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setSelectedNode(prev => prev?.id === id ? {...prev, ...updates} : prev);
     };
 
-    const latestFns = useRef({updateNodePosition, handleNodeClick});
-    latestFns.current = {updateNodePosition, handleNodeClick};
+    const latestFns = useRef({updateNodePosition, handleNodeClick, handleMapClick});
+    latestFns.current = {updateNodePosition, handleNodeClick, handleMapClick};
 
     const showVenuePin = zoom < PRODUCER_MAP_ZOOM_TIERS.VENUE_PIN_MAX;
     const showMajorPins = zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_PINS_MIN;
@@ -741,6 +825,50 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     pitchWithRotate={true} dragRotate={true} maxPitch={85} maxZoom={22}
                     dragPan={true}
                     onClick={(e) => {
+                        if (mode === 'erase') {
+                            const traceFeature = e.features?.find(f => f.layer.id === 'trace-layer-core' || f.layer.id === 'trace-layer-glow');
+                            if (traceFeature) {
+                                const {index} = traceFeature.properties as any;
+                                deleteTracePoint(index, e.lngLat.lat, e.lngLat.lng);
+                                return;
+                            }
+                            
+                            const orangeEdge = e.features?.find(f => (f.layer.id === 'edges-core' || f.layer.id === 'edges-glow') && f.properties.is_hidden);
+                            if (orangeEdge) {
+                                const {from, to} = orangeEdge.properties as any;
+                                deleteEdge(from, to);
+                                return;
+                            }
+
+                            let nearestNode: GraphNode | null = null;
+                            let minDist = 20;
+                            if (mapRef.current) {
+                                data.nodes.forEach(n => {
+                                    if (n.type === 'track') {
+                                        const pNode = mapRef.current.project([n.lng, n.lat]);
+                                        const dist = Math.sqrt(Math.pow(pNode.x - e.point.x, 2) + Math.pow(pNode.y - e.point.y, 2));
+                                        if (dist < minDist) {
+                                            minDist = dist;
+                                            nearestNode = n;
+                                        }
+                                    }
+                                });
+                            }
+
+                            if (nearestNode) {
+                                deleteNode(nearestNode.id);
+                                return;
+                            }
+
+                            const blueEdge = e.features?.find(f => (f.layer.id === 'edges-core' || f.layer.id === 'edges-glow') && !f.properties.is_hidden);
+                            if (blueEdge) {
+                                const {from, to} = blueEdge.properties as any;
+                                deleteEdge(from, to);
+                                return;
+                            }
+                            
+                            return;
+                        }
                         if (mode === 'view') {
                             const traceFeature = e.features?.find(f => f.layer.id === 'trace-layer-core' || f.layer.id === 'trace-layer-glow');
                             if (traceFeature) {
@@ -759,9 +887,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                                 return;
                             }
                         }
-                        handleMapClick({lat: e.lngLat.lat, lng: e.lngLat.lng});
+                        latestFns.current.handleMapClick({lat: e.lngLat.lat, lng: e.lngLat.lng});
                     }}
-                    interactiveLayerIds={mode === 'view' ? INTERACTIVE_LAYER_IDS : undefined}
+                    interactiveLayerIds={['view', 'erase'].includes(mode) ? INTERACTIVE_LAYER_IDS : []}
                 >
                     {currentLocation && (
                         <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">

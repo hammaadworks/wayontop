@@ -133,12 +133,27 @@ export function EditorPanels({
 
                                     {selectedNode.type === 'poi' && (
                                         <div
-                                            className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5">
+                                            className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5 mt-1">
                                             <span
                                                 className="text-[10px] font-bold text-slate-300">CONTAINS STAMP?</span>
                                             <Switch className="scale-[0.65] origin-right"
                                                     checked={!!selectedNode.has_stamp}
                                                     onCheckedChange={(checked: boolean) => updateNode(selectedNode.id, {has_stamp: checked})}/>
+                                        </div>
+                                    )}
+
+                                    {selectedNode.type !== 'track' && (
+                                        <div className="flex items-center justify-between bg-black/40 border border-white/10 h-7 rounded-md px-2.5 mt-1">
+                                            <span className="text-[10px] font-bold text-slate-300">PAID ACCESS?</span>
+                                            <Switch className="scale-[0.65] origin-right"
+                                                    checked={selectedNode.tags?.includes('paid') || false}
+                                                    onCheckedChange={(checked: boolean) => {
+                                                        const currentTags = selectedNode.tags || [];
+                                                        const newTags = checked 
+                                                            ? [...new Set([...currentTags, 'paid'])] 
+                                                            : currentTags.filter((t: string) => t !== 'paid');
+                                                        updateNode(selectedNode.id, {tags: newTags});
+                                                    }}/>
                                         </div>
                                     )}
                                     
@@ -160,6 +175,71 @@ export function EditorPanels({
                                             onChange={e => updateNode(selectedNode.id, {active_to: e.target.value})}
                                             className="h-5 text-[10px] font-bold bg-transparent border-0 text-right w-24 p-0 text-white [&::-webkit-calendar-picker-indicator]:invert"
                                         />
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2 mt-2">
+                                        <span className="text-[10px] font-bold text-slate-300">EXTRA INFO (REQUIRED FOR PROMO CARD)</span>
+                                        <textarea
+                                            value={selectedNode.extra_info || ''}
+                                            onChange={e => updateNode(selectedNode.id, {extra_info: e.target.value})}
+                                            placeholder="Enter extra details for the promo card..."
+                                            className="text-xs bg-black/60 border border-white/10 text-white focus:border-emerald-500/50 transition-colors placeholder:text-slate-500 rounded-md p-2 h-20 resize-none shadow-inner"
+                                        />
+                                        
+                                        <div className="flex flex-col gap-1 mt-1">
+                                            <span className="text-[10px] font-bold text-slate-300">PROMO IMAGE</span>
+                                            {selectedNode.image_url ? (
+                                                <div className="relative group rounded-md overflow-hidden border border-white/10 h-24">
+                                                    <img src={selectedNode.image_url} alt="Promo" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Button 
+                                                            variant="destructive" 
+                                                            size="sm" 
+                                                            className="h-6 text-[10px] font-bold"
+                                                            onClick={() => updateNode(selectedNode.id, {image_url: ''})}
+                                                        >
+                                                            <Trash2 className="w-3 h-3 mr-1"/> Remove Image
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        value={selectedNode.image_url || ''}
+                                                        onChange={e => updateNode(selectedNode.id, {image_url: e.target.value})}
+                                                        placeholder="Paste Image URL or Upload..."
+                                                        className="h-7 text-xs flex-1 bg-black/60 border-white/10 text-white focus:border-emerald-500/50"
+                                                    />
+                                                    <label className="shrink-0 h-7 px-3 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-md flex items-center justify-center cursor-pointer transition-colors border border-white/10">
+                                                        <span>UPLOAD</span>
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            className="hidden" 
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (!file) return;
+                                                                const toast = (await import('sonner')).toast;
+                                                                toast.loading('Uploading image...', { id: 'img-upload' });
+                                                                try {
+                                                                    const { supabase } = await import('@wayontop/ui/lib/supabase');
+                                                                    const ext = file.name.split('.').pop();
+                                                                    const fileName = `promo_${selectedNode.id}_${Date.now()}.${ext}`;
+                                                                    const { error } = await supabase.storage.from('assets').upload(fileName, file);
+                                                                    if (error) throw error;
+                                                                    
+                                                                    const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(fileName);
+                                                                    updateNode(selectedNode.id, { image_url: publicUrl });
+                                                                    toast.success('Image uploaded successfully', { id: 'img-upload' });
+                                                                } catch (err: any) {
+                                                                    toast.error('Upload failed: ' + err.message, { id: 'img-upload' });
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2 mt-2">
