@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {Globe, MapPin, Navigation, Settings, Sparkles, X} from 'lucide-react';
+import {Globe, MapPin, Navigation, Settings, Sparkles, X, ArrowUp} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
 import html2canvas from 'html2canvas';
@@ -359,80 +359,84 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 )}
 
 
-                {/* Active Route HUD - Strava Style */}
+                {/* Active Route HUD - Google Maps Style (Top Banner) */}
                 {activeRoute && targetNode && (
                     <div
-                        className="absolute top-safe pt-20 left-4 right-4 z-20 pointer-events-auto animate-in slide-in-from-top-4 duration-500">
-                        <div
-                            className="bg-[#1C1C1E]/90 backdrop-blur-3xl p-5 rounded-[2rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] max-w-[400px] mx-auto">
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-sm">Navigating
-                                        To</p>
-                                    <h3 className="text-white font-black text-2xl tracking-tight leading-none drop-shadow-md">{targetNode.name}</h3>
-                                </div>
-                                <Button variant="ghost" size="icon"
-                                        className="text-white/50 hover:bg-white/10 hover:text-white rounded-full h-10 w-10 transition-colors bg-white/5 shrink-0 ml-4 active:scale-90"
-                                        onClick={cancelRoute}>
-                                    <X className="w-5 h-5"/>
-                                </Button>
+                        className="absolute top-0 left-0 right-0 z-30 pointer-events-auto animate-in slide-in-from-top-4 duration-500">
+                        <div className="bg-[#124230]/95 backdrop-blur-xl shadow-2xl rounded-b-[32px] px-6 pt-[calc(env(safe-area-inset-top)+24px)] pb-6 flex items-center gap-5 border-b border-emerald-900/50">
+                            <div className="flex flex-col items-center shrink-0">
+                                <ArrowUp className="w-10 h-10 text-white" strokeWidth={3.5} />
+                                <p className="text-[12px] font-bold mt-1.5 text-emerald-300 uppercase tracking-widest">Head</p>
                             </div>
-
-                            <div className="grid grid-cols-3 gap-2 mt-2 pt-4 border-t border-white/10">
-                                <div className="flex flex-col">
-                                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Distance</p>
-                                    <p className="text-white font-black text-2xl tracking-tighter">{Math.round(activeRoute.totalDistance)}<span
-                                        className="text-[14px] text-white/50 ml-0.5 font-bold">m</span></p>
-                                </div>
-                                <div className="flex flex-col border-l border-white/10 pl-3">
-                                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Time</p>
-                                    <p className="text-white font-black text-2xl tracking-tighter">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}<span
-                                        className="text-[14px] text-white/50 ml-0.5 font-bold">m</span></p>
-                                </div>
-                                <div className="flex flex-col border-l border-white/10 pl-3">
-                                    <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-1">Speed</p>
-                                    <p className="text-white font-black text-2xl tracking-tighter">1.4<span
-                                        className="text-[14px] text-white/50 ml-0.5 font-bold">m/s</span></p>
-                                </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-white font-black text-3xl tracking-tight leading-none drop-shadow-sm truncate">{targetNode.name}</h3>
+                                <p className="text-emerald-100/80 text-[15px] font-semibold mt-2 tracking-wide truncate">Lalbagh Botanical Garden</p>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Stamps Pill (Bottom Left) */}
-                <div
-                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto"
-                    data-html2canvas-ignore={isCapturing}>
-                    <div
-                        className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
-                        <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                            <Sparkles
-                                className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
+                {/* Normal State UI (Hidden during navigation) */}
+                {!activeRoute && (
+                    <>
+                        {/* Stamps Pill (Bottom Left) */}
+                        <div
+                            className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto"
+                            data-html2canvas-ignore={isCapturing}>
+                            <div
+                                className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
+                                <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                                    <Sparkles
+                                        className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
+                                </div>
+                                <span
+                                    className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
+                                <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
+                            </div>
                         </div>
-                        <span
-                            className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
-                        <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
-                    </div>
-                </div>
 
-                {/* Unified Consumer Bottom (Sponsor Marquee + Bottom Bar) */}
-                <ConsumerBottom
-                    graph={graph}
-                    location={location}
-                    isCapturing={isCapturing}
-                    handleCapture={handleCapture}
-                    endWalk={endWalk}
-                    setShowReportModal={(show) => setReportModalConfig({show})}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    searchResults={searchResults}
-                    handlePOISelect={handlePOISelect}
-                    onSponsorModalChange={setIsSponsorModalOpen}
-                    onOpenNavigation={() => {
-                        setNavInitialTarget(null);
-                        setIsNavSheetOpen(true);
-                    }}
-                />
+                        {/* Unified Consumer Bottom (Sponsor Marquee + Bottom Bar) */}
+                        <ConsumerBottom
+                            graph={graph}
+                            location={location}
+                            isCapturing={isCapturing}
+                            handleCapture={handleCapture}
+                            endWalk={endWalk}
+                            setShowReportModal={(show) => setReportModalConfig({show})}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            searchResults={searchResults}
+                            handlePOISelect={handlePOISelect}
+                            onSponsorModalChange={setIsSponsorModalOpen}
+                            onOpenNavigation={() => {
+                                setNavInitialTarget(null);
+                                setIsNavSheetOpen(true);
+                            }}
+                        />
+                    </>
+                )}
+
+                {/* Active Route HUD - Google Maps Style (Bottom Panel) */}
+                {activeRoute && targetNode && (
+                    <div
+                        className="absolute bottom-0 left-0 right-0 z-40 pointer-events-auto animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 px-7 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)] rounded-t-[36px] shadow-[0_-20px_50px_rgba(0,0,0,0.6)] flex items-center justify-between">
+                            <div className="flex flex-col min-w-0 pr-4">
+                                <div className="flex items-end gap-2">
+                                    <h2 className="text-emerald-400 font-black text-4xl leading-none tracking-tighter drop-shadow-sm">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}</h2>
+                                    <span className="text-xl font-bold text-emerald-400/80 mb-0.5 tracking-tight">min</span>
+                                </div>
+                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {targetNode.name}</p>
+                            </div>
+                            <Button 
+                                onClick={cancelRoute}
+                                className="bg-red-500 hover:bg-red-600 text-white rounded-full px-8 h-14 font-black text-[18px] shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 transition-all shrink-0"
+                            >
+                                Exit
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {selectedPOI && (
                     <POICard
