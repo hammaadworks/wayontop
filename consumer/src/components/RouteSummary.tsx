@@ -1,11 +1,11 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {Flame, Footprints, Layers, Share2, Timer, X, Play, Pause, Square, ImagePlus, BatteryWarning} from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wayontop/ui/components/ui/sheet';
+import {BatteryWarning, Flame, Footprints, ImagePlus, Layers, Pause, Play, Share2, Square, Timer} from 'lucide-react';
+import {Drawer, DrawerContent, DrawerHeader, DrawerTitle} from '@wayontop/ui/components/ui/drawer';
 import {ViralSharing} from '../lib/sharing';
 import {Gamification} from '../lib/gamification';
 import {useTranslation} from 'react-i18next';
 import html2canvas from 'html2canvas';
-import type { TrackingStatus } from '../hooks/useLocation';
+import type {TrackingStatus} from '../hooks/useLocation';
 
 interface RouteSummaryProps {
     onClose: () => void;
@@ -21,9 +21,9 @@ interface RouteSummaryProps {
 }
 
 export function RouteSummary({
-    onClose, distanceWalked, startTime, routeTrack, 
-    elapsedTime, status, onStart, onPause, onResume, onEnd
-}: RouteSummaryProps) {
+                                 onClose, distanceWalked, startTime, routeTrack,
+                                 elapsedTime, status, onStart, onPause, onResume, onEnd
+                             }: RouteSummaryProps) {
     const {t} = useTranslation();
     const [stampsCount, setStampsCount] = useState(0);
     const [isCapturing, setIsCapturing] = useState(false);
@@ -70,7 +70,7 @@ export function RouteSummary({
 
         const scaleX = width / lngDiff;
         const scaleY = height / latDiff;
-        const scale = Math.min(scaleX, scaleY) * 0.7; 
+        const scale = Math.min(scaleX, scaleY) * 0.7;
 
         const xOffset = (width - (lngDiff * scale)) / 2;
         const yOffset = (height - (latDiff * scale)) / 2;
@@ -126,224 +126,244 @@ export function RouteSummary({
     };
 
     return (
-        <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
-            <SheetContent side="bottom" className="h-[95dvh] bg-transparent border-0 p-0 text-white !shadow-none z-[100] flex flex-col">
-                <div className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)]">
-                    <SheetHeader className="p-6 pb-2 relative border-b border-white/10 shrink-0">
+        <Drawer open={true} onOpenChange={(open) => !open && onClose()}>
+            <DrawerContent
+                className="!h-[90svh] bg-transparent border-0 p-0 text-white !shadow-none z-[100] flex flex-col">
+                <div
+                    className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)]">
+                    <DrawerHeader className="p-6 pb-2 relative border-b border-white/10 shrink-0">
                         <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4"></div>
-                        <SheetTitle className="sr-only">Route Summary</SheetTitle>
-                    </SheetHeader>
-                    
+                        <DrawerTitle className="sr-only">Route Summary</DrawerTitle>
+                    </DrawerHeader>
+
                     <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col items-center">
-            
-            {/* Background Toggle (Hidden during capture) */}
-            {!isCapturing && (
-                <div
-                    className="mb-4 z-50 flex bg-white/10 backdrop-blur-xl rounded-full p-1 border border-white/10 overflow-hidden">
-                    <button
-                        onClick={() => setBgType('map')}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${bgType === 'map' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
-                    >
-                        Map
-                    </button>
-                    <button
-                        onClick={() => setBgType('satellite')}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${bgType === 'satellite' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
-                    >
-                        Satellite
-                    </button>
-                    <button
-                        onClick={() => {
-                            if (customImage) {
-                                setBgType('custom');
-                            } else {
-                                fileInputRef.current?.click();
-                            }
-                        }}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${bgType === 'custom' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
-                    >
-                        <ImagePlus className="w-3.5 h-3.5" /> Photo
-                    </button>
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageUpload} 
-                        accept="image/*" 
-                        className="hidden" 
-                    />
-                </div>
-            )}
 
-            {/* Share Card - Pacer/Strava Style */}
-            <div className="flex flex-col items-center w-full max-w-[340px]">
-                <div
-                    ref={cardRef}
-                    className={`w-full h-[580px] overflow-hidden shadow-2xl relative rounded-3xl ${
-                        bgType === 'map' ? 'bg-slate-800' : 'bg-emerald-950'
-                    }`}
-                >
-                    {/* Background Images / Textures */}
-                    {bgType === 'map' && (
-                        <div
-                            className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:15px_15px]"></div>
-                    )}
-                    {bgType === 'satellite' && (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center opacity-80 mix-blend-luminosity"
-                            style={{backgroundImage: "url('/lalbagh-strava-sat-bg.png')"}}
-                        >
-                            <div className="absolute inset-0 bg-black/40"></div>
-                        </div>
-                    )}
-                    {bgType === 'custom' && customImage && (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center"
-                            style={{backgroundImage: `url(${customImage})`}}
-                        >
-                            <div className="absolute inset-0 bg-black/30"></div>
-                        </div>
-                    )}
-
-                    {/* SVG Map Overlay */}
-                    {mapData && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <svg viewBox={`0 0 ${mapData.width} ${mapData.height}`}
-                                 className="w-full h-full drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]">
-                                <path
-                                    d={mapData.pathData}
-                                    fill="none"
-                                    stroke={bgType === 'map' ? '#3b82f6' : '#ffffff'}
-                                    strokeWidth={bgType === 'map' ? "6" : "3"}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                        {/* Background Toggle (Hidden during capture) */}
+                        {!isCapturing && (
+                            <div
+                                className="mb-4 z-50 flex bg-white/10 backdrop-blur-xl rounded-full p-1 border border-white/10 overflow-hidden">
+                                <button
+                                    onClick={() => setBgType('map')}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${bgType === 'map' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
+                                >
+                                    Map
+                                </button>
+                                <button
+                                    onClick={() => setBgType('satellite')}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${bgType === 'satellite' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
+                                >
+                                    Satellite
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (customImage) {
+                                            setBgType('custom');
+                                        } else {
+                                            fileInputRef.current?.click();
+                                        }
+                                    }}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${bgType === 'custom' ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}
+                                >
+                                    <ImagePlus className="w-3.5 h-3.5"/> Photo
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageUpload}
+                                    accept="image/*"
+                                    className="hidden"
                                 />
+                            </div>
+                        )}
 
-                                {/* Start Point */}
-                                <circle cx={mapData.getX(mapData.start.lng)} cy={mapData.getY(mapData.start.lat)}
-                                        r={bgType === 'map' ? "6" : "4"} fill="#10b981" stroke="#fff" strokeWidth="2"/>
+                        {/* Share Card - Pacer/Strava Style */}
+                        <div className="flex flex-col items-center w-full max-w-[340px]">
+                            <div
+                                ref={cardRef}
+                                className={`w-full h-[580px] overflow-hidden shadow-2xl relative rounded-3xl ${
+                                    bgType === 'map' ? 'bg-slate-800' : 'bg-emerald-950'
+                                }`}
+                            >
+                                {/* Background Images / Textures */}
+                                {bgType === 'map' && (
+                                    <div
+                                        className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:15px_15px]"></div>
+                                )}
+                                {bgType === 'satellite' && (
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center opacity-80 mix-blend-luminosity"
+                                        style={{backgroundImage: "url('/lalbagh-strava-sat-bg.png')"}}
+                                    >
+                                        <div className="absolute inset-0 bg-black/40"></div>
+                                    </div>
+                                )}
+                                {bgType === 'custom' && customImage && (
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center"
+                                        style={{backgroundImage: `url(${customImage})`}}
+                                    >
+                                        <div className="absolute inset-0 bg-black/30"></div>
+                                    </div>
+                                )}
 
-                                {/* End Point */}
-                                <circle cx={mapData.getX(mapData.end.lng)} cy={mapData.getY(mapData.end.lat)}
-                                        r={bgType === 'map' ? "6" : "4"} fill="#ef4444" stroke="#fff" strokeWidth="2"/>
-                            </svg>
-                        </div>
-                    )}
+                                {/* SVG Map Overlay */}
+                                {mapData && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <svg viewBox={`0 0 ${mapData.width} ${mapData.height}`}
+                                             className="w-full h-full drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]">
+                                            <path
+                                                d={mapData.pathData}
+                                                fill="none"
+                                                stroke={bgType === 'map' ? '#3b82f6' : '#ffffff'}
+                                                strokeWidth={bgType === 'map' ? "6" : "3"}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
 
-                    {/* Top Info (Distance & App Name) */}
-                    <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
-                        <div className="flex flex-col">
+                                            {/* Start Point */}
+                                            <circle cx={mapData.getX(mapData.start.lng)}
+                                                    cy={mapData.getY(mapData.start.lat)}
+                                                    r={bgType === 'map' ? "6" : "4"} fill="#10b981" stroke="#fff"
+                                                    strokeWidth="2"/>
+
+                                            {/* End Point */}
+                                            <circle cx={mapData.getX(mapData.end.lng)}
+                                                    cy={mapData.getY(mapData.end.lat)}
+                                                    r={bgType === 'map' ? "6" : "4"} fill="#ef4444" stroke="#fff"
+                                                    strokeWidth="2"/>
+                                        </svg>
+                                    </div>
+                                )}
+
+                                {/* Top Info (Distance & App Name) */}
+                                <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
+                                    <div className="flex flex-col">
                             <span
                                 className="text-[42px] font-bold text-white leading-none tracking-tighter drop-shadow-lg">{distKm}
                                 <span className="text-xl text-white/80">KM</span></span>
-                            <span
-                                className="text-white/70 text-xs font-semibold tracking-widest uppercase mt-1 drop-shadow-md">WayOnTop</span>
-                        </div>
+                                        <span
+                                            className="text-white/70 text-xs font-semibold tracking-widest uppercase mt-1 drop-shadow-md">WayOnTop</span>
+                                    </div>
 
-                        {/* Watermark Top Right */}
-                        <div
-                            className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                            <Layers className="w-3 h-3 text-emerald-400"/>
-                            <span
-                                className="text-white text-[10px] font-bold tracking-widest uppercase">@lalbagh.top</span>
-                        </div>
-                    </div>
-
-                    {/* Bottom Stats Overlay */}
-                    <div
-                        className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-20">
-                        <div className="flex justify-between items-end border-t border-white/20 pt-4">
-                            <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-1 mb-1 opacity-70">
-                                    <Timer className="w-3.5 h-3.5 text-white"/>
+                                    {/* Watermark Top Right */}
+                                    <div
+                                        className="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+                                        <Layers className="w-3 h-3 text-emerald-400"/>
+                                        <span
+                                            className="text-white text-[10px] font-bold tracking-widest uppercase">@lalbagh.top</span>
+                                    </div>
                                 </div>
-                                <span className="text-white font-semibold text-sm tracking-wide">{formattedTime}</span>
-                            </div>
 
-                            <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-1 mb-1 opacity-70">
-                                    <Flame className="w-3 h-3 text-white"/>
-                                    <span className="text-[9px] text-white font-bold tracking-widest uppercase">Est. Cals</span>
-                                </div>
-                                <span className="text-white font-semibold text-sm tracking-wide">{calories}</span>
-                            </div>
+                                {/* Bottom Stats Overlay */}
+                                <div
+                                    className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-20">
+                                    <div className="flex justify-between items-end border-t border-white/20 pt-4">
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1 mb-1 opacity-70">
+                                                <Timer className="w-3.5 h-3.5 text-white"/>
+                                            </div>
+                                            <span
+                                                className="text-white font-semibold text-sm tracking-wide">{formattedTime}</span>
+                                        </div>
 
-                            <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-1 mb-1 opacity-70">
-                                    <Footprints className="w-3 h-3 text-white"/>
-                                    <span className="text-[9px] text-white font-bold tracking-widest uppercase">~Steps</span>
-                                </div>
-                                <span className="text-white font-semibold text-sm tracking-wide">{steps}</span>
-                            </div>
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1 mb-1 opacity-70">
+                                                <Flame className="w-3 h-3 text-white"/>
+                                                <span
+                                                    className="text-[9px] text-white font-bold tracking-widest uppercase">Est. Cals</span>
+                                            </div>
+                                            <span
+                                                className="text-white font-semibold text-sm tracking-wide">{calories}</span>
+                                        </div>
 
-                            <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-1 mb-1 opacity-70">
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1 mb-1 opacity-70">
+                                                <Footprints className="w-3 h-3 text-white"/>
+                                                <span
+                                                    className="text-[9px] text-white font-bold tracking-widest uppercase">~Steps</span>
+                                            </div>
+                                            <span
+                                                className="text-white font-semibold text-sm tracking-wide">{steps}</span>
+                                        </div>
+
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1 mb-1 opacity-70">
                                     <span
                                         className="text-[10px] text-white font-bold tracking-widest uppercase">Stamps</span>
+                                            </div>
+                                            <span
+                                                className="text-emerald-400 font-bold text-sm tracking-wide">{stampsCount}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span className="text-emerald-400 font-bold text-sm tracking-wide">{stampsCount}</span>
                             </div>
+
+                            {/* Controls & Actions */}
+                            {!isCapturing && (
+                                <div className="mt-6 w-full flex flex-col gap-4">
+                                    {/* Fitness Controls */}
+                                    <div
+                                        className="flex items-center justify-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-2">
+                                        {status === 'idle' || status === 'ended' ? (
+                                            <button
+                                                onClick={() => {
+                                                    onStart();
+                                                    onClose();
+                                                }}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all"
+                                            >
+                                                <Play className="w-4 h-4"/> Start Walk
+                                            </button>
+                                        ) : (
+                                            <>
+                                                {status === 'recording' ? (
+                                                    <button
+                                                        onClick={onPause}
+                                                        className="flex-1 flex items-center justify-center gap-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-bold py-3 rounded-xl transition-all"
+                                                    >
+                                                        <Pause className="w-4 h-4"/> Pause
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            onResume();
+                                                            onClose();
+                                                        }}
+                                                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold py-3 rounded-xl transition-all"
+                                                    >
+                                                        <Play className="w-4 h-4"/> Resume
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={onEnd}
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold py-3 rounded-xl transition-all"
+                                                >
+                                                    <Square className="w-4 h-4"/> Stop
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Share Button */}
+                                    <button
+                                        onClick={handleShare}
+                                        className="w-full flex items-center justify-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-4 rounded-xl active:scale-95 transition-all duration-300 shadow-[0_10px_30px_rgba(59,130,246,0.3)] text-[15px]"
+                                    >
+                                        <Share2 className="w-4 h-4"/> Share Route
+                                    </button>
+
+                                    {/* Battery Disclaimer */}
+                                    <div
+                                        className="flex items-center gap-2 text-white/40 text-xs justify-center mt-2 px-4 text-center">
+                                        <BatteryWarning className="w-4 h-4 shrink-0"/>
+                                        <span>GPS tracking and AR Wayfinding consumes significant battery. Ensure your device is charged!</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                {/* Controls & Actions */}
-                {!isCapturing && (
-                    <div className="mt-6 w-full flex flex-col gap-4">
-                        {/* Fitness Controls */}
-                        <div className="flex items-center justify-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-2">
-                            {status === 'idle' || status === 'ended' ? (
-                                <button
-                                    onClick={() => { onStart(); onClose(); }}
-                                    className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-all"
-                                >
-                                    <Play className="w-4 h-4"/> Start Walk
-                                </button>
-                            ) : (
-                                <>
-                                    {status === 'recording' ? (
-                                        <button
-                                            onClick={onPause}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-bold py-3 rounded-xl transition-all"
-                                        >
-                                            <Pause className="w-4 h-4"/> Pause
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => { onResume(); onClose(); }}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold py-3 rounded-xl transition-all"
-                                        >
-                                            <Play className="w-4 h-4"/> Resume
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={onEnd}
-                                        className="flex-1 flex items-center justify-center gap-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 font-bold py-3 rounded-xl transition-all"
-                                    >
-                                        <Square className="w-4 h-4"/> Stop
-                                    </button>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Share Button */}
-                        <button
-                            onClick={handleShare}
-                            className="w-full flex items-center justify-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold py-4 rounded-xl active:scale-95 transition-all duration-300 shadow-[0_10px_30px_rgba(59,130,246,0.3)] text-[15px]"
-                        >
-                            <Share2 className="w-4 h-4"/> Share Route
-                        </button>
-                        
-                        {/* Battery Disclaimer */}
-                        <div className="flex items-center gap-2 text-white/40 text-xs justify-center mt-2 px-4 text-center">
-                            <BatteryWarning className="w-4 h-4 shrink-0" />
-                            <span>GPS tracking and AR Wayfinding consumes significant battery. Ensure your device is charged!</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-            </div>
-            </div>
-            </SheetContent>
-        </Sheet>
+            </DrawerContent>
+        </Drawer>
     );
 }

@@ -1,19 +1,19 @@
 import Map, {Layer, Marker, Source} from 'react-map-gl/maplibre';
-import { setWorkerUrl } from 'maplibre-gl';
+import {setWorkerUrl} from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import {useEffect, useRef, useState} from 'react';
-
-setWorkerUrl(workerUrl);
+import {useEffect, useMemo, useRef, useState} from 'react';
 import type * as GeoJSON from 'geojson';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
+import {isGarbageNode} from '@wayontop/ui/lib/types';
 import {useLocation} from '../hooks/useLocation';
 import {Gamification} from '../lib/gamification';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
-import {useMemo} from 'react';
 import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 import {LocateFixed} from 'lucide-react';
+
+setWorkerUrl(workerUrl);
 
 const LALBAGH_CENTER = {lat: 12.9500, lng: 77.5850};
 
@@ -45,12 +45,21 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
 
     const nodesAndStamps = useMemo(() => {
         if (!graph) return [];
-        const visibleNodes = graph.nodes.filter(n => n.type !== 'track').map(n => ({...n, priority: n.type === 'gate' ? 10 : 5}));
-        const visibleStamps = stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(s => ({...s, priority: 8}));
+        const visibleNodes = graph.nodes.filter(n => n.type !== 'track').map(n => ({
+            ...n,
+            priority: n.type === 'gate' ? 10 : 5
+        }));
+        const visibleStamps = stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(s => ({
+            ...s,
+            priority: 8
+        }));
         return [...visibleNodes, ...visibleStamps];
     }, [graph, stamps, collectedStampIds]);
 
-    const { visibleLabels, calculateCollisions } = useMarkerCollision(mapRef, nodesAndStamps, zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN);
+    const {
+        visibleLabels,
+        calculateCollisions
+    } = useMarkerCollision(mapRef, nodesAndStamps, zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN);
 
     useEffect(() => {
         calculateCollisions();
@@ -60,23 +69,23 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
         if (!activeRoute || !graph) return null;
         const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
         let currentSegment: number[][] = [];
-        
+
         for (let i = 0; i < activeRoute.path.length; i++) {
             currentSegment.push([activeRoute.path[i].lng, activeRoute.path[i].lat]);
-            
+
             if (i < activeRoute.path.length - 1) {
                 const nodeA = activeRoute.path[i];
-                const nodeB = activeRoute.path[i+1];
-                const edge = graph.edges.find(e => 
-                    (e.from === nodeA.id && e.to === nodeB.id) || 
+                const nodeB = activeRoute.path[i + 1];
+                const edge = graph.edges.find(e =>
+                    (e.from === nodeA.id && e.to === nodeB.id) ||
                     (e.to === nodeA.id && e.from === nodeB.id)
                 );
-                
+
                 if (edge?.is_hidden) {
                     if (currentSegment.length > 1) {
                         features.push({
                             type: "Feature",
-                            geometry: { type: "LineString", coordinates: currentSegment },
+                            geometry: {type: "LineString", coordinates: currentSegment},
                             properties: {}
                         });
                     }
@@ -84,20 +93,49 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                 }
             }
         }
-        
+
         if (currentSegment.length > 1) {
             features.push({
                 type: "Feature",
-                geometry: { type: "LineString", coordinates: currentSegment },
+                geometry: {type: "LineString", coordinates: currentSegment},
                 properties: {}
             });
         }
-        
+
         return {
             type: "FeatureCollection",
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
     }, [activeRoute, graph]);
+
+    const allPathsGeoJSON = useMemo(() => {
+        if (!graph) return null;
+        const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+
+        const nodeMap = new globalThis.Map<string, GraphNode>();
+        graph.nodes.forEach(n => nodeMap.set(n.id, n));
+
+        graph.edges.forEach(edge => {
+            if (edge.is_hidden) return;
+            const fromNode = nodeMap.get(edge.from);
+            const toNode = nodeMap.get(edge.to);
+            if (fromNode && toNode) {
+                features.push({
+                    type: "Feature",
+                    geometry: {
+                        type: "LineString",
+                        coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]]
+                    },
+                    properties: {}
+                });
+            }
+        });
+
+        return {
+            type: "FeatureCollection",
+            features
+        } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
+    }, [graph]);
 
     if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
@@ -183,6 +221,26 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                 maxZoom={22}
                 onMove={e => setZoom(e.viewState.zoom)}
             >
+                {/* Underlying Paths */}
+                {allPathsGeoJSON && (
+                    <Source id="all-paths-source" type="geojson" data={allPathsGeoJSON}>
+                        <Layer
+                            id="all-paths-line"
+                            type="line"
+                            paint={{
+                                'line-color': '#94a3b8',
+                                'line-width': 1.5,
+                                'line-opacity': 0.25,
+                                'line-dasharray': [2, 2]
+                            }}
+                            layout={{
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            }}
+                        />
+                    </Source>
+                )}
+
                 {/* Route */}
                 {routeGeoJSON && (
                     <Source id="route-source" type="geojson" data={routeGeoJSON}>
@@ -205,36 +263,36 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                 {/* Nodes */}
                 {graph.nodes.filter(n => {
                     if (n.type === 'track') return false;
-                    const isMajorNode = n.type === 'poi' || n.type === 'facility' || n.type === 'gate';
+                    const isMajorNode = (n.type === 'poi' || n.type === 'facility' || n.type === 'gate') && !isGarbageNode(n);
                     if (!isMajorNode && zoom < MAP_ZOOM_TIERS.ALL_PINS_MIN) return false;
                     if (isMajorNode && zoom < MAP_ZOOM_TIERS.MAJOR_PINS_MIN) return false;
                     return true;
                 }).map(node => {
-                    const isMajorNode = node.type === 'poi' || node.type === 'facility' || node.type === 'gate';
+                    const isMajorNode = (node.type === 'poi' || node.type === 'facility' || node.type === 'gate') && !isGarbageNode(node);
                     const showThisMarkerName = isMajorNode ? zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN : zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
                     return (
-                    <Marker key={node.id} longitude={node.lng} latitude={node.lat} anchor="center">
-                        <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => !isRadar && setActivePopup(activePopup === node.id ? null : node.id)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    !isRadar && setActivePopup(activePopup === node.id ? null : node.id);
-                                }
-                            }}
-                        >
-                            <MapNodeMarker
-                                type={node.type}
-                                name={node.name}
-                                isZoomedIn={showThisMarkerName}
-                                isLabelVisible={visibleLabels.has(node.id)}
-                                isSelected={activePopup === node.id}
-                                tags={node.tags}
-                            />
-                        </div>
-                    </Marker>
+                        <Marker key={node.id} longitude={node.lng} latitude={node.lat} anchor="center">
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => !isRadar && setActivePopup(activePopup === node.id ? null : node.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        !isRadar && setActivePopup(activePopup === node.id ? null : node.id);
+                                    }
+                                }}
+                            >
+                                <MapNodeMarker
+                                    type={node.type}
+                                    name={node.name}
+                                    isZoomedIn={showThisMarkerName}
+                                    isLabelVisible={visibleLabels.has(node.id)}
+                                    isSelected={activePopup === node.id}
+                                    tags={node.tags}
+                                />
+                            </div>
+                        </Marker>
                     );
                 })}
 
@@ -275,7 +333,8 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
 
             {/* Recenter Button */}
             {!isRadar && (
-                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7.5rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto">
+                <div
+                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto">
                     <button
                         className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                         onClick={() => {
@@ -288,7 +347,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                             }
                         }}
                     >
-                        <LocateFixed className="w-6 h-6 drop-shadow-md" />
+                        <LocateFixed className="w-6 h-6 drop-shadow-md"/>
                     </button>
                 </div>
             )}

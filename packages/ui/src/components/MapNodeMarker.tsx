@@ -1,9 +1,10 @@
-import {Circle, Coins} from 'lucide-react';
+import {Coins} from 'lucide-react';
 import {cn} from '../lib/utils';
 import {getPOIStyle} from '../lib/poiStyles';
+import type {NodeType} from '../lib/types';
 
 interface MapNodeMarkerProps {
-    type: 'poi' | 'stamp' | 'gate' | 'track' | 'facility' | (string & {});
+    type: NodeType;
     name?: string;
     isZoomedIn: boolean;
     isSelected?: boolean;
@@ -36,7 +37,13 @@ export function MapNodeMarker({
         );
     }
 
-    const { icon: Icon, iconColor: iconColorClass, glowColor: glowColorClass, ringColor: ringColorClass, activeGlow: activeGlowClass } = getPOIStyle({ type, tags });
+    const {
+        icon: Icon,
+        iconColor: iconColorClass,
+        glowColor: glowColorClass,
+        ringColor: ringColorClass,
+        activeGlow: activeGlowClass
+    } = getPOIStyle({type, tags, name: name || ''});
 
     const showLabel = isZoomedIn && name && isLabelVisible;
     const labelScale = showLabel ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-2 pointer-events-none';
@@ -95,8 +102,9 @@ export function MapNodeMarker({
 
                 {/* Paid Superscript Indicator */}
                 {(tags || []).includes('paid') && (
-                    <div className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3} />
+                    <div
+                        className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                        <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3}/>
                     </div>
                 )}
 

@@ -1,32 +1,15 @@
-import {useEffect, useMemo, useState, useRef} from 'react';
-import {
-    Camera,
-    Flag,
-    Globe,
-    List as ListIcon,
-    MapPin,
-    Navigation,
-    Search,
-    Settings,
-    Sparkles,
-    X,
-    HeartHandshake,
-    Gem,
-    DoorClosed,
-    CameraOff,
-    Bug
-} from 'lucide-react';
+import {useEffect, useMemo, useState} from 'react';
+import {Globe, MapPin, Navigation, Settings, Sparkles, X} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
 import html2canvas from 'html2canvas';
 import {ARView} from './components/ARView';
 import {MapView} from './components/MapView';
-import {Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger} from '@wayontop/ui/components/ui/sheet';
+import {Sheet, SheetContent, SheetTitle, SheetTrigger} from '@wayontop/ui/components/ui/sheet';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
-import {Input} from '@wayontop/ui/components/ui/input';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {supabase} from '@wayontop/ui/lib/supabase';
-import {findShortestPath, distanceInMeters} from '@wayontop/ui/lib/routing';
+import {distanceInMeters, findShortestPath} from '@wayontop/ui/lib/routing';
 import {useLocation} from './hooks/useLocation';
 import {PermissionGate} from '@wayontop/ui/components/PermissionGate';
 import {InAppBrowserBlocker} from './components/InAppBrowserBlocker';
@@ -40,7 +23,7 @@ import {showAlert} from './lib/events';
 import {Gamification} from './lib/gamification';
 import {NavigationSheet} from './components/NavigationSheet';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
-import {TAG_SYNONYMS} from '@wayontop/ui/lib/types';
+import {GARBAGE_REGEX, isGarbageNode, TAG_SYNONYMS} from '@wayontop/ui/lib/types';
 import {INITIAL_VENUE, LAST_VENUE_STORAGE_KEY} from './lib/constants';
 
 
@@ -72,7 +55,18 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const [stamps, setStamps] = useState<Stamp[]>([]);
     const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
-    const {location, routeTrack, distanceWalked, startTime, elapsedTime, status, startTracking, pauseTracking, resumeTracking, endTracking} = useLocation();
+    const {
+        location,
+        routeTrack,
+        distanceWalked,
+        startTime,
+        elapsedTime,
+        status,
+        startTracking,
+        pauseTracking,
+        resumeTracking,
+        endTracking
+    } = useLocation();
 
     useEffect(() => {
         const handler = (e: any) => setAlertMessage(e.detail);
@@ -152,13 +146,12 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         if (searchQuery) {
             results = fuse.search(searchQuery).map(res => res.item);
         }
-        
-        // Filter out garbage unless explicitly searched for
-        const isSearchingTrash = searchQuery && /garbage|trash|bin|waste|dustbin/i.test(searchQuery);
+
+        const isSearchingTrash = searchQuery && GARBAGE_REGEX.test(searchQuery);
         if (!isSearchingTrash) {
-            results = results.filter(poi => !poi.tags?.includes('garbage'));
+            results = results.filter(poi => !isGarbageNode(poi));
         }
-        
+
         // Calculate distance and sort
         if (location) {
             results = results.map(poi => ({
@@ -166,7 +159,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 distance: distanceInMeters(location.lat, location.lng, poi.lat, poi.lng)
             })).sort((a: any, b: any) => a.distance - b.distance);
         }
-        
+
         return results;
     }, [searchQuery, pois, fuse, location]);
 
@@ -237,118 +230,135 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </div>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
-                            <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} mode={mode} />
+                            <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} mode={mode}/>
                         </div>
                     )}
                 </div>
 
                 {/* Unified Top Navigation Bar & Status */}
                 {!isSponsorModalOpen && (
-                <div className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
-                    <div className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative">
-                        
-                        {/* 1. Venue (Left) */}
-                        <div className="h-10 px-3 flex items-center shrink-0 relative z-10">
-                            <span className="text-[13px] font-black text-emerald-400 uppercase tracking-widest truncate max-w-[90px]">
+                    <div
+                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
+                        <div
+                            className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative">
+
+                            {/* 1. Venue (Left) */}
+                            <div className="h-10 px-3 flex items-center shrink-0 relative z-10">
+                            <span
+                                className="text-[13px] font-black text-emerald-400 uppercase tracking-widest truncate max-w-[90px]">
                                 {t(venueKey).toUpperCase()}
                             </span>
-                        </div>
+                            </div>
 
-                        {/* 2. Map/AR/Sat (Middle) */}
-                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner w-[170px] justify-between z-0">
-                            <button onClick={() => setMode('map')}
-                                    className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
-                            </button>
-                            <button onClick={() => setMode('ar')}
-                                    className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>AR
-                            </button>
-                            <button onClick={() => setMode('satellite')}
-                                    className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
-                            </button>
-                        </div>
+                            {/* 2. Map/AR/Sat (Middle) */}
+                            <div
+                                className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner w-[170px] justify-between z-0">
+                                <button onClick={() => setMode('map')}
+                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
+                                </button>
+                                <button onClick={() => setMode('ar')}
+                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>AR
+                                </button>
+                                <button onClick={() => setMode('satellite')}
+                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                </button>
+                            </div>
 
-                        {/* 3. Settings (Right) */}
-                        <Sheet>
-                            <SheetTrigger
-                                className="flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer shrink-0 mr-1 relative z-10">
-                                <Settings className="w-5 h-5 text-white/80 stroke-[1.5]"/>
-                            </SheetTrigger>
-                            <SheetContent side="bottom"
-                                          className="h-[auto] max-h-[90vh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
-                                <div
-                                    className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] p-6">
-                                    <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
-                                    <SheetTitle
-                                        className="text-2xl font-black text-white mb-6 tracking-tight text-left">Preferences</SheetTitle>
-                                    <div className="space-y-6">
-                                        <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                                    <Globe className="w-5 h-5"/>
-                                                </div>
-                                                <div>
-                                                    <p className="text-white font-bold text-[15px]">Language</p>
-                                                    <p className="text-white/50 text-[13px] font-medium">{i18n.language === 'en' ? 'English' : 'ಕನ್ನಡ (Kannada)'}</p>
-                                                </div>
-                                            </div>
-                                            <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white rounded-full font-bold px-4 border-0" onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'kn' : 'en')}>
-                                                {i18n.language === 'en' ? 'ಕನ್ನಡ' : 'English'}
-                                            </Button>
-                                        </div>
-                                        {FEATURE_FLAGS.enableVenueSwitcher && (
-                                            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                            {/* 3. Settings (Right) */}
+                            <Sheet>
+                                <SheetTrigger
+                                    className="flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer shrink-0 mr-1 relative z-10">
+                                    <Settings className="w-5 h-5 text-white/80 stroke-[1.5]"/>
+                                </SheetTrigger>
+                                <SheetContent side="bottom"
+                                              className="h-[auto] max-h-[90svh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
+                                    <div
+                                        className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] p-6">
+                                        <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
+                                        <SheetTitle
+                                            className="text-2xl font-black text-white mb-6 tracking-tight text-left">Preferences</SheetTitle>
+                                        <div className="space-y-6">
+                                            <div
+                                                className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
-                                                        <MapPin className="w-5 h-5"/>
+                                                    <div
+                                                        className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                                        <Globe className="w-5 h-5"/>
                                                     </div>
                                                     <div>
-                                                        <p className="text-white font-bold text-[15px]">Venue</p>
-                                                        <p className="text-white/50 text-[13px] font-medium">Exploring: {venueKey}</p>
+                                                        <p className="text-white font-bold text-[15px]">Language</p>
+                                                        <p className="text-white/50 text-[13px] font-medium">{i18n.language === 'en' ? 'English' : 'ಕನ್ನಡ (Kannada)'}</p>
                                                     </div>
                                                 </div>
-                                                <Select value={venueKey} onValueChange={setVenueKey}>
-                                                    <SelectTrigger className="w-[130px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0 capitalize">
-                                                        <SelectValue placeholder="Select Venue" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-[#2C2C2E] text-white border-white/10 rounded-xl shadow-2xl">
-                                                        {availableVenues.map(v => (
-                                                            <SelectItem key={v} value={v} className="font-bold focus:bg-white/10 focus:text-white capitalize cursor-pointer">
-                                                                {v}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <Button variant="secondary"
+                                                        className="bg-white/10 hover:bg-white/20 text-white rounded-full font-bold px-4 border-0"
+                                                        onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'kn' : 'en')}>
+                                                    {i18n.language === 'en' ? 'ಕನ್ನಡ' : 'English'}
+                                                </Button>
                                             </div>
-                                        )}
-                                        {/* Report Issue moved to Bottom Bar */}
+                                            {FEATURE_FLAGS.enableVenueSwitcher && (
+                                                <div
+                                                    className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div
+                                                            className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                                                            <MapPin className="w-5 h-5"/>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white font-bold text-[15px]">Venue</p>
+                                                            <p className="text-white/50 text-[13px] font-medium">Exploring: {venueKey}</p>
+                                                        </div>
+                                                    </div>
+                                                    <Select value={venueKey} onValueChange={setVenueKey}>
+                                                        <SelectTrigger
+                                                            className="w-[130px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0 capitalize">
+                                                            <SelectValue placeholder="Select Venue"/>
+                                                        </SelectTrigger>
+                                                        <SelectContent
+                                                            className="bg-[#2C2C2E] text-white border-white/10 rounded-xl shadow-2xl">
+                                                            {availableVenues.map(v => (
+                                                                <SelectItem key={v} value={v}
+                                                                            className="font-bold focus:bg-white/10 focus:text-white capitalize cursor-pointer">
+                                                                    {v}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
+                                            {/* Report Issue moved to Bottom Bar */}
+                                        </div>
                                     </div>
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
 
-                    {/* Status Pills (Accuracy) */}
-                    <div className="flex justify-center pointer-events-auto mt-1" data-html2canvas-ignore={isCapturing}>
-                        <div 
-                            className="glass-pill bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
-                        >
-                            <div className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${!location ? 'bg-amber-500 text-amber-500 animate-pulse' : location.accuracy < 15 ? 'bg-emerald-400 text-emerald-400' : location.accuracy < 30 ? 'bg-amber-400 text-amber-400' : 'bg-red-500 text-red-500 animate-pulse'}`} />
-                            <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
+                        {/* Status Pills (Accuracy) */}
+                        <div className="flex justify-center pointer-events-auto mt-1"
+                             data-html2canvas-ignore={isCapturing}>
+                            <div
+                                className="glass-pill bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
+                            >
+                                <div
+                                    className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${!location ? 'bg-amber-500 text-amber-500 animate-pulse' : location.accuracy < 15 ? 'bg-emerald-400 text-emerald-400' : location.accuracy < 30 ? 'bg-amber-400 text-amber-400' : 'bg-red-500 text-red-500 animate-pulse'}`}/>
+                                <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
                                 {!location ? 'Connecting GPS...' : `GPS: ${Math.round(location.accuracy)}m`}
                             </span>
-                            {location && location.accuracy > 15 && (
-                                <span className="text-[10px] text-red-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
+                                {location && location.accuracy > 15 && (
+                                    <span
+                                        className="text-[10px] text-red-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
                                     Move outdoors / Calibrate compass
                                 </span>
-                            )}
-                            {location && location.accuracy > 5 && location.accuracy <= 15 && (
-                                <span className="text-[10px] text-amber-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
+                                )}
+                                {location && location.accuracy > 5 && location.accuracy <= 15 && (
+                                    <span
+                                        className="text-[10px] text-amber-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
                                     Stay still to improve
                                 </span>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
                 )}
 
 
@@ -393,12 +403,17 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 )}
 
                 {/* Stamps Pill (Bottom Left) */}
-                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+7.5rem)] left-4 z-10 pointer-events-auto" data-html2canvas-ignore={isCapturing}>
-                    <div className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
+                <div
+                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto"
+                    data-html2canvas-ignore={isCapturing}>
+                    <div
+                        className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
                         <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
+                            <Sparkles
+                                className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
                         </div>
-                        <span className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
+                        <span
+                            className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
                         <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
                     </div>
                 </div>
@@ -416,7 +431,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     searchResults={searchResults}
                     handlePOISelect={handlePOISelect}
                     onSponsorModalChange={setIsSponsorModalOpen}
-                    onOpenNavigation={() => { setNavInitialTarget(null); setIsNavSheetOpen(true); }}
+                    onOpenNavigation={() => {
+                        setNavInitialTarget(null);
+                        setIsNavSheetOpen(true);
+                    }}
                 />
 
                 {selectedPOI && (
@@ -464,7 +482,6 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 )}
 
 
-
                 {/* Global Alert Modal */}
                 {/* Sleek Top-Center Toast Notifications */}
                 {alertMessage && (
@@ -507,7 +524,8 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         >
                             <div
                                 className="absolute inset-0 origin-center opacity-90 pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                                <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} isRadar={true} mode={mode} />
+                                <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} isRadar={true}
+                                         mode={mode}/>
                             </div>
 
                             {/* Expand hint overlay */}
@@ -529,9 +547,9 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </div>
                     </div>
                 )}
-                
+
                 {showReportModal && (
-                    <ReportModal onClose={() => setShowReportModal(false)} />
+                    <ReportModal onClose={() => setShowReportModal(false)}/>
                 )}
 
             </div>
@@ -574,10 +592,10 @@ export default function App() {
         } else {
             const storedVenue = localStorage.getItem(LAST_VENUE_STORAGE_KEY);
             if (storedVenue) {
-                 setVenueKey(storedVenue);
+                setVenueKey(storedVenue);
             } else {
-                 setVenueKey(INITIAL_VENUE);
-                 localStorage.setItem(LAST_VENUE_STORAGE_KEY, INITIAL_VENUE);
+                setVenueKey(INITIAL_VENUE);
+                localStorage.setItem(LAST_VENUE_STORAGE_KEY, INITIAL_VENUE);
             }
         }
     }, []);
@@ -600,11 +618,11 @@ export default function App() {
                         if (node.active_to && node.active_to < now) return false;
                         return true;
                     });
-                    
+
                     if (validNodes.length !== activeGraph.nodes.length) {
                         const validNodeIds = new Set(validNodes.map(n => n.id));
                         const validEdges = activeGraph.edges.filter(e => validNodeIds.has(e.from) && validNodeIds.has(e.to));
-                        activeGraph = { ...activeGraph, nodes: validNodes, edges: validEdges };
+                        activeGraph = {...activeGraph, nodes: validNodes, edges: validEdges};
                     }
                 }
 

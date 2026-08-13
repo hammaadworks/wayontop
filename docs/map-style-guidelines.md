@@ -115,3 +115,28 @@ Layers
 ```
 
 By adhering to this strict Source -> Layer separation now, our codebase will easily support this migration.
+
+---
+
+## 5. Node Filtering and Clutter Reduction (`isMajorNode`)
+
+To prevent the map from becoming an unreadable sea of icons (node clutter), we employ strict filtering logic in the Consumer app (`MapView.tsx` and `App.tsx` search).
+
+### The `isMajorNode` Strategy
+A node is considered a **Major Node** if it meets both of the following criteria:
+1. It is a core destination type (`type === 'poi'`, `type === 'facility'`, or `type === 'gate'`).
+2. It is **NOT** a utility node like a garbage bin (which is heavily deployed across venues and creates massive visual noise).
+
+**Zoom-Based Rendering:**
+- **Major Nodes** become visible earlier (when the user zooms in to `MAP_ZOOM_TIERS.MAJOR_PINS_MIN`). Their labels appear slightly later.
+- **Minor Nodes** (like stamps, track waypoints, and garbage bins) remain completely hidden until maximum zoom (`MAP_ZOOM_TIERS.ALL_PINS_MIN`). This keeps the map clean when zoomed out.
+
+### The Garbage Bin Exception
+Garbage bins are officially classified as `type="facility"`, which would normally make them a Major Node. To prevent them from cluttering the map and the Search sheet, we use a robust regex and tag-checking fallback:
+```typescript
+const isGarbage = node.tags?.some(t => ['garbage', 'trash', 'dustbin', 'waste', 'bin'].includes(t.toLowerCase())) 
+               || /garbage|trash|dustbin|waste/i.test(node.name);
+```
+- **Map View:** If `isGarbage` is true, the node loses its Major Node status and is only rendered when fully zoomed in.
+- **Search Sheet:** Garbage bins are completely stripped out of the search results *unless* the user explicitly searches for a query matching the garbage keywords. 
+- **Styling:** If a garbage bin is rendered (because the user is zoomed in or explicitly searched for it), `poiStyles.ts` intercepts it and assigns it a specific `Trash2` icon with a Rose/Red color scheme, overriding the default facility icon.

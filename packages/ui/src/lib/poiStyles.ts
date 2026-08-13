@@ -1,9 +1,7 @@
-import { 
-    Circle, DoorClosed, Gem, HeartHandshake, MapPin, 
-    Trash2, Coffee, Droplets 
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import type { GraphNode } from './types';
+import type {LucideIcon} from 'lucide-react';
+import {Circle, Coffee, DoorClosed, Droplets, Gem, HeartHandshake, MapPin, Trash2} from 'lucide-react';
+import type {GraphNode} from './types';
+import {isGarbageNode} from './types';
 
 export interface POIStyle {
     icon: LucideIcon;
@@ -15,7 +13,7 @@ export interface POIStyle {
     textClass: string; // for list views
 }
 
-export function getPOIStyle(node: Pick<GraphNode, 'type' | 'tags'>): POIStyle {
+export function getPOIStyle(node: Pick<GraphNode, 'type' | 'tags' | 'name'>): POIStyle {
     const tags = node.tags || [];
 
     // Base default style
@@ -28,7 +26,7 @@ export function getPOIStyle(node: Pick<GraphNode, 'type' | 'tags'>): POIStyle {
     let textClass = 'text-slate-400';
 
     // 1. Dynamic Tags Override
-    if (tags.includes('garbage')) {
+    if (isGarbageNode({tags, name: node.name})) {
         return {
             icon: Trash2,
             iconColor: 'text-rose-400',
@@ -107,5 +105,5 @@ export function getPOIStyle(node: Pick<GraphNode, 'type' | 'tags'>): POIStyle {
         textClass = 'text-amber-400';
     }
 
-    return { icon, iconColor, glowColor, ringColor, activeGlow, bgClass, textClass };
+    return {icon, iconColor, glowColor, ringColor, activeGlow, bgClass, textClass};
 }

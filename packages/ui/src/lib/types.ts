@@ -23,6 +23,15 @@ export const TAG_SYNONYMS: Record<string, string[]> = {
     'water': ['drink', 'thirsty']
 };
 
+export const GARBAGE_KEYWORDS = ['garbage', ...(TAG_SYNONYMS['garbage'] || [])];
+export const GARBAGE_REGEX = new RegExp(GARBAGE_KEYWORDS.join('|'), 'i');
+
+export function isGarbageNode(node: { name?: string, tags?: string[] }): boolean {
+    const hasTag = node.tags?.some(t => GARBAGE_KEYWORDS.includes(t.toLowerCase()));
+    const hasNameMatch = node.name ? GARBAGE_REGEX.test(node.name) : false;
+    return (hasTag || hasNameMatch);
+}
+
 export interface GraphNode {
     id: string;
     name: string;
