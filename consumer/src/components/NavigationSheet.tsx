@@ -1,4 +1,4 @@
-import {useState, useMemo, useEffect} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {Drawer, DrawerContent, DrawerHeader, DrawerTitle} from '@wayontop/ui/components/ui/drawer';
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Button} from '@wayontop/ui/components/ui/button';
@@ -6,9 +6,8 @@ import {Search, MapPin, X, ArrowDownUp, Navigation, LocateFixed} from 'lucide-re
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
 import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
-import {findNearestNode} from '@wayontop/ui/lib/routing';
+import {findNearestNode, findShortestPath} from '@wayontop/ui/lib/routing';
 import {getPOIStyle} from '@wayontop/ui/lib/poiStyles';
-import {showAlert} from '../lib/events';
 
 interface NavigationSheetProps {
     isOpen: boolean;
@@ -16,7 +15,8 @@ interface NavigationSheetProps {
     graph: GraphData | null;
     initialToNode: GraphNode | null;
     location: any | null;
-    onStartNavigation: (fromNode: GraphNode, toNode: GraphNode) => void;
+    onStartNavigation: (route: { path: GraphNode[]; totalDistance: number }, toNode: GraphNode) => void;
+    onReportBug?: (issueType: string, message: string) => void;
 }
 
 export function NavigationSheet({
@@ -25,7 +25,8 @@ export function NavigationSheet({
                                     graph,
                                     initialToNode,
                                     location,
-                                    onStartNavigation
+                                    onStartNavigation,
+                                    onReportBug
                                 }: NavigationSheetProps) {
     const {t} = useTranslation();
     const [fromQuery, setFromQuery] = useState('Your Location');
@@ -34,6 +35,12 @@ export function NavigationSheet({
 
     const [fromNode, setFromNode] = useState<GraphNode | 'current' | null>('current');
     const [toNode, setToNode] = useState<GraphNode | null>(initialToNode);
+    
+    type NavError = { type: 'gps' | 'bounds' | 'nearest' | 'path' | 'graph', title: string, tip: string };
+    const [error, setError] = useState<NavError | null>(null);
+    
+    // Tracks if the keyboard was open when the user touched a suggestion
+    const wasKeyboardOpenRef = React.useRef(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -42,6 +49,7 @@ export function NavigationSheet({
             setFromNode('current');
             setFromQuery('Your Location');
             setActiveInput('from');
+            setError(null);
         }
     }, [isOpen, initialToNode]);
 
@@ -81,11 +89,19 @@ export function NavigationSheet({
     };
 
     const handleStart = () => {
+        setError(null);
         if (!toNode) return;
+        
+        let startNode: GraphNode | null = null;
+
+        if (!graph) {
+            setError({ type: 'graph', title: "Map data is loading", tip: "Give it a second to load the park data." });
+            return;
+        }
 
         if (fromNode === 'current') {
             if (!location) {
-                showAlert('Waiting for GPS signal...');
+                setError({ type: 'gps', title: "We need your location", tip: "Turn on your GPS or type a starting point manually." });
                 return;
             }
 
@@ -95,18 +111,28 @@ export function NavigationSheet({
             const IS_OUT_OF_BOUNDS = distToCenter > 0.02; // Roughly 2km
 
             if (IS_OUT_OF_BOUNDS) {
-                showAlert('You need to come to Lalbagh to try navigation');
+                setError({ type: 'bounds', title: "You're not in Lalbagh", tip: "This app is just for the park. You can still manually type a location to preview the paths." });
                 return;
             }
 
             // Find nearest node using Haversine distance
-            const nearestStart = graph ? findNearestNode(graph, location.lat, location.lng) : null;
+            startNode = findNearestNode(graph, location.lat, location.lng);
 
-            if (nearestStart) {
-                onStartNavigation(nearestStart, toNode);
+            if (!startNode) {
+                setError({ type: 'nearest', title: "You're off the grid", tip: "We couldn't snap you to a walking path. Try moving closer to a marked route." });
+                return;
             }
         } else if (fromNode) {
-            onStartNavigation(fromNode, toNode);
+            startNode = fromNode as GraphNode;
+        }
+        
+        if (!startNode) return;
+        
+        const route = findShortestPath(graph, startNode.id, toNode.id);
+        if (route) {
+            onStartNavigation(route, toNode);
+        } else {
+            setError({ type: 'path', title: "The math isn't mathing", tip: "There's no clear route between these spots. It might be a missing path in our data." });
         }
     };
 
@@ -132,11 +158,16 @@ export function NavigationSheet({
                                         value={fromQuery}
                                         onFocus={() => {
                                             setActiveInput('from');
+                                            setError(null);
                                             if (fromNode === 'current') setFromQuery('');
                                         }}
                                         onChange={(e) => setFromQuery(e.target.value)}
                                         placeholder="Choose start location"
-                                        className="w-full bg-black/40 border-0 pl-4 py-5 text-[15px] rounded-xl text-white placeholder:text-white/40 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+                                        className={`w-full border-0 pl-4 py-5 text-[15px] rounded-xl placeholder:text-white/40 transition-all outline-none focus-visible:ring-0 ${
+                                            activeInput === 'from'
+                                                ? 'bg-white/10 ring-2 ring-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                                                : 'bg-black/40 text-white/60 hover:bg-black/60 cursor-pointer'
+                                        }`}
                                     />
                                     {fromQuery && activeInput === 'from' && (
                                         <button onClick={() => {
@@ -153,11 +184,16 @@ export function NavigationSheet({
                                         value={toQuery}
                                         onFocus={() => {
                                             setActiveInput('to');
+                                            setError(null);
                                             if (toNode === null) setToQuery('');
                                         }}
                                         onChange={(e) => setToQuery(e.target.value)}
                                         placeholder="Choose destination"
-                                        className="w-full bg-black/40 border-0 pl-4 py-5 text-[15px] rounded-xl text-white placeholder:text-white/40 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+                                        className={`w-full border-0 pl-4 py-5 text-[15px] rounded-xl placeholder:text-white/40 transition-all outline-none focus-visible:ring-0 ${
+                                            activeInput === 'to'
+                                                ? 'bg-white/10 ring-2 ring-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                                                : 'bg-black/40 text-white/60 hover:bg-black/60 cursor-pointer'
+                                        }`}
                                     />
                                     {toQuery && activeInput === 'to' && (
                                         <button onClick={() => {
@@ -182,7 +218,23 @@ export function NavigationSheet({
                         <div className="flex-1 px-4 py-2 overflow-y-auto">
                             {activeInput === 'from' && (
                                 <button
-                                    onClick={() => handleSelectNode('current')}
+                                    onPointerDown={(e) => {
+                                        if (e.pointerType === 'touch' && document.activeElement?.tagName === 'INPUT') {
+                                            wasKeyboardOpenRef.current = true;
+                                        } else {
+                                            wasKeyboardOpenRef.current = false;
+                                        }
+                                    }}
+                                    onClick={() => {
+                                        if (wasKeyboardOpenRef.current) {
+                                            wasKeyboardOpenRef.current = false;
+                                            if (document.activeElement?.tagName === 'INPUT') {
+                                                (document.activeElement as HTMLElement).blur();
+                                            }
+                                            return;
+                                        }
+                                        handleSelectNode('current');
+                                    }}
                                     className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-2xl transition-all border-b border-white/5 last:border-0"
                                 >
                                     <div
@@ -198,7 +250,26 @@ export function NavigationSheet({
                                 return (
                                     <button
                                         key={poi.id}
-                                        onClick={() => handleSelectNode(poi)}
+                                        onPointerDown={(e) => {
+                                            // If on mobile (touch) and an input is currently focused (keyboard is open),
+                                            // we flag this tap so it only dismisses the keyboard instead of selecting.
+                                            if (e.pointerType === 'touch' && document.activeElement?.tagName === 'INPUT') {
+                                                wasKeyboardOpenRef.current = true;
+                                            } else {
+                                                wasKeyboardOpenRef.current = false;
+                                            }
+                                        }}
+                                        onClick={(e) => {
+                                            if (wasKeyboardOpenRef.current) {
+                                                wasKeyboardOpenRef.current = false;
+                                                // Explicitly blur to ensure keyboard closes smoothly
+                                                if (document.activeElement?.tagName === 'INPUT') {
+                                                    (document.activeElement as HTMLElement).blur();
+                                                }
+                                                return; // Stop here, don't select the node on the first tap
+                                            }
+                                            handleSelectNode(poi);
+                                        }}
                                         className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-2xl transition-all border-b border-white/5 last:border-0 text-left"
                                     >
                                         <div
@@ -217,10 +288,28 @@ export function NavigationSheet({
                         </div>
                     ) : (
                         <div className="flex-1 p-6 flex flex-col justify-end">
+                            {error && (
+                                <div className="bg-[#3b1219]/80 border border-red-500/40 rounded-[28px] p-6 mb-6 flex flex-col items-start gap-2 animate-in fade-in slide-in-from-bottom-4 shadow-[0_10px_40px_rgba(239,68,68,0.15)] backdrop-blur-xl">
+                                    <h4 className="font-bold text-[20px] text-red-400 tracking-tight leading-none">{error.title}</h4>
+                                    <p className="font-medium text-[15px] text-red-200/90 leading-relaxed mt-1">{error.tip}</p>
+                                    {onReportBug && (
+                                        <Button 
+                                            onClick={() => {
+                                                const issueType = error.type === 'path' ? 'data' : 'bug';
+                                                const message = `Error Type: ${error.type}\nStart: '${fromQuery}'\nDestination: '${toQuery}'\nTitle: ${error.title}`;
+                                                onReportBug(issueType, message);
+                                            }}
+                                            className="mt-4 w-full bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.1)] h-12 text-[15px] font-bold rounded-2xl transition-all"
+                                        >
+                                            Report Issue
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
                             <Button
                                 onClick={handleStart}
                                 disabled={!fromNode || !toNode}
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-7 text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none"
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-7 text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none transition-all"
                             >
                                 <Navigation className="w-5 h-5 mr-2"/>
                                 Start Navigation

@@ -9,7 +9,7 @@ import {Sheet, SheetContent, SheetTitle, SheetTrigger} from '@wayontop/ui/compon
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {supabase} from '@wayontop/ui/lib/supabase';
-import {distanceInMeters, findShortestPath} from '@wayontop/ui/lib/routing';
+import {distanceInMeters} from '@wayontop/ui/lib/routing';
 import {useLocation} from './hooks/useLocation';
 import {PermissionGate} from '@wayontop/ui/components/PermissionGate';
 import {InAppBrowserBlocker} from './components/InAppBrowserBlocker';
@@ -19,7 +19,6 @@ import {ReportModal} from './components/ReportModal';
 import {POICard} from './components/POICard';
 import {ViralSharing} from './lib/sharing';
 import {FEATURE_FLAGS} from './lib/featureFlags';
-import {showAlert} from './lib/events';
 import {Gamification} from './lib/gamification';
 import {NavigationSheet} from './components/NavigationSheet';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
@@ -45,7 +44,12 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const [showSummary, setShowSummary] = useState(false);
     const [selectedPOI, setSelectedPOI] = useState<GraphNode | null>(null);
     const [isCapturing, setIsCapturing] = useState(false);
-    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportModalConfig, setReportModalConfig] = useState<{
+        show: boolean,
+        issueType?: string,
+        message?: string,
+        fixed?: boolean
+    }>({show: false});
     const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
     const [isNavSheetOpen, setIsNavSheetOpen] = useState(false);
     const [navInitialTarget, setNavInitialTarget] = useState<GraphNode | null>(null);
@@ -163,17 +167,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         return results;
     }, [searchQuery, pois, fuse, location]);
 
-    const handleRoute = (fromNode: GraphNode, toNode: GraphNode) => {
-        if (!graph) return;
-
-        const route = findShortestPath(graph, fromNode.id, toNode.id);
-        if (route) {
-            setActiveRoute(route);
-            setTargetNode(toNode);
-            setIsNavSheetOpen(false);
-        } else {
-            showAlert("Path not found");
-        }
+    const handleRoute = (route: { path: GraphNode[]; totalDistance: number }, toNode: GraphNode) => {
+        setActiveRoute(route);
+        setTargetNode(toNode);
+        setIsNavSheetOpen(false);
     };
 
     const handlePOISelect = (poi: GraphNode) => {
@@ -425,7 +422,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     isCapturing={isCapturing}
                     handleCapture={handleCapture}
                     endWalk={endWalk}
-                    setShowReportModal={setShowReportModal}
+                    setShowReportModal={(show) => setReportModalConfig({show})}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     searchResults={searchResults}
@@ -456,6 +453,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     initialToNode={navInitialTarget}
                     location={location}
                     onStartNavigation={handleRoute}
+                    onReportBug={(issueType, message) => {
+                        setReportModalConfig({show: true, issueType, message, fixed: true});
+                        setIsNavSheetOpen(false);
+                    }}
                 />
 
                 {showSummary && (
@@ -548,8 +549,13 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     </div>
                 )}
 
-                {showReportModal && (
-                    <ReportModal onClose={() => setShowReportModal(false)}/>
+                {reportModalConfig.show && (
+                    <ReportModal
+                        onClose={() => setReportModalConfig({show: false})}
+                        defaultIssueType={reportModalConfig.issueType}
+                        defaultMessage={reportModalConfig.message}
+                        fixedIssueType={reportModalConfig.fixed}
+                    />
                 )}
 
             </div>

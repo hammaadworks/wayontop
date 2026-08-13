@@ -843,7 +843,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                             let nearestNode: GraphNode | null = null;
                             let minDist = 20;
                             if (mapRef.current) {
-                                data.nodes.forEach(n => {
+                                for (const n of data.nodes) {
                                     if (n.type === 'track') {
                                         const pNode = mapRef.current.project([n.lng, n.lat]);
                                         const dist = Math.sqrt(Math.pow(pNode.x - e.point.x, 2) + Math.pow(pNode.y - e.point.y, 2));
@@ -852,7 +852,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                                             nearestNode = n;
                                         }
                                     }
-                                });
+                                }
                             }
 
                             if (nearestNode) {
