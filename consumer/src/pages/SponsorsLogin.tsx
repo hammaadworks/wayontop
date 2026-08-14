@@ -39,7 +39,7 @@ export default function SponsorsLogin() {
         <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
           <Navigation className="w-6 h-6 text-emerald-600 fill-emerald-600" />
         </div>
-        <span className="font-bold text-2xl tracking-tight text-slate-900">WayOnTop <span className="text-emerald-600">For Brands</span></span>
+        <span className="font-bold text-2xl tracking-tight text-slate-900"><span className="text-emerald-600">lalbagh</span>.top</span>
       </Link>
 
       <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 w-full max-w-md">

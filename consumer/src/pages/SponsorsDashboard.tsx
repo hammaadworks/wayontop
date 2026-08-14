@@ -4,7 +4,8 @@ import { supabase } from '@wayontop/ui/lib/supabase';
 import { Button } from '@wayontop/ui/components/ui/button';
 import { Input } from '@wayontop/ui/components/ui/input';
 import { Card } from '@wayontop/ui/components/ui/card';
-import { Navigation, LogOut, BarChart3, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Navigation, LogOut, BarChart3, Save, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { ReportModal } from '../components/ReportModal';
 import type { GraphData } from '@wayontop/ui/lib/types';
 
 import Map, { Layer, Source, Marker } from 'react-map-gl/maplibre';
@@ -25,7 +26,15 @@ export default function SponsorsDashboard() {
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [zones, setZones] = useState<{id: string, name: string}[]>([]);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
   const navigate = useNavigate();
+
+  const calculateDaysLeft = (endDateStr?: string) => {
+    if (!endDateStr) return 0;
+    const diff = new Date(endDateStr).getTime() - new Date().getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
+  };
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -92,16 +101,21 @@ export default function SponsorsDashboard() {
     setSaving(true);
     setMessage(null);
 
-    const { error } = await supabase
-      .from('sponsors')
-      .update({
+    const updateData: any = {
         name: sponsor.name,
         logo_asset: sponsor.logo_asset,
         creative_asset: sponsor.creative_asset,
         cta_link: sponsor.cta_link,
         tagline: sponsor.tagline,
         zone_ids: sponsor.zone_ids,
-      })
+    };
+    if (newPassword) {
+        updateData.password = newPassword;
+    }
+
+    const { error } = await supabase
+      .from('sponsors')
+      .update(updateData)
       .eq('id', sponsor.id);
 
     setSaving(false);
@@ -109,6 +123,7 @@ export default function SponsorsDashboard() {
       setMessage({ type: 'error', text: error.message });
     } else {
       setMessage({ type: 'success', text: 'Campaign updated successfully.' });
+      setNewPassword(''); // Clear password field on success
     }
   };
 
@@ -202,11 +217,16 @@ export default function SponsorsDashboard() {
             <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
               <Navigation className="w-5 h-5 text-emerald-600 fill-emerald-600" />
             </div>
-            <span className="font-bold text-lg text-slate-900">WayOnTop <span className="text-emerald-600">Brands</span></span>
+            <span className="font-bold tracking-tight text-slate-900"><span className="text-emerald-600">lalbagh</span>.top</span>
           </Link>
-          <Button variant="ghost" onClick={handleLogout} className="text-slate-500 hover:text-slate-900">
-            <LogOut className="w-4 h-4 mr-2" /> Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => setShowReportModal(true)} className="text-slate-500 hover:text-emerald-600 font-bold">
+              <HelpCircle className="w-4 h-4 mr-2" /> Support
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="text-slate-500 hover:text-red-600 font-bold">
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
+          </div>
         </div>
       </nav>
 
@@ -220,7 +240,7 @@ export default function SponsorsDashboard() {
               <p className="text-2xl font-black text-slate-900">{sponsor?.plan || 'No Plan Active'}</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-emerald-600 font-medium">{sponsor?.days_left || 0} days remaining</span>
+                <span className="text-emerald-600 font-medium">{calculateDaysLeft(sponsor?.end_date)} days remaining</span>
               </div>
             </div>
             <p className="text-sm text-slate-500">To upgrade your plan, please contact your account manager.</p>
@@ -426,6 +446,17 @@ export default function SponsorsDashboard() {
                     ))}
                   </select>
                 </div>
+                <div className="sm:col-span-2 border-t border-slate-100 pt-6 mt-2">
+                  <label className="block text-sm font-bold text-slate-900 mb-1">Update Password</label>
+                  <p className="text-sm text-slate-500 mb-4">Leave blank if you don't want to change your password.</p>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-slate-50 border-slate-200"
+                    placeholder="New password"
+                  />
+                </div>
               </div>
 
               <div className="pt-6">
@@ -445,6 +476,14 @@ export default function SponsorsDashboard() {
           </Card>
         </div>
       </main>
+
+      {showReportModal && (
+        <ReportModal 
+          onClose={() => setShowReportModal(false)}
+          defaultIssueType="sponsor"
+          fixedIssueType={true}
+        />
+      )}
     </div>
   );
 }

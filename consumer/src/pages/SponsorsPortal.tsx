@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigation, Target, LineChart, MapPin, ArrowRight, Plus, Maximize, Minimize } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@wayontop/ui/components/ui/button';
-import { Card } from '@wayontop/ui/components/ui/card';
+
 import { supabase } from '@wayontop/ui/lib/supabase';
 import type { GraphData } from '@wayontop/ui/lib/types';
 import Map, { Layer, Source, Marker } from 'react-map-gl/maplibre';
@@ -131,7 +131,7 @@ export default function SponsorsPortal() {
             <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
               <Navigation className="w-5 h-5 text-emerald-600 fill-emerald-600" />
             </div>
-            <span className="font-bold tracking-tight">WayOnTop <span className="text-emerald-600">Brands</span></span>
+            <span className="font-bold tracking-tight"><span className="text-emerald-600">lalbagh</span>.top</span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <Button 
@@ -153,31 +153,44 @@ export default function SponsorsPortal() {
 
       {/* Main Content Layout */}
       <main className="pt-20 px-4 sm:px-6 max-w-7xl mx-auto pb-24">
-        {/* Mobile Hero (Hidden on Desktop) */}
-        <section className="md:hidden text-center space-y-6 mb-8 pt-4">
-          <h1 className="text-5xl font-black tracking-tight text-slate-900 leading-tight">
-            Own the Map.<br />
-            Capture the Footfall.
-          </h1>
-          <p className="text-xl text-slate-600 max-w-lg mx-auto">
-            Turn high-traffic zones in Lalbagh Botanical Garden into interactive AR storefronts. Secure the green zones before they turn red.
-          </p>
-          <div className="pt-4 flex justify-center gap-4">
-            <Button 
-              onClick={() => setShowContactModal(true)}
-              className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg shadow-lg"
-            >
-              Sponsor a Zone <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </div>
-        </section>
-
-        <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-start relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start relative">
           
+          {/* Mobile Hero (Hidden on Desktop) */}
+          <section className="md:hidden text-center space-y-6 pt-4 order-1 max-md:mb-8">
+            <h1 className="text-5xl font-black tracking-tight text-slate-900 leading-tight">
+              Own the Map.<br />
+              Capture the Footfall.
+            </h1>
+            <p className="text-xl text-slate-600 max-w-lg mx-auto">
+              Turn high-traffic zones in Lalbagh Botanical Garden into interactive AR storefronts. Secure the green zones before they turn red.
+            </p>
+            <div className="pt-4 flex justify-center gap-4">
+              <Button 
+                onClick={() => setShowContactModal(true)}
+                className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg shadow-lg"
+              >
+                Sponsor a Zone <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </div>
+          </section>
+
           {/* Map Column (Sticky, Right on PC) */}
-          <div className={`w-full md:w-1/2 md:sticky md:top-24 z-40 transition-all duration-300 ease-in-out md:order-2 ${isFullscreen ? 'fixed inset-0 z-[100] h-[100dvh] w-screen rounded-none bg-slate-900' : 'h-[45vh] md:h-[calc(100vh-8rem)] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-200'}`}>
+          <div className={`order-4 md:order-none md:col-start-2 md:row-start-1 md:row-span-6 w-full md:sticky md:top-24 z-40 transition-all duration-300 ease-in-out ${isFullscreen ? 'fixed inset-0 z-[100] h-[100dvh] w-screen rounded-none bg-slate-900' : 'h-[45vh] md:h-[calc(100vh-8rem)] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-200'}`}>
             {graph ? (
               <>
+                <div className="absolute top-4 left-4 z-10 pointer-events-none space-y-2">
+                  <div className="bg-white/90 backdrop-blur-md text-slate-900 px-4 py-2 rounded-2xl shadow-lg border border-slate-200 flex items-center gap-2">
+                    <span className="font-bold text-sm tracking-wide">See the zones</span>
+                  </div>
+                  <div className="flex gap-2 text-[10px] font-bold">
+                    <div className="bg-emerald-500 text-white px-2 py-1 rounded-md shadow flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Available
+                    </div>
+                    <div className="bg-red-500 text-white px-2 py-1 rounded-md shadow flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-white/70 rounded-full"></span> Sponsored
+                    </div>
+                  </div>
+                </div>
                 <Map
                   initialViewState={{
                     longitude: LALBAGH_CENTER.lng,
@@ -252,7 +265,7 @@ export default function SponsorsPortal() {
                   </Source>
 
                   {/* Scattered Bubbles for Filled Zones */}
-                  {sponsorMarkerData.map(({ id, lat, lng, zone, mappedSponsor }) => (
+                  {sponsorMarkerData.map(({ id, lat, lng, mappedSponsor }) => (
                     <Marker key={id} longitude={lng} latitude={lat} anchor="center">
                       <div className="relative flex flex-col items-center justify-center pointer-events-auto cursor-pointer group z-40">
                         <div className="w-10 h-10 bg-white rounded-full shadow-[0_8px_16px_rgba(0,0,0,0.15)] border-2 border-red-500 overflow-hidden flex items-center justify-center hover:scale-110 transition-transform">
@@ -306,10 +319,10 @@ export default function SponsorsPortal() {
           </div>
 
           {/* Right/Bottom Column: Scrollable Content */}
-          <div className="w-full md:w-1/2 space-y-24 z-10 pt-4 md:pt-12 md:order-1">
+          <div className="max-md:contents md:col-start-1 md:row-start-1 md:flex md:flex-col w-full z-10 pt-4 md:pt-12 md:space-y-24">
             
             {/* Hero Copy (Desktop only) */}
-            <section className="hidden md:block md:text-left space-y-6">
+            <section className="hidden md:block md:text-left space-y-6 order-1">
               <h1 className="md:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 leading-tight">
                 Own the Map.<br />
                 Capture the Footfall.
@@ -327,8 +340,22 @@ export default function SponsorsPortal() {
               </div>
             </section>
 
+            {/* Video Section */}
+            <section className="order-2 mb-12 md:mb-0 flex justify-center md:justify-start">
+              <div className="w-full max-w-[300px] md:max-w-[350px] aspect-[9/16] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-900 relative">
+                <video 
+                  src="/sponsor_landing_vid.mov" 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </section>
+
             {/* Pricing Packages */}
-            <section className="space-y-8">
+            <section className="space-y-8 order-3 mb-16 md:mb-0">
               <div className="text-center md:text-left">
                 <h2 className="text-4xl font-black text-slate-900 mb-4">Transparent Pricing</h2>
                 <p className="text-lg text-slate-600 max-w-lg mx-auto md:mx-0">Choose a plan that fits your campaign goals. No hidden fees. Secure your AR real estate across Lalbagh.</p>
@@ -337,41 +364,23 @@ export default function SponsorsPortal() {
               <div className="grid gap-8">
                 {/* August Pack */}
                 <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Most Popular</div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Independence August Pack</h3>
-                  <p className="text-slate-500 mb-6">Short-term burst campaign for August only.</p>
+                  <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-800 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Most Popular</div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2">August Burst Campaign</h3>
+                  <p className="text-slate-500 mb-6">Short-term burst campaign for the busy month of August.</p>
                   
                   <div className="space-y-4">
-                    <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                    <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 flex items-center justify-between group hover:border-emerald-200 transition-colors">
                       <div>
-                        <h4 className="font-bold text-lg text-blue-700">Blue Pack</h4>
+                        <h4 className="font-bold text-lg text-emerald-700">August Independence Pack</h4>
                         <p className="text-xs md:text-sm text-slate-600">Choose any 2 zones across Lalbagh</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl md:text-2xl font-black text-slate-900">₹1,500</div>
+                        <div className="text-xl md:text-2xl font-black text-slate-900">₹2,026</div>
                         <Button 
                           size="sm" 
-                          className="mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs md:text-sm"
+                          className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs md:text-sm"
                           onClick={() => {
-                            setPrefilledMessage("Interested in Blue Pack\nBrand Name: ");
-                            setShowContactModal(true);
-                          }}
-                        >Select</Button>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 flex items-center justify-between group hover:border-slate-300 transition-colors">
-                      <div>
-                        <h4 className="font-bold text-lg text-slate-700">White Pack</h4>
-                        <p className="text-xs md:text-sm text-slate-600">Choose any 5 zones across Lalbagh</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xl md:text-2xl font-black text-slate-900">₹2,000</div>
-                        <Button 
-                          size="sm" 
-                          className="mt-2 bg-slate-800 hover:bg-slate-900 text-white rounded-full text-xs md:text-sm"
-                          onClick={() => {
-                            setPrefilledMessage("Interested in White Pack\nBrand Name: ");
+                            setPrefilledMessage("Interested in August Independence Pack\nBrand Name: ");
                             setShowContactModal(true);
                           }}
                         >Select</Button>
@@ -380,11 +389,11 @@ export default function SponsorsPortal() {
                   </div>
                 </div>
 
-                {/* Saver Bundle */}
+                {/* Season Pass */}
                 <div className="bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-xl relative overflow-hidden text-white">
-                  <div className="absolute top-0 right-0 bg-yellow-400 text-slate-900 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Best Value</div>
-                  <h3 className="text-2xl font-bold text-white mb-2">2026 Saver Bundle Pack</h3>
-                  <p className="text-slate-400 mb-6">Long-term brand presence from August to December.</p>
+                  <div className="absolute top-0 right-0 bg-yellow-400 text-slate-900 font-bold px-4 py-1 rounded-bl-xl text-xs md:text-sm">Unfair Advantage</div>
+                  <h3 className="text-2xl font-bold text-white mb-2">The 2026 Season Pass</h3>
+                  <p className="text-slate-400 mb-6">Lock in premium AR real estate for the entire season (Aug - Dec).</p>
                   
                   <div className="space-y-4">
                     <div className="bg-white/5 rounded-2xl p-4 md:p-5 border border-white/10 flex items-center justify-between group hover:border-slate-400 transition-colors">
@@ -397,7 +406,7 @@ export default function SponsorsPortal() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          className="mt-2 border-slate-500 hover:bg-slate-800 text-white rounded-full text-xs md:text-sm"
+                          className="mt-2 bg-emerald-500 hover:bg-slate-800 text-white rounded-full text-xs md:text-sm"
                           onClick={() => {
                             setPrefilledMessage("Interested in Silver Pack\nBrand Name: ");
                             setShowContactModal(true);
@@ -429,7 +438,7 @@ export default function SponsorsPortal() {
             </section>
 
             {/* Why Sponsor Section */}
-            <section className="space-y-8">
+            <section className="space-y-8 order-5 mb-16 md:mb-0">
               <div className="text-center md:text-left">
                 <h2 className="text-4xl font-bold text-slate-900 mb-4">Real ROI. Not Just Views.</h2>
                 <p className="text-lg text-slate-600 max-w-lg mx-auto md:mx-0">Physical billboards are dead. Our AR layers capture attention when intent is highest and track every single interaction.</p>
@@ -460,7 +469,7 @@ export default function SponsorsPortal() {
             </section>
 
             {/* Final Contact */}
-            <section className="bg-slate-900 text-white text-center rounded-3xl p-8 border border-slate-800 shadow-2xl">
+            <section className="bg-slate-900 text-white text-center rounded-3xl p-8 border border-slate-800 shadow-2xl order-6 mb-16 md:mb-0">
               <h2 className="text-3xl font-bold mb-4">Secure your zones today.</h2>
               <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6">
                 <Button 
@@ -475,7 +484,7 @@ export default function SponsorsPortal() {
                 <Button 
                   onClick={handleLogin}
                   variant="outline"
-                  className="border-white/20 hover:bg-white/10 rounded-full px-8 h-12"
+                  className="bg-emerald-800 hover:bg-emerald-500 rounded-full px-8 h-12"
                 >
                   Login to Dashboard
                 </Button>
@@ -491,7 +500,7 @@ export default function SponsorsPortal() {
 
       {/* Footer */}
       <footer className="py-8 text-center text-slate-500 bg-slate-950 text-sm">
-        <p>© 2026 WayOnTop. All rights reserved.</p>
+        <p>© 2026 lalbagh.top. All rights reserved.</p>
       </footer>
 
       {/* Contact Modal */}
