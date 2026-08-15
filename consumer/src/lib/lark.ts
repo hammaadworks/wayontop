@@ -50,17 +50,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-async function assertHttpSuccess(response: Response): Promise<void> {
-  if (response.ok) return;
-  const text = await response.text().catch(() => "Failed to read response");
-  throw new Error(`HTTP ${response.status}: ${text}`);
-}
 
-function assertLarkSuccess(data: LarkResponse): void {
-  if (data.code !== 0) {
-    throw new Error(`Lark API error: ${data.msg}`);
-  }
-}
 
 async function executeLarkRequest(webhookUrl: string, payload: unknown): Promise<void> {
   await fetchWithTimeout(webhookUrl, {

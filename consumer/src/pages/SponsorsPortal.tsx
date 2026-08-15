@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Navigation, Target, LineChart, MapPin, ArrowRight, Plus, Maximize, Minimize } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Navigation, Target, LineChart, MapPin, ArrowRight, Plus, Maximize, Minimize, Locate } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@wayontop/ui/components/ui/button';
 
@@ -22,6 +22,7 @@ export default function SponsorsPortal() {
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapRef = useRef<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -175,7 +176,7 @@ export default function SponsorsPortal() {
           </section>
 
           {/* Map Column (Sticky, Right on PC) */}
-          <div className={`order-4 md:order-none md:col-start-2 md:row-start-1 md:row-span-6 w-full md:sticky md:top-24 z-40 transition-all duration-300 ease-in-out ${isFullscreen ? 'fixed inset-0 z-[100] h-[100dvh] w-screen rounded-none bg-slate-900' : 'h-[45vh] md:h-[calc(100vh-8rem)] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-200'}`}>
+          <div className={`relative order-4 md:order-none md:col-start-2 md:row-start-1 md:row-span-6 w-full md:sticky md:top-24 z-40 transition-all duration-300 ease-in-out ${isFullscreen ? 'fixed inset-0 z-[100] h-[100dvh] w-screen rounded-none bg-slate-900' : 'h-[45vh] md:h-[calc(100vh-8rem)] rounded-3xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-200'}`}>
             {graph ? (
               <>
                 <div className="absolute top-4 left-4 z-10 pointer-events-none space-y-2">
@@ -192,6 +193,7 @@ export default function SponsorsPortal() {
                   </div>
                 </div>
                 <Map
+                  ref={mapRef}
                   initialViewState={{
                     longitude: LALBAGH_CENTER.lng,
                     latitude: LALBAGH_CENTER.lat,
@@ -302,14 +304,24 @@ export default function SponsorsPortal() {
                     );
                   })}
                 </Map>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute bottom-4 right-4 z-10 shadow-lg bg-white/90 backdrop-blur hover:bg-white text-slate-900"
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                >
-                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-                </Button>
+                <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="shadow-lg bg-white/90 backdrop-blur hover:bg-white text-slate-900"
+                    onClick={() => mapRef.current?.flyTo({ center: [LALBAGH_CENTER.lng, LALBAGH_CENTER.lat], zoom: 14.5, duration: 1000 })}
+                  >
+                    <Locate className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="shadow-lg bg-white/90 backdrop-blur hover:bg-white text-slate-900"
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                  >
+                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                  </Button>
+                </div>
               </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">

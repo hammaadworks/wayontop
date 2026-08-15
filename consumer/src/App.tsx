@@ -24,6 +24,7 @@ import {NavigationSheet} from './components/NavigationSheet';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
 import {GARBAGE_REGEX, isGarbageNode, TAG_SYNONYMS} from '@wayontop/ui/lib/types';
 import {INITIAL_VENUE, LAST_VENUE_STORAGE_KEY} from './lib/constants';
+import {SplashScreen} from './components/SplashScreen';
 
 
 type MainAppProps = Readonly<{
@@ -40,7 +41,6 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [targetNode, setTargetNode] = useState<GraphNode | null>(null);
     const [activeRoute, setActiveRoute] = useState<{ path: GraphNode[]; totalDistance: number } | null>(null);
-    const [sheetOpen, setSheetOpen] = useState(false);
     const [showSummary, setShowSummary] = useState(false);
     const [selectedPOI, setSelectedPOI] = useState<GraphNode | null>(null);
     const [isCapturing, setIsCapturing] = useState(false);
@@ -118,7 +118,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [location, stamps]);
+    }, [location, stamps, prefetchedGraph?.goldenStampName]);
 
     const pois = useMemo(() => {
         if (!graph) return [];
@@ -468,7 +468,6 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         onClose={() => setShowSummary(false)}
                         routeTrack={routeTrack}
                         distanceWalked={distanceWalked}
-                        startTime={startTime}
                         elapsedTime={elapsedTime}
                         status={status}
                         onStart={startTracking}
@@ -572,6 +571,7 @@ export default function App() {
     const [availableVenues, setAvailableVenues] = useState<string[]>([]);
     const [prefetchedGraph, setPrefetchedGraph] = useState<GraphData | null>(null);
     const [prefetchedStamps, setPrefetchedStamps] = useState<Stamp[] | null>(null);
+    const [splashFinished, setSplashFinished] = useState(false);
 
     const handleVenueChange = (newVenue: string) => {
         setVenueKey(newVenue);
@@ -665,14 +665,22 @@ export default function App() {
     }, [venueKey]);
 
     return (
-        <PermissionGate>
-            <MainApp
-                venueKey={venueKey}
-                setVenueKey={handleVenueChange}
-                availableVenues={availableVenues}
-                prefetchedGraph={prefetchedGraph}
-                prefetchedStamps={prefetchedStamps}
-            />
-        </PermissionGate>
+        <>
+            {!splashFinished && (
+                <SplashScreen 
+                    isLoading={!prefetchedGraph} 
+                    onFinish={() => setSplashFinished(true)} 
+                />
+            )}
+            <PermissionGate>
+                <MainApp
+                    venueKey={venueKey}
+                    setVenueKey={handleVenueChange}
+                    availableVenues={availableVenues}
+                    prefetchedGraph={prefetchedGraph}
+                    prefetchedStamps={prefetchedStamps}
+                />
+            </PermissionGate>
+        </>
     );
 }

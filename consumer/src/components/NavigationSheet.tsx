@@ -2,7 +2,7 @@ import React, {useState, useMemo, useEffect} from 'react';
 import {Drawer, DrawerContent, DrawerHeader, DrawerTitle} from '@wayontop/ui/components/ui/drawer';
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Button} from '@wayontop/ui/components/ui/button';
-import {Search, MapPin, X, ArrowDownUp, Navigation, LocateFixed} from 'lucide-react';
+import {MapPin, X, ArrowDownUp, Navigation, LocateFixed} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
 import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
@@ -259,7 +259,7 @@ export function NavigationSheet({
                                                 wasKeyboardOpenRef.current = false;
                                             }
                                         }}
-                                        onClick={(e) => {
+                                        onClick={() => {
                                             if (wasKeyboardOpenRef.current) {
                                                 wasKeyboardOpenRef.current = false;
                                                 // Explicitly blur to ensure keyboard closes smoothly
