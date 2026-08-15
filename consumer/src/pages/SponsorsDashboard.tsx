@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@wayontop/ui/lib/supabase';
 import { Button } from '@wayontop/ui/components/ui/button';
 import { Input } from '@wayontop/ui/components/ui/input';
 import { Card } from '@wayontop/ui/components/ui/card';
-import { Navigation, LogOut, BarChart3, Save, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Navigation, LogOut, BarChart3, Save, AlertCircle, CheckCircle2, HelpCircle, Locate } from 'lucide-react';
 import { ReportModal } from '../components/ReportModal';
 import type { GraphData } from '@wayontop/ui/lib/types';
 
@@ -23,6 +23,7 @@ export default function SponsorsDashboard() {
   const [saving, setSaving] = useState(false);
   const [sponsor, setSponsor] = useState<any>(null);
   const [analytics, setAnalytics] = useState({ impressions: 0, clicks: 0, walk_ins: 0 });
+  const mapRef = useRef<any>(null);
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [zones, setZones] = useState<{id: string, name: string}[]>([]);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -251,8 +252,23 @@ export default function SponsorsDashboard() {
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Your Coverage</h2>
             <div className="w-full h-[300px] rounded-xl overflow-hidden shadow-inner border border-slate-200 relative bg-slate-200 mb-2">
               {graph ? (
-                <Map
-                  initialViewState={{
+                <>
+                  <div className="absolute top-2 left-2 z-10 pointer-events-none space-y-1">
+                    <div className="bg-white/90 backdrop-blur-md text-slate-900 px-3 py-1.5 rounded-xl shadow-lg border border-slate-200 flex items-center gap-2">
+                      <span className="font-bold text-xs tracking-wide">Live Map</span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-[10px] font-bold">
+                      <div className="bg-emerald-500 text-white px-2 py-1 rounded-md shadow flex items-center gap-1 w-fit">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> Your Zone
+                      </div>
+                      <div className="bg-slate-400 text-white px-2 py-1 rounded-md shadow flex items-center gap-1 w-fit">
+                        <span className="w-1.5 h-1.5 bg-white/70 rounded-full"></span> Other
+                      </div>
+                    </div>
+                  </div>
+                  <Map
+                    ref={mapRef}
+                    initialViewState={{
                     longitude: LALBAGH_CENTER.lng,
                     latitude: LALBAGH_CENTER.lat,
                     zoom: 15,
@@ -339,8 +355,21 @@ export default function SponsorsDashboard() {
                       </div>
                     </Marker>
                   ))}
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-2 right-2 z-10 shadow-lg bg-white/90 backdrop-blur hover:bg-white text-slate-900 w-8 h-8"
+                    onClick={() => mapRef.current?.flyTo({ center: [LALBAGH_CENTER.lng, LALBAGH_CENTER.lat], zoom: 15, duration: 1000 })}
+                  >
+                    <Locate className="w-4 h-4" />
+                  </Button>
                 </Map>
-              ) : null}
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
           </Card>
 

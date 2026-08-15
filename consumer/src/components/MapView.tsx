@@ -275,11 +275,11 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                             <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => !isRadar && setActivePopup(activePopup === node.id ? null : node.id)}
+                                onClick={() => { if (!isRadar) setActivePopup(activePopup === node.id ? null : node.id); }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault();
-                                        !isRadar && setActivePopup(activePopup === node.id ? null : node.id);
+                                        if (!isRadar) setActivePopup(activePopup === node.id ? null : node.id);
                                     }
                                 }}
                             >
@@ -302,11 +302,11 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                         <div
                             role="button"
                             tabIndex={0}
-                            onClick={() => !isRadar && setActivePopup(activePopup === stamp.id ? null : stamp.id)}
+                            onClick={() => { if (!isRadar) setActivePopup(activePopup === stamp.id ? null : stamp.id); }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
-                                    !isRadar && setActivePopup(activePopup === stamp.id ? null : stamp.id);
+                                    if (!isRadar) setActivePopup(activePopup === stamp.id ? null : stamp.id);
                                 }
                             }}
                         >

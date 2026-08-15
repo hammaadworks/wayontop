@@ -25,7 +25,7 @@ import type {Venue} from '../hooks/useVenues';
 import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
 import {useMapEditorState} from '../hooks/useMapEditorState';
-import {Save, Map as MapIcon, RotateCcw, MousePointer2, Plus, PenTool, Trash2, Undo2, MapPin, Navigation, Tag, Loader2, Store, Users, MapPinOff, Layers, Eraser} from 'lucide-react';
+import {MapPin} from 'lucide-react';
 import {SponsorReelsModal} from '@wayontop/ui/components/SponsorReelsModal';
 import {PRODUCER_MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
@@ -123,24 +123,6 @@ const FILLED_SPONSORS_OUTLINE_PAINT: any = {'line-color': SPONSOR_FILL_COLOR, 'l
 const OPEN_SPONSORS_PAINT: any = {'fill-color': '#ffffff', 'fill-opacity': 0.3};
 const OPEN_SPONSORS_OUTLINE_PAINT: any = {'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 4]};
 
-const SPONSOR_CIRCUMFERENCE_LAYOUT: any = {
-    'symbol-placement': 'line',
-    'symbol-spacing': 250,
-    'text-field': ['concat', ['get', 'radius'], 'm Zone • '],
-    'text-size': 13,
-    'text-transform': 'uppercase',
-    'text-letter-spacing': 0.2,
-    'text-offset': [0, -0.75],
-    'text-keep-upright': true
-};
-
-const SPONSOR_CIRCUMFERENCE_PAINT: any = {
-    'text-color': '#ffffff',
-    'text-halo-color': 'rgba(0,0,0,0.8)',
-    'text-halo-width': 1.5,
-    'text-opacity': 0.8
-};
-
 const TRACE_GLOW_PAINT: any = {
     'line-color': '#ef4444',
     'line-width': 14,
@@ -194,7 +176,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     });
     const [mapSkin, setMapSkin] = useState<'satellite' | 'animated'>('satellite');
     const [zoom, setZoom] = useState(currentVenue.zoom);
-    const [showLayerMenu, setShowLayerMenu] = useState(false);
     const [selectedSponsorForModal, setSelectedSponsorForModal] = useState<any>(null);
 
     const [recording, setRecording] = useState(false);
@@ -621,7 +602,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         if (!showSponsorLogos) return null;
         if (!layers.filledSponsors && !layers.openSponsors) return null;
 
-        return sponsorMarkerData.map(({id, lat, lng, zone, mappedSponsor, node}) => {
+        return sponsorMarkerData.map(({id, lat, lng, mappedSponsor, node}) => {
             const isFilled = isSponsorFilled(mappedSponsor);
             if (!isFilled && !layers.openSponsors) return null;
             if (isFilled && !layers.filledSponsors) return null;
@@ -670,7 +651,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             }
 
             const isLabelVisible = visibleLabels.has(id);
-            const displayName = mappedSponsor?.name || zone.name || 'Unnamed';
+            const displayName = mappedSponsor?.name || node.name || 'Unnamed';
 
             return (
                 <Marker key={id} longitude={lng} latitude={lat} anchor="center">
@@ -696,7 +677,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 </Marker>
             );
         });
-    }, [sponsorMarkerData, layers.filledSponsors, layers.openSponsors, showSponsorLogos, visibleLabels]);
+    }, [sponsorMarkerData, layers.filledSponsors, layers.openSponsors, showSponsorLogos]);
 
     const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',

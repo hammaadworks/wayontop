@@ -3,7 +3,7 @@ import {BatteryWarning, Flame, Footprints, ImagePlus, Layers, Pause, Play, Share
 import {Drawer, DrawerContent, DrawerHeader, DrawerTitle} from '@wayontop/ui/components/ui/drawer';
 import {ViralSharing} from '../lib/sharing';
 import {Gamification} from '../lib/gamification';
-import {useTranslation} from 'react-i18next';
+
 import html2canvas from 'html2canvas';
 import type {TrackingStatus} from '../hooks/useLocation';
 
@@ -11,7 +11,6 @@ interface RouteSummaryProps {
     onClose: () => void;
     routeTrack: { lat: number; lng: number }[];
     distanceWalked: number; // in meters
-    startTime: Date | null;
     elapsedTime: number; // in seconds
     status: TrackingStatus;
     onStart: () => void;
@@ -21,10 +20,9 @@ interface RouteSummaryProps {
 }
 
 export function RouteSummary({
-                                 onClose, distanceWalked, startTime, routeTrack,
+                                 onClose, distanceWalked, routeTrack,
                                  elapsedTime, status, onStart, onPause, onResume, onEnd
                              }: RouteSummaryProps) {
-    const {t} = useTranslation();
     const [stampsCount, setStampsCount] = useState(0);
     const [isCapturing, setIsCapturing] = useState(false);
     const [bgType, setBgType] = useState<'map' | 'satellite' | 'custom'>('satellite');

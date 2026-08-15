@@ -308,58 +308,40 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
 
     return (
         <div
-            className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-6 overflow-hidden">
+            className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden">
+            {/* Fullscreen Video Background */}
+            <video
+                src="/parkgif.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none -z-20 scale-105"
+            />
             {/* Prismatic Zen Background Glows */}
-            <div className="absolute inset-0 bg-mesh-dark opacity-80 pointer-events-none -z-10"></div>
+            <div className="absolute inset-0 bg-mesh-dark opacity-60 pointer-events-none -z-10"></div>
 
             <div
-                className="relative w-full max-w-md p-5 sm:p-8 glass-panel animate-in zoom-in-95 duration-500 max-h-screen overflow-y-auto flex flex-col">
-
-                {/* FOMO Visual Reward */}
-                <div
-                    className="w-full h-40 sm:h-48 rounded-[20px] overflow-hidden mb-5 relative border-[0.5px] border-white/30 shadow-[0_10px_30px] shadow-primary/20 shrink-0">
-                    <video
-                        src="/parkgif.mp4"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover scale-105"
-                    />
-                    {/* Subtle gradient overlay to make text pop */}
-                    <div
-                        className="absolute inset-0 bg-linear-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-4">
-                        <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 relative">
-                <span
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span
-                    className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary shadow-[0_0_8px] shadow-primary"></span>
-              </span>
-                            <p className="text-[11px] font-bold text-white uppercase tracking-[0.2em] drop-shadow-md">Live
-                                AR Mode</p>
-                        </div>
-                    </div>
-                </div>
+                className="relative w-full max-w-[340px] p-5 glass-panel animate-in zoom-in-95 duration-500 max-h-[90vh] overflow-y-auto flex flex-col rounded-3xl">
 
                 {/* Social Proof Badge */}
                 <div className="flex justify-center mb-4 shrink-0">
                     <div
-                        className="bg-black/20 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-inner">
+                        className="bg-black/30 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-inner">
                         <div className="flex -space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-primary border border-white/20 shadow-sm"></div>
-                            <div className="w-4 h-4 rounded-full bg-secondary border border-white/20 shadow-sm"></div>
-                            <div className="w-4 h-4 rounded-full bg-accent border border-white/20 shadow-sm"></div>
+                            <div className="w-3.5 h-3.5 rounded-full bg-primary border border-white/20 shadow-sm"></div>
+                            <div className="w-3.5 h-3.5 rounded-full bg-secondary border border-white/20 shadow-sm"></div>
+                            <div className="w-3.5 h-3.5 rounded-full bg-accent border border-white/20 shadow-sm"></div>
                         </div>
-                        <span className="text-[11px] sm:text-xs text-white/90 font-medium tracking-wide">Touch Lalbagh grass, the AR way 🌿</span>
+                        <span className="text-[10px] text-white/90 font-medium tracking-wide">Touch Lalbagh grass, the AR way 🌿</span>
                     </div>
                 </div>
 
                 <div className="shrink-0">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center mb-1.5 tracking-tight flex items-center justify-center gap-2">
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-white text-center mb-1.5 tracking-tight flex items-center justify-center gap-2">
                         {isPrimaryDenied ? 'We Need You Back 🥺' : 'Unlock AR Mode ✨'}
                     </h2>
-                    <p className="text-white/70 text-center mb-5 text-[13px] sm:text-sm leading-relaxed font-medium px-2">
+                    <p className="text-white/70 text-center mb-5 text-xs sm:text-[13px] leading-relaxed font-medium px-2">
                         {isPrimaryDenied
                             ? "Your Lalbagh journey is on pause! We need these permissions to guide you through the historic gardens in AR."
                             : "To project AR trails across Lalbagh Botanical Garden, we need a few quick permissions."}
@@ -438,7 +420,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                     <button
                         onClick={onGrantTap}
                         disabled={isProcessing}
-                        className="w-full relative overflow-hidden group bg-white/10 hover:bg-white/20 border border-white/20 disabled:opacity-50 text-white font-bold py-3.5 sm:py-4 px-8 rounded-[20px] shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 transition-all duration-300 text-base sm:text-lg flex items-center justify-center gap-2"
+                        className="w-full relative overflow-hidden group bg-white/10 hover:bg-white/20 border border-white/20 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-2xl shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 transition-all duration-300 text-sm sm:text-base flex items-center justify-center gap-2"
                     >
                         {/* Animated gradient sheen */}
                         <div
@@ -473,14 +455,14 @@ function PermissionRow({icon, title, description, status}: Readonly<{
 
     return (
         <div
-            className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-[20px] border transition-all duration-300 ${isResolved ? 'bg-primary/10 border-primary/20 shadow-[0_0_20px] shadow-primary/10' : 'bg-white/5 border-white/10'}`}>
+            className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border transition-all duration-300 ${isResolved ? 'bg-primary/10 border-primary/20 shadow-[0_0_20px] shadow-primary/10' : 'bg-white/5 border-white/10'}`}>
             <div
-                className={`p-2.5 rounded-[14px] ${isResolved ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white/50'}`}>
+                className={`p-2 rounded-xl ${isResolved ? 'bg-primary/20 text-primary' : 'bg-white/10 text-white/50'}`}>
                 {icon}
             </div>
             <div className="flex-1">
-                <h3 className="font-bold text-white text-[15px] sm:text-base leading-tight">{title}</h3>
-                <p className="text-white/50 text-xs sm:text-sm mt-0.5">{description}</p>
+                <h3 className="font-bold text-white text-sm sm:text-[15px] leading-tight">{title}</h3>
+                <p className="text-white/50 text-[11px] sm:text-xs mt-0.5">{description}</p>
             </div>
             <div className="flex flex-col items-end gap-1">
                 {isResolved ? (
