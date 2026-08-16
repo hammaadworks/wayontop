@@ -67,3 +67,46 @@ so strict. need to be super empathtic to the user, how he feels how can he use i
 ---
 
 What is snapping and spurring?
+snapping = how do you snap the user to the nearest node? 
+- go on each node, calculate haversine = o(n)
+- use rbush using r-tree = spatial bounding box o(log n)
+- 
+
+---
+
+10 tips while using ai coding agents, this is not simple like, giving context or saying think step by step or few shot coz we already know it
+this is super practical
+1. reverse context prompting - bmad does this amazingly
+2. iterative building with commits - catch the mess quickly, this requires patience.
+3. assigning a persona - code review this as an cybersec is different from senior code engineer. my fav blackhat hacker
+4. prompt driven tdd - here you have a file with all the test cases, possibly a sheet and you can just maintain the state, completely abstracting the messy test code layer. 
+5. rubber ducking - become a better dev.
+6. mcp and skills
+
+---
+
+how does a* work?
+dijks = dag, -weight: pq = only once for a node
+bellford = dag, -weigh cycle
+a* = additional heuristic dijs p queue = (value + heuristic)
+then now you know the path, draw the line on the map and thats it
+but there are optimisations
+1. curves: polyline string, avoid waste computations
+2. web workers for computations like shortest path
+3. use postGIS but think in terms of network in my case i need offline capability so i'll just go with the json blob no postgis, but i'll use message packs
+
+---
+
+nun nodes
+1. actively protecting the park adn trash free. mapped all teh trash cans
+
+hidden and constructions 
+- we need under constructions and hidden nodes adn edges
+events only nodes
+---
+
+pm skills
+- improve it for whom?
+- user research 
+- aim assemble achieve
+- 

@@ -13,7 +13,7 @@ export function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2:
     Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return Number((R * c).toFixed(2));
+  return Math.round(R * c * 100) / 100;
 }
 
 // Calculate bearing in degrees from one point to another
@@ -48,9 +48,18 @@ function getGraphContext(graph: GraphData) {
   });
 
   graph.edges.forEach(e => {
-    adjList.get(e.from)?.push({ to: e.to, dist: e.distance_m });
-    // Assume undirected graph for walkways
-    adjList.get(e.to)?.push({ to: e.from, dist: e.distance_m });
+    const fromNode = nodeMap.get(e.from);
+    const toNode = nodeMap.get(e.to);
+    
+    if (fromNode && toNode) {
+      // Point 5: Calculate distance dynamically on the phone to save DB payload size.
+      // e.distance_m is kept as a fallback for legacy cached graphs.
+      const dist = e.distance_m ?? distanceInMeters(fromNode.lat, fromNode.lng, toNode.lat, toNode.lng);
+      
+      adjList.get(e.from)?.push({ to: e.to, dist });
+      // Assume undirected graph for walkways
+      adjList.get(e.to)?.push({ to: e.from, dist });
+    }
   });
 
   nodeMapCache.set(graph, nodeMap);

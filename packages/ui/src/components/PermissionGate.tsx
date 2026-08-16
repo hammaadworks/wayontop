@@ -1,13 +1,23 @@
 import type {ReactNode} from 'react';
 import {useCallback, useEffect, useState} from 'react';
-import {Camera, CheckCircle2, Compass, MapPin, RefreshCw, Settings} from 'lucide-react';
+import {Camera, CheckCircle2, Compass, MapPin, RefreshCw, Settings, HelpCircle} from 'lucide-react';
+import {PermissionTroubleshootGuide} from './PermissionTroubleshootGuide';
 
 interface PermissionGateProps {
     children: ReactNode;
     isProducerApp?: boolean;
+    requiredPermissions?: 'location' | 'all';
 }
 
 export type PermState = 'unknown' | 'granted' | 'denied' | 'blocked' | 'unsupported';
+
+const getBrowserName = () => {
+    if (typeof window === 'undefined') return 'Safari';
+    const ua = navigator.userAgent;
+    if (ua.includes('CriOS') || ua.includes('Chrome')) return 'Chrome';
+    if (ua.includes('FxiOS') || ua.includes('Firefox')) return 'Firefox';
+    return 'Safari';
+};
 
 export interface GateState {
     camera: PermState;
@@ -88,9 +98,9 @@ async function requestCompass(): Promise<PermState> {
 function getDeviceOS() {
     if (typeof window === 'undefined') return 'unknown';
     const ua = navigator.userAgent;
-    if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
-    if (/android/i.test(ua)) return 'android';
-    return 'other';
+    if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'iOS';
+    if (/android/i.test(ua)) return 'Android';
+    return 'Other';
 }
 
 function getBrowser() {
@@ -102,7 +112,7 @@ function getBrowser() {
     return 'other';
 }
 
-export function PermissionGate({children}: Readonly<PermissionGateProps>) {
+export function PermissionGate({children, isProducerApp, requiredPermissions = isProducerApp ? 'all' : 'location'}: Readonly<PermissionGateProps>) {
     const [gateState, setGateState] = useState<GateState>({
         camera: 'unknown',
         location: 'unknown',
@@ -110,6 +120,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
     });
 
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [retryFeedback, setRetryFeedback] = useState<string | null>(null);
 
     const applyPatch = useCallback((patch: Partial<GateState>) => {
@@ -157,7 +168,7 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
     // ---- The one tap that does everything ----
     const onGrantTap = async () => {
         // If compass is the ONLY thing blocking us, Safari blocks retries without a reload.
-        if (gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
+        if (requiredPermissions === 'all' && gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
             window.location.reload();
             return;
         }
@@ -168,8 +179,8 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
         // We MUST invoke requestCompass immediately (synchronously) inside the click handler.
         // Awaiting anything else first will lose the transient user activation in iOS Safari,
         // causing DeviceOrientationEvent.requestPermission to fail.
-        const compassPromise = requestCompass();
-        const cameraPromise = requestCamera();
+        const compassPromise = requiredPermissions === 'all' ? requestCompass() : Promise.resolve('unsupported' as PermState);
+        const cameraPromise = requiredPermissions === 'all' ? requestCamera() : Promise.resolve('unsupported' as PermState);
         const locationPromise = requestLocation();
 
         // Apply patches individually as they resolve so the UI updates step-by-step
@@ -192,116 +203,84 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
     const isTouchupBypass = typeof window !== 'undefined' &&
         window.location.search.includes('touchup=true');
 
-    const isPrimaryGranted =
-        gateState.location === 'granted' &&
-        (gateState.compass === 'granted' || gateState.compass === 'unsupported');
+    const isLocationGranted = gateState.location === 'granted';
+    const isAllGranted = isLocationGranted && 
+        (gateState.compass === 'granted' || gateState.compass === 'unsupported') && 
+        gateState.camera === 'granted';
 
-    const canProceed = (isPrimaryGranted && gateState.camera !== 'unknown') || isTouchupBypass;
+    const canProceed = (requiredPermissions === 'all' ? isAllGranted : isLocationGranted) || isTouchupBypass;
 
     if (canProceed) {
         return <>{children}</>;
     }
 
-    const isPrimaryDenied =
-        ['denied', 'blocked'].includes(gateState.location) ||
-        ['denied', 'blocked'].includes(gateState.compass);
+    const isPrimaryDenied = requiredPermissions === 'all'
+        ? ['denied', 'blocked'].includes(gateState.location) || ['denied', 'blocked'].includes(gateState.compass) || ['denied', 'blocked'].includes(gateState.camera)
+        : ['denied', 'blocked'].includes(gateState.location);
 
 
     const os = getDeviceOS();
-    const browser = getBrowser();
+    const browser = getBrowserName();
+    const hasAttemptedReload = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('compass_reload_attempted') === 'true';
 
     const renderCameraInstructions = () => {
         if (gateState.camera === 'blocked') {
-            return <p>Your camera is busy in another app right now! 📸 Close it out and let's try again.</p>;
+            return <p>Your camera is busy in another app right now! Close it out and let's try again.</p>;
         }
 
-        if (os === 'ios') {
-            if (browser === 'safari') {
+        if (os === 'iOS') {
+            if (browser === 'Safari') {
                 return (
-                    <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Tap the{" "}<strong>aA icon</strong> in your search bar &gt;{" "}
-                            <strong>Website Settings</strong> &gt; Allow Camera. 📸
-                        </li>
-                        <li>Or just head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; Safari</strong> and toggle Camera on. ✨
-                        </li>
+                    <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                        <li>Tap the button left of the URL bar &gt; three dots ... &gt; Allow Camera</li>
+                        <li>Still blocked? Open iPhone Settings &gt; Safari &gt; Allow Camera</li>
                     </ul>
                 );
             } else {
                 return (
-                    <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> and toggle Camera on. 📸
-                        </li>
+                    <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                        <li>Tap the lock icon left of the URL bar &gt; Allow Camera</li>
+                        <li>Still blocked? Open iPhone Settings &gt; {browser} &gt; Allow Camera</li>
                     </ul>
                 );
             }
         }
 
-        if (os === 'android') {
-            return (
-                <ul className="list-disc list-inside space-y-2 mt-2">
-                    <li>Tap the{" "}<strong>lock 🔒 icon</strong> in your address bar &gt;{" "}
-                        <strong>Permissions</strong> &gt; Allow Camera. 📸
-                    </li>
-                    <li>Or try this: Long-press the{" "}<strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> app icon &gt; tap <strong>ⓘ (App Info)</strong> &gt; Permissions &gt; Allow Camera. 🚀
-                    </li>
-                </ul>
-            );
-        }
-
         return (
-            <ul className="list-disc list-inside space-y-2 mt-2">
-                <li>Click the{" "}<strong>lock 🔒 icon</strong> next to the website address and allow Camera access. ✨
-                </li>
+            <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                <li>Tap the lock icon left of the URL bar &gt; Permissions &gt; Allow Camera</li>
+                <li>Still blocked? Long press your browser app &gt; App info &gt; Allow Camera</li>
             </ul>
         );
     };
 
     const renderLocationInstructions = () => {
         if (gateState.location === 'blocked') {
-            return <p>We're a bit lost! 🗺️ Make sure your phone's actual GPS is turned on so we can find you.</p>;
+            return <p>We're a bit lost! Make sure your phone's actual GPS is turned on so we can find you.</p>;
         }
 
-        if (os === 'ios') {
-            if (browser === 'safari') {
+        if (os === 'iOS') {
+            if (browser === 'Safari') {
                 return (
-                    <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Tap the{" "}<strong>aA icon</strong> in your search bar &gt;{" "}<strong>Website
-                            Settings</strong> &gt; Allow Location. 📍
-                        </li>
-                        <li>Or just head to your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; Safari &gt; Location</strong> and allow it. ✨
-                        </li>
+                    <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                        <li>Tap the button left of the URL bar &gt; three dots ... &gt; Allow Location</li>
+                        <li>Still blocked? Open iPhone Settings &gt; Safari &gt; Allow Location</li>
                     </ul>
                 );
             } else {
                 return (
-                    <ul className="list-disc list-inside space-y-2 mt-2">
-                        <li>Open your iPhone{" "}<strong>Settings
-                            ⚙️ &gt; {browser === 'chrome' ? 'Chrome' : 'Browser'} &gt; Location</strong> and
-                            choose{" "}<strong>While Using the App</strong>. 📍
-                        </li>
+                    <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                        <li>Tap the lock icon left of the URL bar &gt; Allow Location</li>
+                        <li>Still blocked? Open iPhone Settings &gt; {browser} &gt; Allow Location</li>
                     </ul>
                 );
             }
         }
 
-        if (os === 'android') {
-            return (
-                <ul className="list-disc list-inside space-y-2 mt-2">
-                    <li>Tap the{" "}<strong>lock 🔒 icon</strong> in your address bar &gt;{" "}
-                        <strong>Permissions</strong> &gt; Allow Location. 📍
-                    </li>
-                    <li>Or try this: Long-press the{" "}<strong>{browser === 'chrome' ? 'Chrome' : 'Browser'}</strong> app icon &gt; tap <strong>ⓘ (App Info)</strong> &gt; Permissions &gt; Allow Location. 🚀
-                    </li>
-                </ul>
-            );
-        }
-
         return (
-            <ul className="list-disc list-inside space-y-2 mt-2">
-                <li>Click the{" "}<strong>lock 🔒 icon</strong> next to the website address and allow Location access. 🗺️</li>
+            <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
+                <li>Tap the lock icon left of the URL bar &gt; Permissions &gt; Allow Location</li>
+                <li>Still blocked? Long press your browser app &gt; App info &gt; Allow Location</li>
             </ul>
         );
     };
@@ -337,86 +316,22 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                     </div>
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 mb-6">
                     <h2 className="text-xl sm:text-2xl font-extrabold text-white text-center mb-1.5 tracking-tight flex items-center justify-center gap-2">
-                        {isPrimaryDenied ? 'We Need You Back 🥺' : 'Unlock AR Mode ✨'}
+                        {isPrimaryDenied ? 'Permissions required' : (requiredPermissions === 'all' ? 'AR on lalbagh.top' : 'Experience lalbagh.top')}
                     </h2>
-                    <p className="text-white/70 text-center mb-5 text-xs sm:text-[13px] leading-relaxed font-medium px-2">
+                    <p className="text-white/70 text-center text-xs sm:text-[13px] leading-relaxed font-medium px-2">
                         {isPrimaryDenied
-                            ? "Your Lalbagh journey is on pause! We need these permissions to guide you through the historic gardens in AR."
-                            : "To project AR trails across Lalbagh Botanical Garden, we need a few quick permissions."}
+                            ? (isProducerApp ? "Your mapping session is paused. Please enable these permissions." : "Your lalbagh.top journey is on pause. Please enable these permissions to continue.")
+                            : (isProducerApp 
+                                ? "To access the mapping tools, we need a few quick permissions." 
+                                : (requiredPermissions === 'all' 
+                                    ? "To project AR trails across Lalbagh and guide you through we need a few quick permissions." 
+                                    : "To navigate you through Lalbagh we need a quick permission."))}
                     </p>
                 </div>
 
-                <div className="space-y-2.5 sm:space-y-3 mb-6">
-                    <PermissionRow
-                        icon={<MapPin className="w-5 h-5"/>}
-                        title="Location"
-                        description="To find your position in the park"
-                        status={gateState.location}
-                    />
-                    <PermissionRow
-                        icon={<Camera className="w-5 h-5"/>}
-                        title="Camera"
-                        description="To show the AR route overlays"
-                        status={gateState.camera}
-                    />
-                    {gateState.compass !== 'unsupported' && (
-                        <PermissionRow
-                            icon={<Compass className="w-5 h-5"/>}
-                            title="Compass"
-                            description="To orient the map correctly"
-                            status={gateState.compass}
-                        />
-                    )}
-                </div>
-
-                {isPrimaryDenied && (
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-6 space-y-4 select-text">
-                        <h4 className="text-amber-400 font-bold flex items-center gap-2">
-                            <Settings className="w-4 h-4"/> How to Fix
-                        </h4>
-
-                        {['denied', 'blocked'].includes(gateState.location) && (
-                            <div className="text-sm text-slate-300">
-                                <p className="font-bold text-white mb-1">Location {gateState.location === 'blocked' ? '(Unavailable)' : '(Denied)'}</p>
-                                {renderLocationInstructions()}
-                            </div>
-                        )}
-
-                        {['denied', 'blocked'].includes(gateState.camera) && (
-                            <div className="text-sm text-slate-300">
-                                <p className="font-bold text-white mb-1">Camera {gateState.camera === 'blocked' ? '(Busy)' : '(Denied)'}</p>
-                                {renderCameraInstructions()}
-                            </div>
-                        )}
-
-                        {gateState.compass === 'denied' && (
-                            <div className="text-sm text-slate-300">
-                                <p className="font-bold text-white mb-1">Compass (Denied)</p>
-                                <p className="mb-3">Safari blocked the prompt since it was denied earlier. We just need
-                                    to reload to ask again.</p>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 w-full"
-                                >
-                                    <RefreshCw className="w-4 h-4"/>
-                                    Reload Page to Retry
-                                </button>
-                                <p className="mt-3 text-xs opacity-70 leading-relaxed">If it still fails, you might need to clear Safari Website Data in your Settings.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {retryFeedback && (
-                    <div
-                        className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 text-sm font-bold p-3 rounded-xl text-center animate-in fade-in slide-in-from-bottom-2">
-                        {retryFeedback}
-                    </div>
-                )}
-
-                <div className="pt-2 shrink-0">
+                <div className="shrink-0 mb-4">
                     <button
                         onClick={onGrantTap}
                         disabled={isProcessing}
@@ -431,16 +346,119 @@ export function PermissionGate({children}: Readonly<PermissionGateProps>) {
                                 return <RefreshCw className="w-5 h-5 animate-spin text-primary"/>;
                             }
                             if (isPrimaryDenied) {
-                                if (gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
-                                    return 'Reload to Fix Compass 🔄';
+                                if (requiredPermissions === 'all' && gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
+                                    return hasAttemptedReload ? 'Compass Blocked' : 'Reload Page';
                                 }
-                                return 'Fix Permissions 🛠️';
+                                return 'Check Again';
                             }
-                            return 'Unlock AR Map 🚀';
+                            return 'Grant Permissions';
                         })()}
                     </button>
                 </div>
+
+                {retryFeedback && (
+                    <div
+                        className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 text-sm font-bold p-3 rounded-xl text-center animate-in fade-in slide-in-from-bottom-2">
+                        {retryFeedback}
+                    </div>
+                )}
+
+                {isPrimaryDenied && (
+                    <div className="bg-white/5 rounded-xl p-3 sm:p-4 border border-white/10 mb-4 space-y-3 select-text relative">
+                        <h4 className="text-amber-400 font-bold text-sm flex items-center gap-2">
+                            <Settings className="w-4 h-4"/> How to fix access
+                        </h4>
+                        {/* Carousel Button */}
+                        <button 
+                            onClick={() => setIsGuideOpen(true)}
+                            className="absolute top-3 right-3 text-[10px] uppercase font-bold tracking-wider bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-white transition-colors flex items-center gap-1.5"
+                        >
+                            <HelpCircle className="w-3 h-3" />
+                            Guide
+                        </button>
+
+                        {['denied', 'blocked'].includes(gateState.location) && (
+                            <div className="text-sm text-slate-300">
+                                <p className="font-bold text-white mb-1">Location {gateState.location === 'blocked' ? '(Unavailable)' : '(Denied)'}</p>
+                                {renderLocationInstructions()}
+                            </div>
+                        )}
+
+                        {['denied', 'blocked'].includes(gateState.camera) && requiredPermissions === 'all' && (
+                            <div className="text-sm text-slate-300">
+                                <p className="font-bold text-white mb-1">Camera {gateState.camera === 'blocked' ? '(Busy)' : '(Denied)'}</p>
+                                {renderCameraInstructions()}
+                            </div>
+                        )}
+
+                        {gateState.compass === 'denied' && requiredPermissions === 'all' && (
+                            <div className="text-xs text-slate-300">
+                                <p className="font-bold text-white mb-1">Compass (Denied)</p>
+                                {hasAttemptedReload ? (
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                                        <p className="mb-2 text-red-200 font-bold">Your browser permanently blocked compass access. You must clear Website Data to fix this:</p>
+                                        <ul className="list-decimal list-inside space-y-1 mb-1 text-red-200/80">
+                                            <li>Open iPhone Settings &gt; {browser}</li>
+                                            <li>Tap Clear History and Website Data</li>
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="mb-3">Your browser blocked the prompt. We just need to reload to ask again.</p>
+                                        <button
+                                            onClick={() => {
+                                                if (typeof sessionStorage !== 'undefined') {
+                                                    sessionStorage.setItem('compass_reload_attempted', 'true');
+                                                }
+                                                window.location.reload();
+                                            }}
+                                            className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 w-full"
+                                        >
+                                            <RefreshCw className="w-3 h-3"/>
+                                            Reload Page
+                                        </button>
+                                        <p className="mt-3 text-[10px] opacity-70 leading-relaxed">If it still fails, you might need to clear your browser's Website Data in Settings.</p>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="space-y-2.5 sm:space-y-3 shrink-0">
+                    <PermissionRow
+                        icon={<MapPin className="w-4 h-4"/>}
+                        title="Location"
+                        description="To navigate you through Lalbagh"
+                        status={gateState.location}
+                    />
+                    {requiredPermissions === 'all' && (
+                        <>
+                            <PermissionRow
+                                icon={<Camera className="w-5 h-5"/>}
+                                title="Camera"
+                                description="To show the AR route overlays"
+                                status={gateState.camera}
+                            />
+                            {gateState.compass !== 'unsupported' && (
+                                <PermissionRow
+                                    icon={<Compass className="w-5 h-5"/>}
+                                    title="Compass"
+                                    description="To orient the map correctly"
+                                    status={gateState.compass}
+                                />
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
+
+            <PermissionTroubleshootGuide 
+                isOpen={isGuideOpen}
+                setIsOpen={setIsGuideOpen}
+                os={os}
+                browser={browser}
+            />
         </div>
     );
 }

@@ -65,8 +65,21 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
         calculateCollisions();
     }, [zoom, nodesAndStamps, calculateCollisions]);
 
+    const hiddenEdgesMap = useMemo(() => {
+        const map = new globalThis.Map<string, boolean>();
+        if (!graph) return map;
+        graph.edges.forEach(e => {
+            if (e.is_hidden) {
+                map.set(`${e.from}-${e.to}`, true);
+                map.set(`${e.to}-${e.from}`, true);
+            }
+        });
+        return map;
+    }, [graph]);
+
     const routeGeoJSON = useMemo(() => {
         if (!activeRoute || !graph) return null;
+
         const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
         let currentSegment: number[][] = [];
 
@@ -76,12 +89,9 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
             if (i < activeRoute.path.length - 1) {
                 const nodeA = activeRoute.path[i];
                 const nodeB = activeRoute.path[i + 1];
-                const edge = graph.edges.find(e =>
-                    (e.from === nodeA.id && e.to === nodeB.id) ||
-                    (e.to === nodeA.id && e.from === nodeB.id)
-                );
+                const isHidden = hiddenEdgesMap.has(`${nodeA.id}-${nodeB.id}`);
 
-                if (edge?.is_hidden) {
+                if (isHidden) {
                     if (currentSegment.length > 1) {
                         features.push({
                             type: "Feature",
@@ -106,7 +116,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
             type: "FeatureCollection",
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
-    }, [activeRoute, graph]);
+    }, [activeRoute, graph, hiddenEdgesMap]);
 
     const allPathsGeoJSON = useMemo(() => {
         if (!graph) return null;

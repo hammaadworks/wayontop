@@ -36,7 +36,7 @@ type MainAppProps = Readonly<{
 }>;
 
 function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefetchedStamps}: MainAppProps) {
-    const [mode, setMode] = useState<'ar' | 'map' | 'satellite'>('map');
+    const [mode, setMode] = useState<'ar' | 'map' | 'satellite'>('satellite');
     const [searchQuery, setSearchQuery] = useState('');
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [targetNode, setTargetNode] = useState<GraphNode | null>(null);
@@ -221,10 +221,12 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 {/* 1. Main View Area (Behind everything) */}
                 <div className="absolute inset-0 z-0 bg-transparent">
                     {mode === 'ar' ? (
-                        <div
-                            className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
-                            <ARView targetNode={nextWaypoint || undefined} stamps={stamps}/>
-                        </div>
+                        <PermissionGate requiredPermissions="all">
+                            <div
+                                className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
+                                <ARView targetNode={nextWaypoint || undefined} stamps={stamps}/>
+                            </div>
+                        </PermissionGate>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
                             <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} mode={mode}/>
@@ -235,7 +237,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 {/* Unified Top Navigation Bar & Status */}
                 {!isSponsorModalOpen && (
                     <div
-                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
+                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
                         <div
                             className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative">
 
@@ -247,17 +249,18 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                             </span>
                             </div>
 
-                            {/* 2. Map/AR/Sat (Middle) */}
+                            {/* 2. Sat/AR/Map (Middle) */}
                             <div
                                 className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner w-[170px] justify-between z-0">
-                                <button onClick={() => setMode('map')}
-                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
-                                </button>
-                                <button onClick={() => setMode('ar')}
-                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>AR
-                                </button>
                                 <button onClick={() => setMode('satellite')}
                                         className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                </button>
+                                <button onClick={() => setMode('ar')}
+                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center gap-1 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
+                                        <Sparkles className="w-2.5 h-2.5" /> AR
+                                </button>
+                                <button onClick={() => setMode('map')}
+                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
                                 </button>
                             </div>
 

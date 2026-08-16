@@ -88,6 +88,8 @@ export function NavigationSheet({
         setToQuery(tempQuery);
     };
 
+    const [isNavigating, setIsNavigating] = useState(false);
+
     const handleStart = () => {
         setError(null);
         if (!toNode) return;
@@ -105,8 +107,6 @@ export function NavigationSheet({
                 return;
             }
 
-            // Check if user is out of Lalbagh bounds
-            // Assuming Lalbagh center is approx 12.9500, 77.5850 and radius is ~1km
             const distToCenter = Math.hypot(location.lat - 12.9500, location.lng - 77.5850);
             const IS_OUT_OF_BOUNDS = distToCenter > 0.02; // Roughly 2km
 
@@ -115,7 +115,6 @@ export function NavigationSheet({
                 return;
             }
 
-            // Find nearest node using Haversine distance
             startNode = findNearestNode(graph, location.lat, location.lng);
 
             if (!startNode) {
@@ -128,12 +127,29 @@ export function NavigationSheet({
         
         if (!startNode) return;
         
-        const route = findShortestPath(graph, startNode.id, toNode.id);
-        if (route) {
-            onStartNavigation(route, toNode);
-        } else {
-            setError({ type: 'path', title: "The math isn't mathing", tip: "There's no clear route between these spots. It might be a missing path in our data." });
-        }
+        setIsNavigating(true);
+
+        // Spin up Web Worker to run A* routing off the main thread
+        const worker = new Worker(new URL('../../../../packages/ui/src/lib/routing.worker.ts', import.meta.url), { type: 'module' });
+        
+        worker.onmessage = (e) => {
+            setIsNavigating(false);
+            const { route, error } = e.data;
+            if (error || !route) {
+                setError({ type: 'path', title: "The math isn't mathing", tip: "There's no clear route between these spots. It might be a missing path in our data." });
+            } else {
+                onStartNavigation(route, toNode);
+            }
+            worker.terminate();
+        };
+
+        worker.onerror = () => {
+            setIsNavigating(false);
+            setError({ type: 'path', title: "Routing crashed", tip: "The navigation engine hit a snag." });
+            worker.terminate();
+        };
+
+        worker.postMessage({ graph, startId: startNode.id, targetId: toNode.id });
     };
 
     return (
@@ -308,11 +324,21 @@ export function NavigationSheet({
                             )}
                             <Button
                                 onClick={handleStart}
-                                disabled={!fromNode || !toNode}
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-7 text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none transition-all"
+                                disabled={!fromNode || !toNode || isNavigating}
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-7 text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none transition-all relative overflow-hidden"
                             >
-                                <Navigation className="w-5 h-5 mr-2"/>
-                                Start Navigation
+                                {isNavigating ? (
+                                    <>
+                                        <div className="absolute inset-0 bg-emerald-600 animate-pulse"></div>
+                                        <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full mr-3 relative z-10"/>
+                                        <span className="relative z-10">Calculating Route...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Navigation className="w-5 h-5 mr-2"/>
+                                        Start Navigation
+                                    </>
+                                )}
                             </Button>
                         </div>
                     )}

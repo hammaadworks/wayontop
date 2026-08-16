@@ -11,17 +11,18 @@
     "./hooks/*": "./src/hooks/*"
   },
   "peerDependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.28.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tailwindcss": "^4.3.3",
-    "lucide-react": "^1.28.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@supabase/supabase-js": "^2.111.0",
     "class-variance-authority": "^0.7.1",
+    "embla-carousel-react": "^8.6.0",
     "maplibre-gl": "^6.1.0",
     "next-themes": "^0.4.6",
     "react-map-gl": "^8.1.2",
