@@ -8,6 +8,7 @@ import Fuse from 'fuse.js';
 import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
 import {findNearestNode, findShortestPath} from '@wayontop/ui/lib/routing';
 import {getPOIStyle} from '@wayontop/ui/lib/poiStyles';
+import RoutingWorker from '@wayontop/ui/lib/routing.worker?worker';
 
 interface NavigationSheetProps {
     isOpen: boolean;
@@ -130,7 +131,7 @@ export function NavigationSheet({
         setIsNavigating(true);
 
         // Spin up Web Worker to run A* routing off the main thread
-        const worker = new Worker(new URL('../../../../packages/ui/src/lib/routing.worker.ts', import.meta.url), { type: 'module' });
+        const worker = new RoutingWorker();
         
         worker.onmessage = (e) => {
             setIsNavigating(false);
