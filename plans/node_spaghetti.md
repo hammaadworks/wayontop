@@ -31,19 +31,21 @@ Dictates *what* things are and *how* they look. Used to populate the Producer ma
 * `id` (UUID)
 * `code` (String): e.g., `utility_water`. Used as a readable slug for developers/CSV imports.
 * `base_type` (Enum): Must be one of the 6 core types above.
-* `icon_key` (String): Lucide icon (e.g., `Droplets`).
-* `color_theme` (String): Design System token (e.g., `cyan`).
 * `name` (JSONB): `{"en": "Water", "kn": "ನೀರು"}`
 * `synonyms` (JSONB): `{"en": ["drink", "thirsty"], "kn": ["ನೀರು ಬೇಕು"]}`
+* `description` (JSONB): Default rich text fallback for this category (e.g., "Standard park washroom facility").
+* `image_url` (String): Default image fallback for the category.
+* `icon_key` (String): Lucide icon (e.g., `Droplets`). The final visual fallback.
+* `color_theme` (String): Design System token (e.g., `cyan`).
 
 ### 4. Table C: `nodes` (The Physical Map Points)
 * `id` (UUID)
 * `category_id` (UUID): Foreign key to `node_categories`. (Mandatory for all nodes, even POIs).
 * `lat` / `lng` (Float)
-* `name` (JSONB): Optional localized override `{"en": "West Gate", "kn": "ಪಶ್ಚಿಮ ಗೇಟ್"}`. **Fallback:** If null, UI defaults to `node_categories.name`.
-* `description` (JSONB): Rich text for the UI Drawer `{"en": "Built in 1890...", "kn": "1890 ರಲ್ಲಿ ನಿರ್ಮಿಸಲಾಗಿದೆ..."}`.
-* `synonyms` (JSONB): Optional node-specific synonyms `{"en": ["crystal palace"]}`. These are combined with the category synonyms during search.
-* `image_url` (String): URL to Supabase bucket. **UI UX Fallback:** If present, the map renders a circular image avatar. If null, falls back to `category.icon_key`.
+* `name` (JSONB): Optional localized override `{"en": "West Gate", "kn": "ಪಶ್ಚಿಮ ಗೇಟ್"}`. **Fallback:** `node_categories.name`.
+* `description` (JSONB): Rich text for the UI Drawer `{"en": "Built in 1890...", "kn": "1890 ರಲ್ಲಿ ನಿರ್ಮಿಸಲಾಗಿದೆ..."}`. **Fallback:** `node_categories.description`.
+* `synonyms` (JSONB): Optional node-specific synonyms `{"en": ["crystal palace", "glass palace"], "kn":["ನಿರ್ಮಿಸಲಾಗಿದೆ"]}`. Combined with category synonyms during search.
+* `image_url` (String): URL to Supabase bucket. **UI UX Fallback Chain:** `node.image_url` ➡️ `category.image_url` ➡️ `category.icon_key`.
 * `event_id` (UUID): Optional foreign key to `events`. If the linked event is inactive (`is_active: false` or `today > end_date`), the app completely ignores this node for map rendering, searching, and A* routing.
 * `status` (Enum): `active` or `construction`.
 * `is_paid` (Boolean): Renders the ₹ symbol.
@@ -54,81 +56,78 @@ Dictates *what* things are and *how* they look. Used to populate the Producer ma
 The Global Search is the brain that connects the taxonomy to the tourist. It sits over the map and updates in real-time.
 
 ### Core Behaviors
-1. **The Fallback Name Rule:** The UI title always explicitly displays `node.name?.[lang] || node.category.name[lang]`.
-2. **Deep Indexing (Fuse.js):** The search engine combines node and category text. It scans the user's query against `node.name`, `node.synonyms`, `node_categories.name`, and `node_categories.synonyms`.
+1. **Deep Indexing (Fuse.js):** The search engine combines node and category text. It scans the user's query against `node.name`, `node.synonyms`, `node_categories.name`, and `node_categories.synonyms`.
 3. **Absolute Distance Sorting (Debounced):** To maintain 60FPS on mobile, the search input is strictly debounced (e.g., 300ms). Once triggered, it runs a Haversine distance calculation from the user's current GPS. Results are ALWAYS sorted nearest to furthest.
+4. **Dynamic "Near" Helper Logic:**
+   * `utility_minor` ➡️ Anchors to the closest `poi`, `gate`, or `utility_major`.
+   * `utility_major` ➡️ Anchors to the closest `poi` or `gate`.
+   * `poi`, `gate`, `stamp` ➡️ **No anchor text.** (They are standalone landmarks).
+
+### Strict UI Layout Standard
+Every list item in the search results must strictly follow this visual template:
+* **Avatar/Icon:** Left side (Image Thumbnail OR Colored Lucide Icon).
+* **Title Row:** `<Title_Name> <Chip_Badge_1> <Chip_Badge_2>` (title_names always explicitly displays `node.name?.[lang] || node.category.name[lang]`. Badges use shadcn `Badge` components, not bracket text).
+* **Subtitle Row:** `<Distance>m away • near <Anchor_Node_Name>` (Anchor is omitted if not applicable).
 
 ### Scenario Demonstrations (Look & Feel)
-When a user opens the search bar, the list items dynamically render based on the DB state. Every search result item consists of four visual slots:
-1. **Avatar/Icon:** Left side (either a photo thumbnail or a colored Lucide icon).
-2. **Title:** Top text.
-3. **Badges:** Inline badges immediately next to the title (Paid, Event, Construction).
-4. **Subtitle:** Bottom text (Distance + dynamic helper text).
+When a user opens the search bar, the UI dynamically reacts to the node's DB modifiers:
 
 #### 1. The POI Scenario (Unique Landmark)
-* **DB State:** `base_type: 'poi'`, `name: {"en": "The Glass House"}`, `image_url: 'https://...'`
+* **DB State:** `base_type: 'poi'`, `name: {"en": "The Glass House"}`
 * **Search Query:** "Crystal Palace" (matches `node.synonyms`)
 * **UI Layout:**
-  * **Avatar:** A circular, frosted-glass thumbnail of the `image_url` (Replaces the generic category icon).
-  * **Title:** "The Glass House"
-  * **Badges:** None
-  * **Subtitle:** "120m away"
-* **Edge Case Handled:** Overrides the generic category name and bypasses the Lucide icon to provide a rich photo experience.
+  * **Avatar:** A circular, frosted-glass thumbnail of the `image_url`.
+  * **Title Row:** `The Glass House`
+  * **Subtitle Row:** `120m away` *(No near tag for POIs)*
 
 #### 2. The Minor Utility Spam Filter (Garbage Bins)
 * **DB State:** `base_type: 'utility_minor'`, `name: null`, `category.name: {"en": "Garbage"}`
 * **Search Query:** "Trash" (matches `category.synonyms`)
 * **UI Layout:**
   * **Icon:** A small `rose` colored `Trash2` Lucide icon.
-  * **Title:** "Garbage"
-  * **Badges:** None
-  * **Subtitle:** "45m away • near Bonsai Garden"
-* **Edge Case Handled:** There are 50 bins in the park. Because it's `utility_minor`, the engine aggressively clamps the results to ONLY show the Top 2 nearest to prevent spamming the list. It also dynamically computes the nearest POI ("Bonsai Garden") to provide a relative spatial anchor in the subtitle.
+  * **Title Row:** `Garbage`
+  * **Subtitle Row:** `45m away • near Bonsai Garden` *(Anchored to POI)*
+* **Edge Case Handled:** There are 50 bins in the park. Because it's `utility_minor`, the engine aggressively clamps the results to ONLY show the Top 2 nearest to prevent spamming the list.
 
 #### 3. The `is_paid` Modifier (Paid Toilets)
 * **DB State:** `base_type: 'utility_major'`, `category.name: {"en": "Washroom"}`, `is_paid: true`
 * **Search Query:** "Loo"
 * **UI Layout:**
   * **Icon:** A `blue` `PersonStanding` icon.
-  * **Title:** "Washroom"
-  * **Badges:** 🟩 `[₹ Paid]` (Emerald green inline badge)
-  * **Subtitle:** "80m away • near West Gate"
+  * **Title Row:** `Washroom` `[₹ Paid]` *(Emerald Badge Component)*
+  * **Subtitle Row:** `80m away • near West Gate` *(Anchored to Gate)*
 
 #### 4. The Event Modifier (Temporary Canteen)
 * **DB State:** `base_type: 'utility_major'`, `name: {"en": "Flower Show Canteen"}`, `event_id: 'evt_9'`
 * **Search Query:** "Food"
 * **UI Layout:**
   * **Icon:** An `amber` `Utensils` icon.
-  * **Title:** "Flower Show Canteen"
-  * **Badges:** 🪷 `[✨ Republic Day Flower Show]` (Magenta event badge)
-  * **Subtitle:** "300m away"
-* **Edge Case Handled:** The engine checks the `events` table. If `evt_9` is inactive or expired, this node vanishes completely from search and A* routing.
+  * **Title Row:** `Flower Show Canteen` `[✨ Flower Show]` *(Magenta Badge Component)*
+  * **Subtitle Row:** `300m away • near Glass House`
+* **Edge Case Handled:** The engine checks the `events` table for the event_name to display. If `evt_9` is inactive or expired, this node vanishes completely from search and A* routing.
 
 #### 5. Same-Name Stacking (Park Gates)
 * **DB State:** Multiple nodes with `base_type: 'gate'`
 * **Search Query:** "Gate"
 * **UI Layout:**
-  * **Item 1:** "West Gate" • "200m away"
-  * **Item 2:** "South Gate" • "800m away"
-  * **Item 3:** "Double Road Gate" • "1.2km away"
-* **Edge Case Handled:** Instead of confusing the user with identical icons scattered around, identical base types stack cleanly, strictly sorted by distance.
+  * **Item 1:** `West Gate` \n `200m away`
+  * **Item 2:** `South Gate` \n `800m away`
+  * **Item 3:** `Double Road Gate` \n `1.2km away`
+* **Edge Case Handled:** Identical base types stack cleanly, sorted by distance. No near tags for Gates.
 
 #### 6. The Status Modifier (Construction/Closed)
 * **DB State:** `base_type: 'poi'`, `name: {"en": "Lotus Pond"}`, `status: 'construction'`
 * **Search Query:** "Lotus"
 * **UI Layout:**
   * **Avatar:** Greyscale or faded thumbnail image.
-  * **Title:** ~~"Lotus Pond"~~ (Strikethrough text)
-  * **Badges:** 🚧 `[Closed / Renovation]` (Amber warning badge)
-  * **Subtitle:** "500m away"
+  * **Title Row:** `Lotus Pond` `[🚧 Maintainance]` *(Amber Badge Component)*
+  * **Subtitle Row:** `500m away`
 * **Edge Case Handled:** The user can still search for it, but the UI clearly warns them it is under construction before they walk 500m to a blocked path.
 
 #### 7. The Gamification Node (Stamps)
 * **DB State:** `base_type: 'stamp'`, `name: {"en": "Golden Pumpkin"}`, `event_id: 'evt_halloween'`
 * **Search Query:** "Pumpkin"
 * **UI Layout:**
-  * **Icon:** A glowing, animated 3D coin/stamp icon (bypasses standard Lucide icons).
-  * **Title:** "Golden Pumpkin"
-  * **Badges:** 🏆 `[Epic Rarity]` 
-  * **Subtitle:** "15m away • Collect now!"
-* **Edge Case Handled:** Stamps hook into the gamification engine. Searching for them is allowed, but the subtitle acts as a call-to-action ("Collect now!").
+  * **Icon:** A glowing, animated 3D coin/stamp icon.
+  * **Title Row:** `Golden Pumpkin` `[🏆 Epic Rarity]` *(Badge Component)*
+  * **Subtitle Row:** `15m away • Collect now!` *(Custom subtitle override)*
