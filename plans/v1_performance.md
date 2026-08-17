@@ -14,35 +14,30 @@
   * **Mappers (Field):** Simply walk and press "Record" to drop raw GPS traces. No nodes are placed.
   * **Editors (Office):** Use a desktop "Pen Tool" to trace a pristine Polyline Edge over the Mapper's messy GPS trace.
 
-### [TODO] 2. The Lean Node Taxonomy & Shared Style Map
-* **The Problem:** The current mix of `facility`, `poi`, and random tags (like `garbage`, `water`) has created spaghetti code. We need a strict, lean taxonomy that handles every scenario (NUNs, Events, Intersections, Construction) without confusion.
-* **The Fix:** We will strictly enforce 6 explicit `NodeTypes`:
-  1. `poi`: Major landmarks (Glass House).
+### [TODO] 2. The Strict Node Taxonomy & 3-Table DB
+* **The Problem:** The current mix of loose node types and random tags (like `garbage`, `water`) has created spaghetti code.
+* **The Fix:** We are migrating to a 3-table Supabase schema (`events`, `node_categories`, `nodes`). All frontend graph rendering strictly adheres to 6 base types:
+  1. `poi`: Major landmarks.
   2. `gate`: Entry/Exit points.
-  3. `nun_major`: High-priority utilities (Washrooms, Water, Canteen). Visible on the map. Search shows all results sorted by distance.
-  4. `nun_minor`: Low-priority utilities (Garbage bins). Hidden on the map to prevent clutter. Search aggressively filters to show only the **Top 2 nearest**.
-  5. `event`: Temporary nodes tied to an `event_id` (e.g., Flower Show booths). Injected only when the event is active.
-  6. `intersection`: Invisible routing waypoints where paths cross. (Replaces `track`).
-* **Handling Edge Cases (No Spaghetti):**
-  * *Renovation:* Handled via a `status: 'active' | 'construction'` flag. (A* ignores construction paths).
-  * *Staff/Hidden Paths:* Handled via an `is_hidden: boolean` flag on Edges. (A* routes through them, but MapView doesn't draw them).
-* **Shared UI Styles:** A single file (`poiStyles.ts`) shared between Consumer and Producer will map styles directly based on this strict type and sub-tag:
-  * `nun_major` + `['water']` = Cyan Droplets.
-  * `nun_minor` + `['garbage']` = Rose Trash Icon.
+  3. `utility_major`: High-priority utilities (Washrooms, Water). Visible on the map.
+  4. `utility_minor`: Low-priority utilities (Garbage bins). Hidden on map, limited to Top 2 nearest in search.
+  5. `stamp`: Gamification collectibles.
+  6. `intersection`: Invisible routing waypoints where paths cross.
+* **Event Modifiers:** There is NO "event" node type. Temporary nodes carry an `event_id`. The Consumer app checks the `events` table: if `is_active` is false, OR if today's date is past `end_date`, the node is completely ignored (it vanishes from the 2D map, is stripped from search, and the A* routing engine pretends it doesn't exist).
+* **UI Image Avatar Fallback:** The MapLibre engine will check if `node.image_url` exists. If true, it draws a circular frosted-glass photo thumbnail on the map. If null, it falls back to the `node_categories` icon and color.
 
 ### [TODO] 3. R-Tree Spatial Index for User Snapping
-* **The Problem:** Currently, the app snaps the user to the nearest *Node*. With Polyline edges, nodes will be far apart. We must snap the user's GPS to the nearest *Edge* (Line segment) to keep their blue dot on the path. Calculating Point-to-Line distance across 5,000 edges every second is extremely CPU intensive.
-* **The Fix:** Implement an **R-Tree (Spatial Bounding Box) Index**. 
-  * Instead of looping over every edge, the park is divided into spatial bounding boxes. 
-  * The app instantly looks up which box the user's GPS is in, and only runs the heavy Point-to-Line math on the 3 or 4 edges inside that specific box. 
-  * This guarantees $O(\log E)$ real-time map snapping with zero battery drain.
+* **The Problem:** Currently, the app snaps the user to the nearest *Node*. With Polyline edges, nodes will be far apart. We must snap the user's GPS to the nearest *Edge*.
+* **The Fix:** Implement an **R-Tree (Spatial Bounding Box) Index**. The app instantly looks up which box the user is in and only calculates Point-to-Line distance on the 3-4 edges inside it. Guaranteed $O(\log E)$ real-time snapping with zero battery drain.
 
 ### [TODO] 4. Global Node Search Component
-* **The Problem:** Producer and Consumer apps writing duplicate search logic leads to UI drift.
+* **The Problem:** Producer and Consumer apps writing duplicate search logic leads to UI drift, and searching across languages is broken.
 * **The Fix:** A shared `<GlobalNodeSearch />` component.
-  * **Distance Sorting:** Mathematically calculates Haversine distance and sorts results nearest to furthest.
+  * **The Name Fallback Rule:** The UI title always explicitly displays `node.name?.[lang] || node.category.name[lang]`. 
+  * **Multi-language Fuse.js:** The search index checks the user's query against both `name` and the `synonyms` array in the `node_categories` table.
+  * **Distance Sorting (Debounced):** The search input is strictly debounced (e.g., 300ms) to prevent UI lag. It mathematically calculates Haversine distance and sorts results nearest to furthest.
   * **Same-Name Resolution:** Explicitly stacks identical names (e.g., "Bonsai Garden") by proximity.
-  * **Dynamic Helper Text:** Dynamically computes the nearest major POI to each NUN and appends it (e.g., `Water (near Glass House)`).
+  * **Dynamic Helper Text:** Dynamically computes the nearest major POI to each utility and appends it (e.g., `Water (near Glass House)`).
 
 ---
 
