@@ -32,11 +32,10 @@
 - **US 5.2**: As a user, I want to see a route preview showing what POIs I'll pass and my ETA, so I can plan my walk.
 - **US 5.3**: As a user, the AR arrow should dynamically update its pointing direction at path junctions, guiding me along the physical path, not just a straight line to the end.
 
-## Epic 6: Gamification (Stamps & Leaderboard)
+## Epic 6: Gamification
 - **US 6.1**: As a user, I want to discover virtual stamps at specific POIs in AR, so the walk feels like a fun treasure hunt (Pokémon Go style).
 - **US 6.2**: As a user, I want to see a magical celebration animation when I tap "Claim" on a stamp.
-- **US 6.3**: As a user, I want my collected stamps and walked distance saved offline in my browser, and synced to a global leaderboard when I have network access.
-- **US 6.4**: As a user, I want to enter my Instagram handle to display on the leaderboard.
+- **US 6.3**: As a user, I want my collected stamps and walked distance saved offline in my browser.
 - **US 6.5**: As a user, I want a chance to find the 1-of-1 "Golden Stamp", which instantly jumps to a new location once claimed (Requires Supabase atomic locks).
 
 ## Epic 7: Monetization (Sponsors) & Analytics

@@ -364,7 +364,7 @@ export function NavigationSheet({
                                 </div>
                             )}
                             <Button
-                                onClick={handleStart}
+                                onClick={handleNavigate}
                                 disabled={!fromNode || !toNode || isNavigating}
                                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-7 text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none transition-all relative overflow-hidden"
                             >

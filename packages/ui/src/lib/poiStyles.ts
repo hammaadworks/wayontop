@@ -1,5 +1,6 @@
 import type {LucideIcon} from 'lucide-react';
-import * as Icons from 'lucide-react';
+import { IconRegistry } from './iconRegistry';
+import { MapPin, Gem, DoorClosed, Droplets, Trash2, Circle } from 'lucide-react';
 import type {NodeBaseType, NodeCategory} from './types';
 
 export interface POIStyle {
@@ -43,17 +44,17 @@ export function getPOIStyle(node: { category?: NodeCategory }): POIStyle {
     // Use category color theme if available
     const theme = category?.color_theme || 'amber';
 
-    let icon: LucideIcon = Icons.MapPin;
-    if (category?.icon_key && (Icons as any)[category.icon_key]) {
-        icon = (Icons as any)[category.icon_key];
+    let icon: LucideIcon = MapPin;
+    if (category?.icon_key && IconRegistry[category.icon_key]) {
+        icon = IconRegistry[category.icon_key];
     } else {
         // Fallbacks for base types if DB icon is missing
         const type = category?.base_type;
-        if (type === 'stamp') icon = Icons.Gem;
-        else if (type === 'gate') icon = Icons.DoorClosed;
-        else if (type === 'utility_major') icon = Icons.Droplets;
-        else if (type === 'utility_minor') icon = Icons.Trash2;
-        else if (type === 'intersection') icon = Icons.Circle;
+        if (type === 'stamp') icon = Gem;
+        else if (type === 'gate') icon = DoorClosed;
+        else if (type === 'utility_major') icon = Droplets;
+        else if (type === 'utility_minor') icon = Trash2;
+        else if (type === 'intersection') icon = Circle;
     }
 
     return {

@@ -368,7 +368,6 @@ export function useGraph(currentVenue: Venue | null) {
                     from_node_id: actualFromId,
                     to_node_id: actualToId,
                     distance_m: edge.distance_m || (edge as any).weight || 0,
-                    is_accessible: (edge as any).is_accessible ?? true,
                     geometry: edge.geometry,
                     is_hidden: edge.is_hidden ?? false
                 };

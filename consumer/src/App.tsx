@@ -647,7 +647,7 @@ export default function App() {
                             name: n.name?.en || n.category?.name?.en || 'Mystery Stamp',
                             lat: n.lat,
                             lng: n.lng,
-                            rarity: 'common' as 'common',
+                            rarity: 'common' as const,
                             description: n.description?.en || n.category?.description?.en || 'You found a stamp!',
                             poi_link: null,
                             image_url: n.image_url || n.category?.image_url

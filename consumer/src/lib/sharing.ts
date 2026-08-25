@@ -13,11 +13,11 @@ export const ViralSharing = {
           url
         });
         return true;
-      } catch (err) {
+      } catch (_err) {
         try {
           await navigator.clipboard.writeText(url);
           showAlert('Link copied to clipboard! (Sharing not supported)');
-        } catch (e) {
+        } catch (_e) {
           showAlert('Sharing is not supported on this device browser. Copy this link: ' + url);
         }
         return false;

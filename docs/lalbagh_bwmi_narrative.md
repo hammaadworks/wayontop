@@ -13,10 +13,10 @@ Lalbagh.top is not just a "tourism app"; it is a prototype for **Digital Public 
 *   **Zero-Friction:** No 50MB app downloads. Citizens scan a QR code, and it runs in the browser via Web AR.
 *   **Built for India:** Engineered as an offline-first Progressive Web App (PWA) with aggressive Service Worker caching to survive the poor 2G cellular reception under dense tree canopies.
 
-## 3. The "Powered by OpenAI" Edge
-Traditional search requires exact keywords (e.g., "Hibiscus Garden"). Our engine uses an **OpenAI-Powered Intent-Based Router**. 
-*   A citizen types: *"Where can I take my kids?"* or *"Closest washroom"* or *"Wheelchair accessible route to Glass House."*
-*   The LLM maps this natural language intent directly to our custom POI graph, returning the exact route. The AI is not a chatbot gimmick; it is the core routing brain.
+## 3. Built with AI (Codex) & Advanced Fuzzy Search
+The entire application was built using AI coding assistants like Codex. For the user experience, traditional search requires exact keywords (e.g., "Hibiscus Garden"). Our engine uses a robust **Advanced Fuzzy Search** system. 
+*   A citizen types: *"Kids area"* or *"Washroom"* or *"Wheelchair route."*
+*   The local fuzzy search maps these terms directly to our custom POI graph, returning the exact route instantly without any slow LLM network calls.
 
 ## 4. Scalability (Pan-India Impact)
 If we can map 240 acres of un-structured nature, this technology instantly scales to:
@@ -30,7 +30,7 @@ When generating scripts, documentation, or pitches for this project:
 - **DO NOT** frame this as "building a new startup." 
 - **DO** frame this as "modernizing a broken government public service."
 - **FOCUS** on the sheer volume of users (1.5M visitors) who currently have zero digital assistance.
-- **HIGHLIGHT** the accessibility (PWA, offline-capable, intent-based search).
+- **HIGHLIGHT** the accessibility (PWA, offline-capable, advanced fuzzy search).
 
 ## 6. Real-World Validation & Social Proof (Community Findings)
 *Note: These are derived from deep-dives into r/bangalore Reddit threads and TripAdvisor reviews.*

@@ -691,10 +691,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 return null;
             }
 
-            const isLabelVisible = visibleLabels.has(id);
-            const fallbackName = node.name && typeof node.name === 'object' ? Object.values(node.name).find(v => v) : undefined;
-            const displayName = mappedSponsor?.name || fallbackName || 'Unnamed';
-
             return (
                 <Marker key={id} longitude={lng} latitude={lat} anchor="center">
                     <div
@@ -737,19 +733,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }).filter(Boolean) as GeoJSON.Feature[]
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [data.edges, data.nodes, selectedEdge]);
-
-    const drawingEdgeGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
-        if (mode !== 'add_edge' || !edgeStartNode) return { type: 'FeatureCollection', features: [] };
-        const coords = [[edgeStartNode.lng, edgeStartNode.lat], ...edgeGeometry];
-        return {
-            type: 'FeatureCollection',
-            features: [{
-                type: 'Feature',
-                properties: { isDrawing: true },
-                geometry: { type: 'LineString', coordinates: coords }
-            }]
-        };
-    }, [mode, edgeStartNode, edgeGeometry]);
 
     const testRouteGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
         const features: GeoJSON.Feature[] = [];

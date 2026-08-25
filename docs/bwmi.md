@@ -19,10 +19,8 @@ Lalbagh Botanical Garden is a massive 240-acre public space managed by the Direc
 **Rule:** *Your prototype should be built with Codex or powered by an OpenAI model.*
 
 How we fulfill this:
-1. **Built with AI (Process):** We can heavily document that the platform (Producer/Consumer) was developed using AI coding agents.
-2. **Powered by AI (Product):** To strictly meet the "powered by an OpenAI model" requirement, we must integrate OpenAI into the product experience.
-    - *Idea 1 (Search):* The **AI Intent-Based Fuzzy Search** (mentioned in the PRD) can be powered by OpenAI. If a user searches "where can I take kids" or "sunset spots", the LLM maps the intent to the correct POI graph nodes.
-    - *Idea 2 (Content Generation):* Live generation of POI info cards or localized translation of historical facts about Lalbagh using OpenAI.
+1. **Built with AI (Process):** We can heavily document that the platform (Producer/Consumer) was developed using AI coding agents (like Codex).
+2. **Search is Local Only:** We will ONLY be using advanced fuzzy search. There will be absolutely no AI or LLM network calls integrated into the search functionality for Lalbagh. The routing and search are purely deterministic and local.
 
 ## 4. Submission Requirements
 By **August 28, 8:00 PM IST**, we need to submit:
@@ -38,8 +36,7 @@ By **August 28, 8:00 PM IST**, we need to submit:
 - **Mock what's needed:** We can use mock data or synthetic accounts for demonstration purposes.
 
 ## 6. Execution Plan & Next Steps
-1. **Develop the core app (3-Day Build):** Finish the AR Navigator as per the existing PRD.
-2. **Integrate OpenAI:** Implement an OpenAI-powered feature (like the Intent-Based Search) to explicitly meet the hackathon criteria.
-3. **Record the Demo:** Do a real-world walkthrough video at Lalbagh to prove the "Main Journey works".
+1. **Develop the core app (3-Day Build):** Finish the AR Navigator as per the existing PRD, using Codex.
+2. **Record the Demo:** Do a real-world walkthrough video at Lalbagh to prove the "Main Journey works".
 4. **Draft the 250-word pitch:** Highlight usability for all citizens (accessible, works on slow networks via Service Worker cache).
 5. **Submit:** Form link is on their site.

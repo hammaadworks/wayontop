@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import type {GraphData, GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
+import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
 import {distanceInMeters} from '@wayontop/ui/lib/routing';
 
 export function useGeolocation(

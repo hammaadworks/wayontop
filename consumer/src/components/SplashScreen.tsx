@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { MapPin, Target, Users, Compass, Navigation } from 'lucide-react';
-import { cn } from '@wayontop/ui/lib/utils'; // Assuming standard cn utility is available, or use template literals
 
 const INITIAL_SCREENS = [
   { quote: 'EXPLORE THE 3,000-MILLION-YEAR-OLD LALBAGH ROCK IN AR.', label: 'AR MODE', id: 'NO. 01', icon: MapPin },
@@ -19,13 +18,13 @@ export function SplashScreen({ isLoading, onFinish }: SplashScreenProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [animatingOut, setAnimatingOut] = useState(false);
     
-    const triggerExit = () => {
+    const triggerExit = useCallback(() => {
         setAnimatingOut(true);
         setTimeout(() => {
             setIsVisible(false);
             onFinish();
         }, 800); // 800ms fade out duration
-    };
+    }, [onFinish]);
 
     useEffect(() => {
         if (!isVisible) return;
@@ -44,7 +43,7 @@ export function SplashScreen({ isLoading, onFinish }: SplashScreenProps) {
                 return () => clearTimeout(timer);
             }
         }
-    }, [isVisible, currentIndex, isLoading]);
+    }, [isVisible, currentIndex, isLoading, triggerExit]);
 
     if (!isVisible) return null;
 

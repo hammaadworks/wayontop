@@ -18,3 +18,19 @@ This document tracks features, infrastructure, and ideas that have been intentio
 ## 4. Distribution
 - **Native iOS / Android Apps:** Releasing the app on the App Store or Google Play. V1 is strictly a browser-based Web App (PWA) to eliminate install friction.
 - **Desktop Experience:** Building a desktop web version. The app remains 100% mobile-first for the field.
+
+## 5. Global Leaderboard System
+- **Real-Time Leaderboard Syncing**: Originally built in V1 but deferred to V2 to reduce complexity and avoid constant backend syncs. Stamp collection remains local to the user's device for now.
+- **Codebase Touchpoints for Re-Implementation**:
+  - **`consumer/src/lib/gamification.ts`**: Bring back the `syncTotalCount` method. This method read the local stamps array length, the device UUID, and an optional IG handle, and performed an `upsert` to the `leaderboard` table in Supabase. It was triggered automatically inside `claimStamp`.
+  - **`consumer/src/components/IgHandlePrompt.tsx`**: A modal component that prompts the user to enter their Instagram handle (which saves to `localStorage` under `wayontop_ig_handle`) to display on the public leaderboard. It was scheduled to appear a few seconds after the app loaded if a handle wasn't already set.
+  - **Database (`public.leaderboard`)**: The `leaderboard` table in Supabase needs to be recreated. Its schema consisted of:
+    - `device_uuid` (UUID, primary key)
+    - `venue_key` (text, primary key, foreign key to `venues.key`)
+    - `total_stamps` (integer)
+    - `ig_handle` (text, nullable)
+    - `last_synced_at` (timestamp)
+  - **Database Policies (RLS)**: Row Level Security policies are needed on the `leaderboard` table, specifically:
+    - "Allow anon insert to leaderboard"
+    - "Allow anon update to leaderboard"
+    - "Allow public read access to leaderboard"

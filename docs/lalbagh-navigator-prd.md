@@ -91,7 +91,7 @@ beacon-based instead of GPS-based) while reusing the same consumer app shell.
 - **`venues` table:** The primary entity. Contains an `id` (uuid), a **`key`** (text, acts as the unique `venue_key`), `name`, `passkey` for producer access, and a **`public` (boolean)** flag. The Consumer app dynamically queries `public=true` venues to populate its venue switcher.
 - **`venue_content` table:** Stores `jsonb` blobs (like `graph` and `stamps`) keyed by `venue_key` and `content_type`.
 - **`sponsors` & `sponsor_analytics` tables:** Unlike the initial design of keeping sponsors only in the graph JSON, there is now a dedicated relational structure for sponsors (with fields like `email`, `plan`, `days_left`, and `zone_ids`) and an analytics table (`impressions`, `clicks`, `walk_ins`) mapped by date.
-- **`analytics_events`, `golden_stamps`, `leaderboard` tables:** Specialized tables explicitly created to handle the telemetry, leaderboard gamification, and atomic claims for golden stamps.
+- **`analytics_events`, `golden_stamps` tables:** Specialized tables explicitly created to handle the telemetry and atomic claims for golden stamps.
 
 ### Pragmatic shortcuts (single-venue jugaad — intentional, not laziness)
 
@@ -242,8 +242,8 @@ it; no app rebuild required.
 
 *Ordered by critical user journey, 10x UX and 10x Revenue opportunities.*
 
-1. **Search + AI Intent-Based Fuzzy Search** — The entry point. Instead of a plain list of POIs, users type "Roses", "
-   Kids area", or "Sunset". A local fuzzy-search maps intent to POIs instantly. A list is also provided incase users
+1. **Advanced Fuzzy Search** — The entry point. Instead of a plain list of POIs, users type "Roses", "
+   Kids area", or "Sunset". A local advanced fuzzy search maps intent to POIs instantly. A list is also provided incase users
    want to search manually.
 2. **Smart Route Optimisation & Previews** — The core function. The routes and distances are already mapped. If a user
    wants to go from A to B, the app offers shortest-path routing (via A*). The AR arrow points correctly along the
@@ -257,7 +257,7 @@ it; no app rebuild required.
    and "Facilities" (Washroom, Water, Exit).
 5. **POI Cards** — Certain official POI will have info cards that expand POIs with real value: "Why it's famous", "
    History", "Best photo spot", "How crowded", "Interesting facts".
-6. **Pokémon-Style Gamification & Leaderboard** — The viral loop.
+6. **Pokémon-Style Gamification** — The viral loop.
     - **Two Tiers of Collectibles:** "Official POI Stamps" (permanent landmarks) and "Unofficial Seasonal
       Collectibles" (trendy, hidden spots updated per season). Normal stamps (excluding Golden) are visible on the 2D
       map and radar.
@@ -266,21 +266,13 @@ it; no app rebuild required.
       button claims it, triggering a rich, Disney-like magical celebration with confetti, audio feedback, and an
       animated stamp count update.
     - **The Golden Stamp (High Urgency - Online Only):** A special 1-of-1 stamp that is **never** shown on the map. No two people can claim it simultaneously; the Supabase backend MUST use a row-level atomic lock (transaction). If multiple people try to claim it at the exact same moment, only the first transaction succeeds. Upon claiming, the client picks a new random verified walkable coordinate (filtering the graph for `poi` or `facility` nodes) and passes it to the `claim_golden_stamp` RPC to jump the stamp securely.
-    - **Gameplay & Offline Sync:** Catching normal stamps and navigating works perfectly offline. When connectivity is
-      available, the app silently syncs the **total count** of collected stamps to Supabase to maintain the leaderboard.
-      Do NOT sync the detailed array of which specific stamps were collected—that stays entirely in `localStorage` as it
-      offers no business value to centralize.
+    - **Gameplay & Offline Data:** Catching normal stamps and navigating works perfectly offline. The detailed array of which specific stamps were collected stays entirely in `localStorage` as it offers no business value to centralize and eliminates the need for complex backend syncing.
     - **In-App Browser Blocker (Critical):** On load, if the app detects an in-app browser user agent (e.g.,
       Instagram/Facebook), the UI must hard-block. It cannot automatically force a redirect; instead, it must visually
       instruct the user exactly *how* to exit (e.g., "Tap the 3 dots in the top right and select 'Open in System
       Browser'"). This guarantees we do not lose `localStorage` session state.
     - **User Identity & The Leaderboard (3 Tabs - Online):** On first load, the app generates a persistent, hidden
-      `device_uuid` in `localStorage`. All backend records and analytics tie strictly to this UUID. To drive virality,
-      we prompt users for their Instagram handle (`@handle`), which is treated purely as an editable display name on the
-      leaderboard.
-        1. **All Stamps Collected:** Ranked by completion time.
-        2. **Most Distance Walked:** Ranked by total km walked.
-        3. **Golden Stamp:** A live feed of who most recently found it.
+      `device_uuid` in `localStorage`. All backend records and analytics tie strictly to this UUID.
     - **Anti-Cheat Mechanics:** To claim a stamp, the user must have their AR camera active, and the 3D stamp asset must
       be visibly rendered on their screen (proving they are physically at the correct GPS coordinates and pointing the
       camera correctly) before the "Claim" button appears.
@@ -347,7 +339,7 @@ it; no app rebuild required.
    sugar rush @ Cakewala." It must add value as a native companion.
 7. **Intuitive Psychological Design & Magical Copywriting** — The app must have zero friction and require absolutely
    zero onboarding tutorials. Help information must be embedded directly in the UI where needed. For example, on the
-   Golden Stamp leaderboard, a small contextual hint should explain the mechanic seamlessly: *"Open your cam, take a
+   Golden Stamp UI, a small contextual hint should explain the mechanic seamlessly: *"Open your cam, take a
    glance, you might just catch the Golden chance!"*
     - **Tone of Voice:** The copy across the entire app must blend Disney-level magical wonder, Gen-Z energy (our prime
       demographic), a touch of playful rhyming, and kid-friendly approachability. It should feel like a whimsical park
@@ -409,7 +401,7 @@ Losing sponsor analytics due to Lalbagh's poor cell coverage is unacceptable.*
 | `daily_active_users` (DAU) | Unique device sessions per day  | Shows the raw scale of adoption and value during the event. |
 | `session_duration`         | Time spent active in the app    | Proves it's a true companion app, not just a quick glance.  |
 | `return_visitor`           | Same device, different day      | Proves the app is sticky enough for repeat use.             |
-| `feature_usage`            | AR view vs. Map vs. Leaderboard | Shows what features actually drive engagement.              |
+| `feature_usage`            | AR view vs. Map | Shows what features actually drive engagement.              |
 
 **Tier 4 — Derived / Hidden Metrics (Data Exhaust)**
 
@@ -418,7 +410,6 @@ existing database state:
 
 | Metric                       | Derived From                                                                    | Why it matters commercially                                                                                             |
 |------------------------------|---------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `active_leaderboard_users`   | Count of unique IG handles present in the leaderboard                           | Gives a highly accurate count of highly-engaged, competitive users without needing a specific "active user" event ping. |
 | `stamp_discovery_velocity`   | Timestamps between consecutive stamp collections for a user                     | Shows how fast people are moving through the park and how engaging the gamification loop is.                            |
 | `zone_dwell_time`            | Difference between entry and exit timestamps in a sponsor radius                | Proves to sponsors that people are actually lingering in their zone, not just walking past.                             |
 | `golden_stamp_hunt_duration` | Time elapsed between a Golden Stamp location jump and the next successful claim | Measures the intensity and engagement of the most urgent gamification loop.                                             |
