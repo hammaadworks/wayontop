@@ -1,34 +1,35 @@
 import {Coins} from 'lucide-react';
 import {cn} from '../lib/utils';
 import {getPOIStyle} from '../lib/poiStyles';
-import type {NodeType} from '../lib/types';
+import type {NodeBaseType, NodeCategory} from '../lib/types';
 
 interface MapNodeMarkerProps {
-    type: NodeType;
+    type: NodeBaseType | string;
+    category?: NodeCategory;
     name?: string;
     isZoomedIn: boolean;
     isSelected?: boolean;
     isLabelVisible?: boolean;
     opacity?: string;
-    tags?: string[];
+    isPaid?: boolean;
 }
 
 export function MapNodeMarker({
                                   type,
+                                  category,
                                   name,
                                   isZoomedIn,
                                   isSelected = false,
                                   isLabelVisible = true,
                                   opacity = 'opacity-100',
-                                  tags = []
+                                  isPaid = false
                               }: Readonly<MapNodeMarkerProps>) {
     const isNamed = name && name.trim() !== '';
 
-    if (type === 'track' && !isNamed) {
-        // Subtle breadcrumb dot for unnamed tracks
+    if (type === 'intersection' || (!isNamed && type === 'track')) {
+        // Subtle breadcrumb dot for intersections
         return (
             <div className={cn("relative flex flex-col items-center justify-center w-4 h-4 cursor-pointer", opacity)}>
-                {/* Modern Track Dot */}
                 <div className={cn(
                     "w-1.5 h-1.5 rounded-full bg-white/40 backdrop-blur-sm transition-all duration-300",
                     isSelected && "scale-150 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
@@ -43,7 +44,7 @@ export function MapNodeMarker({
         glowColor: glowColorClass,
         ringColor: ringColorClass,
         activeGlow: activeGlowClass
-    } = getPOIStyle({type, tags, name: name || ''});
+    } = getPOIStyle({category});
 
     const showLabel = isZoomedIn && name && isLabelVisible;
     const labelScale = showLabel ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-2 pointer-events-none';
@@ -101,7 +102,7 @@ export function MapNodeMarker({
                 </div>
 
                 {/* Paid Superscript Indicator */}
-                {(tags || []).includes('paid') && (
+                {isPaid && (
                     <div
                         className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
                         <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3}/>

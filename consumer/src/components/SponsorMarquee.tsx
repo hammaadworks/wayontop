@@ -1,8 +1,8 @@
 import {useEffect, useState, useMemo} from 'react';
 import type {GraphData, SponsorZone, Sponsor, GraphNode} from '@wayontop/ui/lib/types';
 import {distanceInMeters} from '@wayontop/ui/lib/routing';
-
 import {SponsorReelsModal} from '@wayontop/ui/components/SponsorReelsModal';
+import {Analytics} from '../lib/analytics';
 
 interface SponsorMarqueeProps {
     sponsorZones?: SponsorZone[];
@@ -13,7 +13,7 @@ interface SponsorMarqueeProps {
 }
 
 const defaultSponsor: Sponsor = {
-    id: 'default',
+    id: "0",
     name: 'wayon.top',
     tagline: 'We build navigation for the real world. Get your venue mapped today and unlock spatial intelligence.'
 };
@@ -53,7 +53,16 @@ export function SponsorMarquee({
                 break;
             }
         }
-        setCurrentZone(foundZone);
+        
+        setCurrentZone(prevZone => {
+            if (foundZone && prevZone?.id !== foundZone.id) {
+                Analytics.logEvent('sponsor_walk_in', {
+                    zone_id: foundZone.id,
+                    sponsor_ids: foundZone.sponsor_ids || []
+                });
+            }
+            return foundZone;
+        });
     }, [location, graph, sponsorZones]);
 
 
@@ -87,6 +96,15 @@ export function SponsorMarquee({
 
     const activeSponsors = currentZoneSponsors.length > 0 ? currentZoneSponsors : defaultAds.length > 0 ? defaultAds : [defaultSponsor];
     const displaySponsor = activeSponsors[displayIndex % activeSponsors.length] || defaultSponsor;
+
+    useEffect(() => {
+        if (displaySponsor) {
+            Analytics.logEvent('sponsor_impression', {
+                sponsor_id: displaySponsor.id,
+                zone_id: currentZone?.id || 'default'
+            });
+        }
+    }, [displaySponsor, currentZone]);
 
     useEffect(() => {
         if (modalOpen && displaySponsor) {
@@ -128,6 +146,13 @@ export function SponsorMarquee({
                 onClose={() => setModalOpen(false)} 
                 slideItems={slideItems} 
                 initialSlideIndex={slideIndex} 
+                onCTAClick={(sponsor) => {
+                    Analytics.logEvent('sponsor_cta_click', {
+                        sponsor_id: sponsor.id,
+                        sponsor_name: sponsor.name,
+                        cta_link: sponsor.cta_link
+                    });
+                }}
             />
         </>
     );

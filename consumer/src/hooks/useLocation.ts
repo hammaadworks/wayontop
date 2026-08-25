@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { MAX_GPS_ACCURACY_THRESHOLD } from '../lib/constants';
 
 export interface LocationData {
   lat: number;
@@ -23,7 +24,7 @@ export function useLocation() {
 
   // Use refs for mutable values we don't want to trigger re-renders for every tiny ping
   const cumulativeDistanceRef = useRef(0);
-  const lastValidLocationRef = useRef<{lat: number, lng: number, timestamp: number} | null>(null);
+  const lastValidLocationRef = useRef<{lat: number, lng: number, timestamp: number, lastState?: any} | null>(null);
   const historyRef = useRef<{lat: number, lng: number}[]>([]);
 
   // Timer for elapsed time
@@ -98,6 +99,13 @@ export function useLocation() {
         const { latitude, longitude, accuracy, heading, speed } = position.coords;
         const currentTimestamp = position.timestamp || Date.now();
         
+        // Block 1: Filter out terribly inaccurate GPS jumps
+        // Lalbagh has thick tree cover. If accuracy is > threshold, ignore this ping entirely
+        // to prevent the AR arrow from spinning wildly and triggering false Reroutes.
+        if (accuracy > MAX_GPS_ACCURACY_THRESHOLD) {
+            return;
+        }
+        
         historyRef.current.push({ lat: latitude, lng: longitude });
         if (historyRef.current.length > MAX_HISTORY) {
           historyRef.current.shift();
@@ -136,13 +144,19 @@ export function useLocation() {
            lastValidLocationRef.current = {lat: avgLat, lng: avgLng, timestamp: currentTimestamp};
         }
 
-        setLocation({
-          lat: avgLat,
-          lng: avgLng,
-          accuracy,
-          heading,
-          speed
-        });
+        const now = Date.now();
+        const lastState = lastValidLocationRef.current?.lastState;
+        const distFromLastState = lastState ? calcDist(lastState.lat, lastState.lng, avgLat, avgLng) : Infinity;
+
+        // Update React state only if we moved more than 1 meter OR 2 seconds have passed.
+        // This prevents massive re-renders (and battery drain) from micro-fluctuations in GPS.
+        if (distFromLastState > 1 || now - (lastState?.timestamp || 0) > 2000) {
+          const newLoc = { lat: avgLat, lng: avgLng, accuracy, heading, speed };
+          setLocation(newLoc);
+          if (lastValidLocationRef.current) {
+             lastValidLocationRef.current.lastState = { ...newLoc, timestamp: now };
+          }
+        }
       },
       (err) => {
         if (import.meta.env.DEV) {

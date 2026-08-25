@@ -3,10 +3,10 @@ import type { MapRef } from 'react-map-gl/maplibre';
 
 export function useMarkerCollision(
   mapRef: React.RefObject<MapRef | null>,
-  nodes: { id: string; lat: number; lng: number; priority?: number }[],
+  nodes: { id: number; lat: number; lng: number; priority?: number }[],
   isZoomedIn: boolean
 ) {
-  const [visibleLabels, setVisibleLabels] = useState<Set<string>>(new Set());
+  const [visibleLabels, setVisibleLabels] = useState<Set<number>>(new Set());
   
   const calculateCollisions = useCallback(() => {
     if (!mapRef.current || !isZoomedIn) {
@@ -25,11 +25,11 @@ export function useMarkerCollision(
         const pA = a.priority || 0;
         const pB = b.priority || 0;
         if (pA !== pB) return pB - pA;
-        return a.id.localeCompare(b.id);
+        return a.id - b.id;
     });
     
     const boxes: { minX: number; minY: number; maxX: number; maxY: number }[] = [];
-    const newVisible = new Set<string>();
+    const newVisible = new Set<number>();
     
     for (const node of visibleNodes) {
       const p = map.project([node.lng, node.lat]);

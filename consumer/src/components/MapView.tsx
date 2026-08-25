@@ -5,9 +5,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import type * as GeoJSON from 'geojson';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
-import {isGarbageNode} from '@wayontop/ui/lib/types';
-import {useLocation} from '../hooks/useLocation';
+import type {LocationData} from '../hooks/useLocation';
 import {Gamification} from '../lib/gamification';
+import {findNearestEdgePoint, getRouteCoordinateSegments} from '@wayontop/ui/lib/routing';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
@@ -21,14 +21,14 @@ type MapViewProps = Readonly<{
     graph: GraphData | null;
     activeRoute: { path: GraphNode[]; totalDistance: number } | null;
     stamps?: Stamp[];
+    location: LocationData | null;
     isRadar?: boolean;
     mode?: 'map' | 'satellite' | 'ar';
 }>;
 
-export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode = 'map'}: MapViewProps) {
-    const {location} = useLocation();
+export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map'}: MapViewProps) {
     const collectedStampIds = Gamification.getCollectedStamps();
-    const [activePopup, setActivePopup] = useState<string | null>(null);
+    const [activePopup, setActivePopup] = useState<number | null>(null);
     const mapRef = useRef<any>(null);
 
     const actualSkin = mode === 'satellite' ? 'satellite' : 'animated';
@@ -45,11 +45,11 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
 
     const nodesAndStamps = useMemo(() => {
         if (!graph) return [];
-        const visibleNodes = graph.nodes.filter(n => n.type !== 'track').map(n => ({
+        const visibleNodes = graph.nodes.filter(n => n.category_id !== "999" /* Track */).map(n => ({
             ...n,
-            priority: n.type === 'gate' ? 10 : 5
+            priority: n.category_id === "2" /* Gate */ ? 10 : 5
         }));
-        const visibleStamps = stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(s => ({
+        const visibleStamps = stamps.filter(s => !collectedStampIds.includes(s.id)).map(s => ({
             ...s,
             priority: 8
         }));
@@ -65,64 +65,26 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
         calculateCollisions();
     }, [zoom, nodesAndStamps, calculateCollisions]);
 
-    const hiddenEdgesMap = useMemo(() => {
-        const map = new globalThis.Map<string, boolean>();
-        if (!graph) return map;
-        graph.edges.forEach(e => {
-            if (e.is_hidden) {
-                map.set(`${e.from}-${e.to}`, true);
-                map.set(`${e.to}-${e.from}`, true);
-            }
-        });
-        return map;
-    }, [graph]);
-
     const routeGeoJSON = useMemo(() => {
         if (!activeRoute || !graph) return null;
 
-        const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-        let currentSegment: number[][] = [];
-
-        for (let i = 0; i < activeRoute.path.length; i++) {
-            currentSegment.push([activeRoute.path[i].lng, activeRoute.path[i].lat]);
-
-            if (i < activeRoute.path.length - 1) {
-                const nodeA = activeRoute.path[i];
-                const nodeB = activeRoute.path[i + 1];
-                const isHidden = hiddenEdgesMap.has(`${nodeA.id}-${nodeB.id}`);
-
-                if (isHidden) {
-                    if (currentSegment.length > 1) {
-                        features.push({
-                            type: "Feature",
-                            geometry: {type: "LineString", coordinates: currentSegment},
-                            properties: {}
-                        });
-                    }
-                    currentSegment = [];
-                }
-            }
-        }
-
-        if (currentSegment.length > 1) {
-            features.push({
-                type: "Feature",
-                geometry: {type: "LineString", coordinates: currentSegment},
-                properties: {}
-            });
-        }
+        const features = getRouteCoordinateSegments(graph, activeRoute.path).map(coordinates => ({
+            type: 'Feature' as const,
+            geometry: {type: 'LineString' as const, coordinates},
+            properties: {}
+        }));
 
         return {
             type: "FeatureCollection",
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
-    }, [activeRoute, graph, hiddenEdgesMap]);
+    }, [activeRoute, graph]);
 
     const allPathsGeoJSON = useMemo(() => {
         if (!graph) return null;
         const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
 
-        const nodeMap = new globalThis.Map<string, GraphNode>();
+        const nodeMap = new globalThis.Map<number, GraphNode>();
         graph.nodes.forEach(n => nodeMap.set(n.id, n));
 
         graph.edges.forEach(edge => {
@@ -134,7 +96,7 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                     type: "Feature",
                     geometry: {
                         type: "LineString",
-                        coordinates: [[fromNode.lng, fromNode.lat], [toNode.lng, toNode.lat]]
+                        coordinates: [[fromNode.lng, fromNode.lat], ...(edge.geometry || []), [toNode.lng, toNode.lat]]
                     },
                     properties: {}
                 });
@@ -146,6 +108,15 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
     }, [graph]);
+
+    const snappedLocation = useMemo(() => {
+        if (!location || !graph) return location;
+        const snap = findNearestEdgePoint(graph, location.lat, location.lng, 100);
+        if (snap) {
+            return { lat: snap.lat, lng: snap.lng };
+        }
+        return location;
+    }, [location, graph]);
 
     if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
@@ -209,7 +180,6 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
             }
         ]
     };
-
     return (
         <div className="relative w-full h-full">
 
@@ -272,34 +242,33 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
 
                 {/* Nodes */}
                 {graph.nodes.filter(n => {
-                    if (n.type === 'track') return false;
-                    const isMajorNode = (n.type === 'poi' || n.type === 'facility' || n.type === 'gate') && !isGarbageNode(n);
+                    const baseType = n.category?.base_type || 'poi';
+                    if (baseType === 'intersection') return false;
+                    const isMajorNode = baseType === 'poi' || baseType === 'gate';
                     if (!isMajorNode && zoom < MAP_ZOOM_TIERS.ALL_PINS_MIN) return false;
                     if (isMajorNode && zoom < MAP_ZOOM_TIERS.MAJOR_PINS_MIN) return false;
                     return true;
                 }).map(node => {
-                    const isMajorNode = (node.type === 'poi' || node.type === 'facility' || node.type === 'gate') && !isGarbageNode(node);
+                    const baseType = node.category?.base_type || 'poi';
+                    const isMajorNode = baseType === 'poi' || baseType === 'gate';
                     const showThisMarkerName = isMajorNode ? zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN : zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
                     return (
                         <Marker key={node.id} longitude={node.lng} latitude={node.lat} anchor="center">
                             <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => { if (!isRadar) setActivePopup(activePopup === node.id ? null : node.id); }}
+                                onClick={() => { if (!isRadar) setActivePopup(activePopup === Number(node.id) ? null : node.id); }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault();
-                                        if (!isRadar) setActivePopup(activePopup === node.id ? null : node.id);
+                                        if (!isRadar) setActivePopup(activePopup === Number(node.id) ? null : node.id);
                                     }
                                 }}
                             >
-                                <MapNodeMarker
-                                    type={node.type}
-                                    name={node.name}
-                                    isZoomedIn={showThisMarkerName}
+                                <MapNodeMarker type={node.category?.base_type || 'poi'} category={node.category} name={node.name?.en || ''} isZoomedIn={showThisMarkerName}
                                     isLabelVisible={visibleLabels.has(node.id)}
-                                    isSelected={activePopup === node.id}
-                                    tags={node.tags}
+                                    isSelected={activePopup === Number(node.id)}
+                                    isPaid={node.is_paid}
                                 />
                             </div>
                         </Marker>
@@ -307,38 +276,36 @@ export function MapView({graph, activeRoute, stamps = [], isRadar = false, mode 
                 })}
 
                 {/* Stamps */}
-                {zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN && stamps.filter(s => s.rarity !== 'golden' && !collectedStampIds.includes(s.id)).map(stamp => (
+                {zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN && stamps.filter(s => !collectedStampIds.includes(s.id)).map(stamp => (
                     <Marker key={stamp.id} longitude={stamp.lng} latitude={stamp.lat} anchor="center">
                         <div
                             role="button"
                             tabIndex={0}
-                            onClick={() => { if (!isRadar) setActivePopup(activePopup === stamp.id ? null : stamp.id); }}
+                            onClick={() => { if (!isRadar) setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id); }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
-                                    if (!isRadar) setActivePopup(activePopup === stamp.id ? null : stamp.id);
+                                    if (!isRadar) setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
                                 }
                             }}
                         >
-                            <MapNodeMarker
-                                type="stamp"
-                                name={stamp.name}
-                                isZoomedIn={zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN}
+                            <MapNodeMarker type="stamp" name={stamp.name || ''} isZoomedIn={zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN}
                                 isLabelVisible={visibleLabels.has(stamp.id)}
-                                isSelected={activePopup === stamp.id}
+                                isSelected={activePopup === Number(stamp.id)}
                             />
                         </div>
                     </Marker>
                 ))}
 
                 {/* User Location */}
-                {location && (
-                    <Marker longitude={location.lng} latitude={location.lat} anchor="center">
+                
+                    {snappedLocation && (
+                    <Marker longitude={snappedLocation.lng} latitude={snappedLocation.lat} anchor="center">
                         <div className="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md">
                             <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-50"></div>
                         </div>
                     </Marker>
-                )}
+                    )}
             </Map>
 
             {/* Recenter Button */}

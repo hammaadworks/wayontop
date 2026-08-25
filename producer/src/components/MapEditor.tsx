@@ -20,7 +20,7 @@ import {PiPCamera} from './PiPCamera';
 import {MapBottomBar} from './map/MapBottomBar';
 import {EditorPanels} from './map/EditorPanels';
 import {distanceInMeters, findShortestPath} from '@wayontop/ui/lib/routing';
-import {SYSTEM_TAGS, type GraphEdge, type GraphNode} from '@wayontop/ui/lib/types';
+import {type GraphEdge, type GraphNode} from '@wayontop/ui/lib/types';
 import type {Venue} from '../hooks/useVenues';
 import {useGraph} from '../hooks/useGraph';
 import {useGeolocation} from '../hooks/useGeolocation';
@@ -108,12 +108,12 @@ const TEST_ROUTE_PAINT: any = {
 
 const SPONSOR_FILL_COLOR: any = [
     'match',
-    ['get', 'type'],
+    ['get', 'type'], // 'type' is set via properties in the geojson generator below
     'poi', '#fbbf24',
     'stamp', '#e879f9',
     'gate', '#34d399',
-    'facility', '#fb7185',
-    'track', '#60a5fa',
+    'utility_major', '#fb7185',
+    'intersection', '#60a5fa',
     '#94a3b8'
 ];
 
@@ -187,16 +187,32 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [lassoPoints, setLassoPoints] = useState<[number, number][]>([]);
     const [mergeModalOpen, setMergeModalOpen] = useState(false);
     const [nodesToMerge, setNodesToMerge] = useState<GraphNode[]>([]);
+    const [edgeGeometry, setEdgeGeometry] = useState<[number, number][]>([]);
+
+    useEffect(() => {
+        if (!edgeStartNode) setEdgeGeometry([]);
+    }, [edgeStartNode]);
 
     const confirmMerge = () => {
         if (nodesToMerge.length < 2) return;
+
+        const markerNodes = nodesToMerge.filter(n => n.category?.base_type !== 'intersection');
+        
+        if (markerNodes.length > 1) {
+            toast.error('2+ marker nodes cannot be merged');
+            setMergeModalOpen(false);
+            setNodesToMerge([]);
+            setMode('view');
+            setLassoPoints([]);
+            return;
+        }
 
         let primaryNode = nodesToMerge[0];
         let maxScore = -1;
         for (const n of nodesToMerge) {
             let score = 0;
-            if (n.type !== 'track') score += 10;
-            if (n.name && n.name.trim() !== '') score += 5;
+            if (n.category?.base_type !== 'intersection') score += 10;
+            if (n.name && typeof n.name === 'object' && Object.values(n.name).some(v => v.trim() !== '')) score += 5;
             if (score > maxScore) {
                 maxScore = score;
                 primaryNode = n;
@@ -212,9 +228,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             let newEdges = prev.edges.map(e => {
                 let from = e.from;
                 let to = e.to;
-                if (idsToRemove.has(from)) from = primaryId;
-                if (idsToRemove.has(to)) to = primaryId;
-                return {from, to, distance_m: 0}; // distance updated below
+                let changed = false;
+                
+                if (idsToRemove.has(from)) { from = primaryId; changed = true; }
+                if (idsToRemove.has(to)) { to = primaryId; changed = true; }
+                
+                if (!changed) return e;
+                return {...e, from, to, distance_m: 0}; // distance updated below
             });
 
             newEdges = newEdges.filter(e => e.from !== e.to);
@@ -230,15 +250,19 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             }
 
             const nodesMap = new Map(newNodes.map(n => [n.id, n]));
-            uniqueEdges.forEach(e => {
+            
+            const updatedUniqueEdges = uniqueEdges.map(e => {
+                if (e.distance_m !== 0) return e; // Untouched edges (since we set distance_m: 0 on changed ones)
+                
                 const n1 = nodesMap.get(e.from);
                 const n2 = nodesMap.get(e.to);
                 if (n1 && n2) {
-                    e.distance_m = distanceInMeters(n1.lat, n1.lng, n2.lat, n2.lng);
+                    return {...e, distance_m: distanceInMeters(n1.lat, n1.lng, n2.lat, n2.lng)};
                 }
+                return e;
             });
 
-            return {...prev, nodes: newNodes, edges: uniqueEdges};
+            return {...prev, nodes: newNodes, edges: updatedUniqueEdges};
         });
 
         setMergeModalOpen(false);
@@ -281,42 +305,36 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }
     }, [currentVenue]);
 
-    const availableTags = useMemo(() => {
-        const tags = new Set<string>(SYSTEM_TAGS);
-        data.nodes.forEach(n => n.tags?.forEach(t => tags.add(t)));
-        return Array.from(tags).sort();
-    }, [data.nodes]);
+    const availableTags: string[] = [];
 
     const handleMapClick = (latlng: { lat: number, lng: number }) => {
         if (mode === 'add_node') {
             const newNode: GraphNode = {
-                id: `n_${Date.now()}`,
-                name: `Node ${data.nodes.length + 1}`,
+                id: -(Date.now() % 1000000000),
+                name: {en: `Node ${data.nodes.length + 1}`, kn: '', hi: ''},
                 lat: latlng.lat,
                 lng: latlng.lng,
-                type: 'poi',
-                tags: []
+                status: 'active',
+                is_paid: false,
+                category_id: "1",
+                category: {
+                    id: "1",
+                    code: 'poi',
+                    base_type: 'poi',
+                    name: {en: 'POI', kn: '', hi: ''},
+                    icon_key: 'MapPin',
+                    color_theme: 'cyan',
+                    synonyms: {en: [], kn: [], hi: []}
+                }
             };
             setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
             setMode('view');
         } else if (mode === 'add_edge') {
-            const newNode: GraphNode = {
-                id: `n_${Date.now()}`,
-                name: '',
-                lat: latlng.lat,
-                lng: latlng.lng,
-                type: 'track',
-                tags: []
-            };
-            setData(prev => {
-                const newData = {...prev, nodes: [...prev.nodes, newNode]};
-                if (edgeStartNode) {
-                    const dist = distanceInMeters(edgeStartNode.lat, edgeStartNode.lng, newNode.lat, newNode.lng);
-                    newData.edges = [...prev.edges, {from: edgeStartNode.id, to: newNode.id, distance_m: dist}];
-                }
-                return newData;
-            });
-            setEdgeStartNode(newNode);
+            if (!edgeStartNode) {
+                toast.error('First click a starting node to draw an edge');
+                return;
+            }
+            setEdgeGeometry(prev => [...prev, [latlng.lng, latlng.lat]]);
         } else if (mode === 'merge_nodes') {
             setLassoPoints(prev => [...prev, [latlng.lng, latlng.lat]]);
         } else {
@@ -325,12 +343,15 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             setSelectedEdge(null);
             setSelectedTrace(null);
             setTestRoutePath(null);
+            setEdgeStartNode(null);
+            setEdgeGeometry([]);
         }
     };
 
     const handleAddEdgeModeClick = (node: GraphNode) => {
         if (!edgeStartNode) {
             setEdgeStartNode(node);
+            setEdgeGeometry([]);
             return;
         }
         if (edgeStartNode.id !== node.id) {
@@ -339,13 +360,28 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 (e.to === edgeStartNode.id && e.from === node.id)
             );
             if (!exists) {
-                const dist = distanceInMeters(edgeStartNode.lat, edgeStartNode.lng, node.lat, node.lng);
-                const newEdge: GraphEdge = {from: edgeStartNode.id, to: node.id, distance_m: dist};
+                let totalDist = 0;
+                let prevPt = [edgeStartNode.lng, edgeStartNode.lat];
+                for (const pt of edgeGeometry) {
+                    totalDist += distanceInMeters(prevPt[1], prevPt[0], pt[1], pt[0]);
+                    prevPt = pt;
+                }
+                totalDist += distanceInMeters(prevPt[1], prevPt[0], node.lat, node.lng);
+                
+                const newEdge: GraphEdge = {
+                    from: edgeStartNode.id, 
+                    to: node.id, 
+                    distance_m: Math.round(totalDist),
+                    geometry: edgeGeometry.length > 0 ? edgeGeometry : undefined
+                };
                 setData(prev => ({...prev, edges: [...prev.edges, newEdge]}));
-                toast.success(`Edge added (${dist}m)`);
+                toast.success(`Edge added (${Math.round(totalDist)}m)`);
+            } else {
+                toast.error('Edge already exists between these nodes');
             }
         }
         setEdgeStartNode(node);
+        setEdgeGeometry([]);
     };
 
     const handleTestRouteModeClick = (node: GraphNode) => {
@@ -366,7 +402,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
     const handleNodeClick = (node: GraphNode) => {
         if (mode === 'erase') {
-            if (node.type === 'track') {
+            if (node.category?.base_type === 'intersection') {
                 if (mapRef.current) {
                     const pt = mapRef.current.project([node.lng, node.lat]);
                     const bbox: [number, number][] = [
@@ -403,7 +439,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }
     };
 
-    const deleteNode = (id: string) => {
+    const deleteNode = (id: number) => {
         setData(prev => ({
             ...prev,
             nodes: prev.nodes.filter(n => n.id !== id),
@@ -413,7 +449,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         toast.success('Node deleted');
     };
 
-    const deleteEdge = (from: string, to: string) => {
+    const deleteEdge = (from: number, to: number) => {
         setData(prev => ({
             ...prev,
             edges: prev.edges.filter(e => !(e.from === from && e.to === to))
@@ -468,7 +504,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         }
     };
 
-    const updateEdge = (from: string, to: string, updates: Partial<GraphEdge>) => {
+    const updateEdge = (from: number, to: number, updates: Partial<GraphEdge>) => {
         setData(prev => ({
             ...prev,
             edges: prev.edges.map(e => (e.from === from && e.to === to) ? { ...e, ...updates } : e)
@@ -476,7 +512,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setSelectedEdge(prev => (prev?.from === from && prev?.to === to) ? { ...prev, ...updates } : prev);
     };
 
-    const updateNodePosition = (id: string, lat: number, lng: number) => {
+    const updateNodePosition = (id: number, lat: number, lng: number) => {
         setData(prev => {
             const newNodes = prev.nodes.map(n => n.id === id ? {...n, lat, lng} : n);
             const nodesMap = new Map(newNodes.map(n => [n.id, n]));
@@ -492,7 +528,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setSelectedNode(prev => (prev?.id === id) ? {...prev, lat, lng} : prev);
     };
 
-    const updateNode = (id: string, updates: Partial<GraphNode>) => {
+    const updateNode = (id: number, updates: Partial<GraphNode>) => {
         setData(prev => ({
             ...prev,
             nodes: prev.nodes.map(n => n.id === id ? {...n, ...updates} : n)
@@ -524,7 +560,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 
             return nodes.flatMap(node => {
                 return mappedSponsors.map((mappedSponsor, idx) => {
-                    if (node.type === 'track' && !mappedSponsor?.logo_asset) return null;
+                    if (node.category?.base_type === 'intersection' && !mappedSponsor?.logo_asset) return null;
                     
                     const hash = `${zone.id}-${node.id}`.split('').reduce((a, b) => {
                         a = ((a << 5) - a) + b.charCodeAt(0);
@@ -559,10 +595,11 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const nodeMarkers = useMemo(() => {
         if (!showMajorPins) return null;
         return data.nodes.filter(n => {
-            if (!layers.pois && (n.type === 'poi' || n.type === 'stamp' || n.type === 'gate' || n.type === 'facility')) return false;
-            if (!layers.tracks && n.type === 'track') return false;
+            const baseType = n.category?.base_type;
+            if (!layers.pois && (baseType === 'poi' || baseType === 'stamp' || baseType === 'gate' || baseType === 'utility_major')) return false;
+            if (!layers.tracks && baseType === 'intersection') return false;
             
-            const isMajorNode = n.type === 'poi' || n.type === 'facility' || n.type === 'gate';
+            const isMajorNode = baseType === 'poi' || baseType === 'utility_major' || baseType === 'gate';
             if (!isMajorNode && !showAllPins) return false;
 
             return true;
@@ -570,9 +607,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             const isSelected = selectedNode?.id === node.id;
             const opacity = mode === 'add_edge' && edgeStartNode?.id === node.id ? 'opacity-50' : 'opacity-100';
             
-            const isMajorNode = node.type === 'poi' || node.type === 'facility' || node.type === 'gate';
+            const baseType = node.category?.base_type;
+            const isMajorNode = baseType === 'poi' || baseType === 'utility_major' || baseType === 'gate';
             const showThisMarkerName = isMajorNode ? showMajorNames : showAllNames;
 
+            // Simple hack to convert LocalizedText to string for marker title
+            const fallbackNameStr = node.name && typeof node.name === 'object' ? Object.values(node.name).find(v => v) : undefined;
+            
             return (
                 <Marker
                     key={node.id} longitude={node.lng} latitude={node.lat} anchor="center"
@@ -584,13 +625,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     }}
                 >
                     <MapNodeMarker
-                        type={node.type}
-                        name={node.name}
+                        type={baseType || 'poi'}
+                        name={fallbackNameStr}
                         isZoomedIn={showThisMarkerName}
                         isLabelVisible={visibleLabels.has(node.id)}
                         isSelected={isSelected}
                         opacity={opacity}
-                        tags={node.tags}
+                        isPaid={node.is_paid}
                     />
                 </Marker>
             );
@@ -607,7 +648,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             if (!isFilled && !layers.openSponsors) return null;
             if (isFilled && !layers.filledSponsors) return null;
 
-            const type = node.type || 'unknown';
+            const type = node.category?.base_type || 'unknown';
             let Icon = AlertTriangle;
             let bgClass = 'bg-slate-500/20';
             let textClass = 'text-slate-400';
@@ -632,13 +673,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 bgClass = 'bg-emerald-500/20';
                 borderClass = 'border-emerald-500/50';
                 shadowClass = 'shadow-emerald-500/20';
-            } else if (type === 'facility') {
+            } else if (type === 'utility_major') {
                 Icon = HeartHandshake;
                 textClass = 'text-rose-400';
                 bgClass = 'bg-rose-500/20';
                 borderClass = 'border-rose-500/50';
                 shadowClass = 'shadow-rose-500/20';
-            } else if (type === 'track') {
+            } else if (type === 'intersection') {
                 Icon = Crosshair;
                 textClass = 'text-blue-400';
                 bgClass = 'bg-blue-500/20';
@@ -646,12 +687,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 shadowClass = 'shadow-blue-500/20';
             }
 
-            if (type === 'track' && !mappedSponsor?.logo_asset) {
+            if (type === 'intersection' && !mappedSponsor?.logo_asset) {
                 return null;
             }
 
             const isLabelVisible = visibleLabels.has(id);
-            const displayName = mappedSponsor?.name || node.name || 'Unnamed';
+            const fallbackName = node.name && typeof node.name === 'object' ? Object.values(node.name).find(v => v) : undefined;
+            const displayName = mappedSponsor?.name || fallbackName || 'Unnamed';
 
             return (
                 <Marker key={id} longitude={lng} latitude={lat} anchor="center">
@@ -686,23 +728,63 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             const end = data.nodes.find(n => n.id === edge.to);
             if (!start || !end) return null;
             const isSelected = selectedEdge?.from === edge.from && selectedEdge?.to === edge.to;
+            const coords = [[start.lng, start.lat], ...(edge.geometry || []), [end.lng, end.lat]];
             return {
                 type: 'Feature',
                 properties: {...edge, isSelected},
-                geometry: {type: 'LineString', coordinates: [[start.lng, start.lat], [end.lng, end.lat]]}
+                geometry: {type: 'LineString', coordinates: coords}
             };
         }).filter(Boolean) as GeoJSON.Feature[]
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [data.edges, data.nodes, selectedEdge]);
 
-    const testRouteGeoJSON = useMemo<GeoJSON.Feature>(() => ({
-        type: 'Feature',
-        properties: {},
-        geometry: {
-            type: 'LineString',
-            coordinates: testRoutePath ? testRoutePath.path.map((n: any) => [n.lng, n.lat]) : []
+    const drawingEdgeGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+        if (mode !== 'add_edge' || !edgeStartNode) return { type: 'FeatureCollection', features: [] };
+        const coords = [[edgeStartNode.lng, edgeStartNode.lat], ...edgeGeometry];
+        return {
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: { isDrawing: true },
+                geometry: { type: 'LineString', coordinates: coords }
+            }]
+        };
+    }, [mode, edgeStartNode, edgeGeometry]);
+
+    const testRouteGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+        const features: GeoJSON.Feature[] = [];
+        if (testRoutePath) {
+            let currentCoords: number[][] = [];
+            for (let i = 0; i < testRoutePath.path.length; i++) {
+                const node = testRoutePath.path[i];
+                if (currentCoords.length === 0) currentCoords.push([node.lng, node.lat]);
+                if (i < testRoutePath.path.length - 1) {
+                    const nextNode = testRoutePath.path[i + 1];
+                    const edge = data.edges.find(e => 
+                        (e.from === node.id && e.to === nextNode.id) || 
+                        (e.from === nextNode.id && e.to === node.id)
+                    );
+                    if (edge?.geometry && edge.geometry.length > 0) {
+                        const firstGeoPoint = edge.geometry[0];
+                        const lastGeoPoint = edge.geometry[edge.geometry.length - 1];
+                        const d1 = Math.hypot(firstGeoPoint[0] - node.lng, firstGeoPoint[1] - node.lat);
+                        const d2 = Math.hypot(lastGeoPoint[0] - node.lng, lastGeoPoint[1] - node.lat);
+                        const geomToAdd = d2 < d1 ? [...edge.geometry].reverse() : edge.geometry;
+                        currentCoords.push(...geomToAdd);
+                    }
+                    currentCoords.push([nextNode.lng, nextNode.lat]);
+                }
+            }
+            if (currentCoords.length > 1) {
+                features.push({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: { type: 'LineString', coordinates: currentCoords }
+                });
+            }
         }
-    }), [testRoutePath]);
+        return { type: 'FeatureCollection', features };
+    }, [testRoutePath, data.edges]);
 
 
     const filledSponsorsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
@@ -720,7 +802,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: title, radius: zone.radius_m, type: node.type}
+                properties: {name: title, radius: zone.radius_m, type: node.category?.base_type}
             }));
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsorZones, data.sponsors, data.nodes]);
@@ -741,7 +823,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
                 steps: 64,
                 units: 'meters',
-                properties: {name: title, radius: zone.radius_m, type: node.type}
+                properties: {name: title, radius: zone.radius_m, type: node.category?.base_type}
             }));
         }).filter(Boolean) as GeoJSON.Feature[]
     }), [data.sponsorZones, data.sponsors, data.nodes]);
@@ -825,7 +907,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                             let minDist = 20;
                             if (mapRef.current) {
                                 for (const n of data.nodes) {
-                                    if (n.type === 'track') {
+                                    if (n.category?.base_type === 'intersection') {
                                         const pNode = mapRef.current.project([n.lng, n.lat]);
                                         const dist = Math.sqrt(Math.pow(pNode.x - e.point.x, 2) + Math.pow(pNode.y - e.point.y, 2));
                                         if (dist < minDist) {
@@ -874,8 +956,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 >
                     {currentLocation && (
                         <Marker longitude={currentLocation.lng} latitude={currentLocation.lat} anchor="center">
-                            <div className="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md">
-                                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-50"/>
+                            <div className="w-4 h-4 bg-red-500 border-2 border-white rounded-full shadow-md">
+                                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-50"/>
                             </div>
                         </Marker>
                     )}
@@ -1085,7 +1167,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             />
 
             {testingStamp && (
-                <CameraView stampName={testingStamp.name || 'Unknown Stamp'} onClose={() => setTestingStamp(null)}/>
+                <CameraView stampName={((testingStamp.name as any)?.en || 'Unknown Stamp') as string} onClose={() => setTestingStamp(null)}/>
             )}
 
             {(() => {

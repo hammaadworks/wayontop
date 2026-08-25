@@ -273,12 +273,17 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                                     .filter(z => z.id !== editingZoneId)
                                                                     .flatMap(z => z.poi_ids || [])
                                                             );
-                                                            const availableNodes = data.nodes.filter(n => n.type !== 'track' || (n.type === 'track' && n.name && n.name.trim() !== ''));
+                                                            const availableNodes = data.nodes.filter(n => {
+                                                                const isTrack = n.category?.base_type === 'intersection';
+                                                                const hasName = n.name && typeof n.name === 'object' && Object.values(n.name).some(v => v.trim() !== '');
+                                                                return !isTrack || (isTrack && hasName);
+                                                            });
                                                             const unassignedNodes = availableNodes.filter(n => !assignedNodeIds.has(n.id));
                                                             const assignedNodes = availableNodes.filter(n => assignedNodeIds.has(n.id));
 
                                                             return [...unassignedNodes, ...assignedNodes].map(n => {
                                                                 const isAssigned = assignedNodeIds.has(n.id);
+                                                                const fallbackName = n.name && typeof n.name === 'object' ? Object.values(n.name).find(v => v) : undefined;
                                                                 return (
                                                                     <label key={n.id}
                                                                            className={`flex items-center gap-2 py-1 rounded px-2 ${isAssigned ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5'}`}>
@@ -298,7 +303,7 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                                             className="border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                                                         />
                                                                         <span className="text-sm text-slate-300">
-                                                                            {n.name || 'Unnamed Node'} {isAssigned &&
+                                                                            {fallbackName || 'Unnamed Node'} {isAssigned &&
                                                                             <span
                                                                                 className="text-[10px] text-slate-500 ml-1">(Assigned)</span>}
                                                                         </span>

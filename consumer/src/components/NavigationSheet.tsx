@@ -6,9 +6,8 @@ import {MapPin, X, ArrowDownUp, Navigation, LocateFixed} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import Fuse from 'fuse.js';
 import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
-import {findNearestNode, findShortestPath} from '@wayontop/ui/lib/routing';
 import {getPOIStyle} from '@wayontop/ui/lib/poiStyles';
-import RoutingWorker from '@wayontop/ui/lib/routing.worker?worker';
+import { calculateRoute } from '@wayontop/ui/lib/routingClient';
 
 interface NavigationSheetProps {
     isOpen: boolean;
@@ -30,8 +29,9 @@ export function NavigationSheet({
                                     onReportBug
                                 }: NavigationSheetProps) {
     const {t} = useTranslation();
+    const getTitle = (node: GraphNode | null) => node ? (node.name?.en || node.category?.name?.en || '') : '';
     const [fromQuery, setFromQuery] = useState('Your Location');
-    const [toQuery, setToQuery] = useState(initialToNode ? initialToNode.name : '');
+    const [toQuery, setToQuery] = useState(getTitle(initialToNode));
     const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
 
     const [fromNode, setFromNode] = useState<GraphNode | 'current' | null>('current');
@@ -46,7 +46,7 @@ export function NavigationSheet({
     useEffect(() => {
         if (isOpen) {
             setToNode(initialToNode);
-            setToQuery(initialToNode ? initialToNode.name : '');
+            setToQuery(getTitle(initialToNode));
             setFromNode('current');
             setFromQuery('Your Location');
             setActiveInput('from');
@@ -56,10 +56,27 @@ export function NavigationSheet({
 
     const pois = useMemo(() => {
         if (!graph) return [];
-        return graph.nodes.filter(n => n.type !== 'track');
+        return graph.nodes.filter(n => n.category?.base_type !== 'intersection').map(n => {
+            let searchAliases: string[] = [];
+
+            if (n.category?.synonyms) {
+                Object.values(n.category.synonyms).forEach(arr => searchAliases.push(...arr));
+            }
+            if (n.synonyms) {
+                Object.values(n.synonyms).forEach(arr => searchAliases.push(...arr));
+            }
+
+            const primaryName = n.name?.en || n.category?.name?.en || '';
+
+            return {
+                ...n,
+                searchName: primaryName,
+                searchTags: searchAliases
+            };
+        });
     }, [graph]);
 
-    const fuse = useMemo(() => new Fuse(pois, {keys: ['name', 'tags'], threshold: 0.3}), [pois]);
+    const fuse = useMemo(() => new Fuse(pois, {keys: ['searchName', 'searchTags'], threshold: 0.3}), [pois]);
 
     const searchResults = useMemo(() => {
         const query = activeInput === 'from' ? fromQuery : toQuery;
@@ -67,14 +84,14 @@ export function NavigationSheet({
         return fuse.search(query).map(res => res.item);
     }, [activeInput, fromQuery, toQuery, pois, fuse]);
 
-    const handleSelectNode = (node: GraphNode | 'current') => {
+    const handleSelectNode = (node: any | 'current') => {
         if (activeInput === 'from') {
             setFromNode(node);
-            setFromQuery(node === 'current' ? 'Your Location' : (node as GraphNode).name);
+            setFromQuery(node === 'current' ? 'Your Location' : node.searchName);
             setActiveInput('to');
         } else if (activeInput === 'to') {
-            setToNode(node as GraphNode);
-            setToQuery((node as GraphNode).name);
+            setToNode(node);
+            setToQuery(node.searchName);
             setActiveInput(null);
         }
     };
@@ -90,17 +107,31 @@ export function NavigationSheet({
     };
 
     const [isNavigating, setIsNavigating] = useState(false);
+    const abortRef = React.useRef<AbortController | null>(null);
 
-    const handleStart = () => {
+    // Clean up worker on unmount
+    useEffect(() => {
+        return () => {
+            if (abortRef.current) {
+                abortRef.current.abort();
+            }
+        };
+    }, []);
+
+    const handleNavigate = () => {
         setError(null);
-        if (!toNode) return;
-        
-        let startNode: GraphNode | null = null;
 
-        if (!graph) {
-            setError({ type: 'graph', title: "Map data is loading", tip: "Give it a second to load the park data." });
+        if (!toNode) {
+            setError({ type: 'nearest', title: "Where are we going?", tip: "Please select a destination first." });
             return;
         }
+
+        if (!graph) {
+            setError({ type: 'graph', title: "Map is still loading", tip: "Give it a second to download the paths." });
+            return;
+        }
+
+        let startNode: GraphNode | null = null;
 
         if (fromNode === 'current') {
             if (!location) {
@@ -116,12 +147,8 @@ export function NavigationSheet({
                 return;
             }
 
-            startNode = findNearestNode(graph, location.lat, location.lng);
-
-            if (!startNode) {
-                setError({ type: 'nearest', title: "You're off the grid", tip: "We couldn't snap you to a walking path. Try moving closer to a marked route." });
-                return;
-            }
+            // Start node is handled dynamically in Web Worker via findNearestEdgePoint
+            startNode = { id: -999, lat: location.lat, lng: location.lng, name: {en: "Your Location", kn: "", hi: ""}, category_id: "0", status: 'active', is_paid: false };
         } else if (fromNode) {
             startNode = fromNode as GraphNode;
         }
@@ -130,27 +157,31 @@ export function NavigationSheet({
         
         setIsNavigating(true);
 
-        // Spin up Web Worker to run A* routing off the main thread
-        const worker = new RoutingWorker();
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
         
-        worker.onmessage = (e) => {
-            setIsNavigating(false);
-            const { route, error } = e.data;
-            if (error || !route) {
-                setError({ type: 'path', title: "The math isn't mathing", tip: "There's no clear route between these spots. It might be a missing path in our data." });
-            } else {
-                onStartNavigation(route, toNode);
-            }
-            worker.terminate();
-        };
+        const controller = new AbortController();
+        abortRef.current = controller;
 
-        worker.onerror = () => {
-            setIsNavigating(false);
-            setError({ type: 'path', title: "Routing crashed", tip: "The navigation engine hit a snag." });
-            worker.terminate();
-        };
+        const routeParams = (fromNode === 'current' && location)
+            ? { graph, targetId: toNode.id, lat: location.lat, lng: location.lng, signal: controller.signal }
+            : { graph, startId: startNode.id, targetId: toNode.id, signal: controller.signal };
 
-        worker.postMessage({ graph, startId: startNode.id, targetId: toNode.id });
+        calculateRoute(routeParams)
+            .then(route => {
+                setIsNavigating(false);
+                if (!route) {
+                    setError({ type: 'path', title: "The math isn't mathing", tip: "There's no clear route between these spots. It might be a missing path in our data." });
+                } else {
+                    onStartNavigation(route, toNode);
+                }
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') return;
+                setIsNavigating(false);
+                setError({ type: 'path', title: "Routing crashed", tip: "The navigation engine hit a snag." });
+            });
     };
 
     return (
@@ -295,9 +326,18 @@ export function NavigationSheet({
                                         </div>
                                         <div className="flex flex-col">
                                             <span
-                                                className="font-semibold text-[16px] text-white tracking-tight">{t(poi.name)}</span>
-                                            {poi.tags && <span
-                                                className="text-[12px] text-white/50 capitalize">{poi.tags.join(', ')}</span>}
+                                                className="font-semibold text-[16px] text-white tracking-tight">{t(poi.searchName)}</span>
+                                            <div className="flex gap-1.5 items-center mt-0.5">
+                                                {poi.category?.name?.en && (
+                                                    <span className="text-[12px] text-white/50 capitalize">{poi.category.name.en}</span>
+                                                )}
+                                                {poi.is_paid && (
+                                                    <>
+                                                        <span className="text-[10px] text-white/20">•</span>
+                                                        <span className="text-[11px] font-bold text-amber-400">₹ Paid</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </button>
                                 );

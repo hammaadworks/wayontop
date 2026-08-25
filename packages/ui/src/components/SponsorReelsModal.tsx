@@ -9,13 +9,15 @@ interface SponsorReelsModalProps {
     onClose: () => void;
     slideItems: Sponsor[];
     initialSlideIndex?: number;
+    onCTAClick?: (sponsor: Sponsor) => void;
 }
 
 export function SponsorReelsModal({
     isOpen,
     onClose,
     slideItems,
-    initialSlideIndex = 0
+    initialSlideIndex = 0,
+    onCTAClick
 }: SponsorReelsModalProps) {
     const [slideIndex, setSlideIndex] = useState(initialSlideIndex);
     const [isMuted, setIsMuted] = useState(false);
@@ -59,20 +61,11 @@ export function SponsorReelsModal({
         setSlideIndex(prev => (prev - 1 + slideItems.length) % slideItems.length);
     };
 
-    const handleCTAClick = async (sponsor: Sponsor) => {
+    const handleCTAClickEvent = async (sponsor: Sponsor) => {
         if (!sponsor.cta_link) return;
         
-        try {
-            await supabase.from('analytics_events').insert({
-                event_type: 'sponsor_cta_click',
-                metadata: {
-                    sponsor_id: sponsor.id,
-                    sponsor_name: sponsor.name,
-                    cta_link: sponsor.cta_link
-                }
-            });
-        } catch (e) {
-            console.error('Failed to log CTA click', e);
+        if (onCTAClick) {
+            onCTAClick(sponsor);
         }
 
         window.open(sponsor.cta_link, '_blank', 'noopener,noreferrer');
@@ -200,7 +193,7 @@ export function SponsorReelsModal({
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        handleCTAClick(currentSlide);
+                                        handleCTAClickEvent(currentSlide);
                                     }}
                                     className="px-3 py-1 bg-emerald-500/80 border border-emerald-400/50 rounded-full text-white text-xs font-bold hover:bg-emerald-500 active:bg-emerald-600 transition-colors shadow-sm ml-1 pointer-events-auto flex items-center gap-1 backdrop-blur-sm">
                                     Visit
@@ -211,7 +204,7 @@ export function SponsorReelsModal({
 
                     <div
                         className="text-white/95 text-[15px] font-medium max-w-[85%] leading-snug drop-shadow-md">
-                        {currentSlide?.tagline || (currentSlide.id === 'default'
+                        {currentSlide?.tagline || (currentSlide.is_default_ad
                             ? "We build navigation for the real world. Get your venue mapped today and unlock spatial intelligence."
                             : "Grab a quick bite or enjoy special offers available right here in this zone.")}
                     </div>

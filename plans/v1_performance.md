@@ -4,44 +4,30 @@
 
 ---
 
-## 🚀 PENDING UPGRADES (Sorted by Dependency Order)
+## ✅ COMPLETED FIXES
 
-### [TODO] 1. Polyline Edges (The Extinction of `track` Nodes)
+### [DONE] 1. Polyline Edges (The Extinction of `track` Nodes)
 * **The Problem:** Curved paths are currently built by dropping dozens of `track` nodes like breadcrumbs. This bloats the graph, severely slowing down the A* algorithm.
 * **The Fix:** The `track` node type is abolished. Nodes will strictly be reserved for true decision points (Intersections, Gates, POIs). 
 * **The Edge Update:** `GraphEdge` will now include a `geometry` property (an array of `[lng, lat]` coordinates) to define the path's visual curve.
+* **Consumer contract:** The Consumer renders those coordinates for both the complete path graph and active route. AR guidance advances along the nearest route segment's next geometry coordinate, so it follows a curved walkway instead of pointing directly through it.
 * **Producer Workflow Split:**
   * **Mappers (Field):** Simply walk and press "Record" to drop raw GPS traces. No nodes are placed.
   * **Editors (Office):** Use a desktop "Pen Tool" to trace a pristine Polyline Edge over the Mapper's messy GPS trace.
 
-### [TODO] 2. The Strict Node Taxonomy & 3-Table DB
-* **The Problem:** The current mix of loose node types and random tags (like `garbage`, `water`) has created spaghetti code.
-* **The Fix:** We are migrating to a 3-table Supabase schema (`events`, `node_categories`, `nodes`). All frontend graph rendering strictly adheres to 6 base types:
-  1. `poi`: Major landmarks.
-  2. `gate`: Entry/Exit points.
-  3. `utility_major`: High-priority utilities (Washrooms, Water). Visible on the map.
-  4. `utility_minor`: Low-priority utilities (Garbage bins). Hidden on map, limited to Top 2 nearest in search.
-  5. `stamp`: Gamification collectibles.
-  6. `intersection`: Invisible routing waypoints where paths cross.
-* **Event Modifiers:** There is NO "event" node type. Temporary nodes carry an `event_id`. The Consumer app checks the `events` table: if `is_active` is false, OR if today's date is past `end_date`, the node is completely ignored (it vanishes from the 2D map, is stripped from search, and the A* routing engine pretends it doesn't exist).
-* **UI Image Avatar Fallback:** The MapLibre engine will check if `node.image_url` exists. If true, it draws a circular frosted-glass photo thumbnail on the map. If null, it falls back to the `node_categories` icon and color.
-
-### [TODO] 3. R-Tree Spatial Index for User Snapping
+### [DONE] 3. R-Tree Spatial Index for User Snapping
 * **The Problem:** Currently, the app snaps the user to the nearest *Node*. With Polyline edges, nodes will be far apart. We must snap the user's GPS to the nearest *Edge*.
 * **The Fix:** Implement an **R-Tree (Spatial Bounding Box) Index**. The app instantly looks up which box the user is in and only calculates Point-to-Line distance on the 3-4 edges inside it. Guaranteed $O(\log E)$ real-time snapping with zero battery drain.
 
-### [TODO] 4. Global Node Search Component
+### [DONE] 2. The Strict Node Taxonomy & 3-Table DB (COMPLETED 08-18)
+* **Status Note:** Both Consumer and Producer apps have been fully refactored to remove spaghetti string tags. `POICard` and `NavigationSheet` have been updated.
+* **The Problem:** The current mix of loose node types and random tags (like `garbage`, `water`) has created spaghetti code.
+* **The Fix:** We are migrating to a 3-table Supabase schema (`events`, `node_categories`, `nodes`). All frontend graph rendering strictly adheres to 6 base types.
+
+### [DONE] 4. Global Node Search Component (COMPLETED 08-18)
+* **Status Note:** `<GlobalNodeSearch />` is built, placed in `@wayontop/ui`, and integrated cleanly into the Consumer app. It includes debouncing, dynamic helper text, and gamification masking.
 * **The Problem:** Producer and Consumer apps writing duplicate search logic leads to UI drift, and searching across languages is broken.
 * **The Fix:** A shared `<GlobalNodeSearch />` component.
-  * **The Name Fallback Rule:** The UI title always explicitly displays `node.name?.[lang] || node.category.name[lang]`. 
-  * **Multi-language Fuse.js:** The search index checks the user's query against both `name` and the `synonyms` array in the `node_categories` table.
-  * **Distance Sorting (Debounced):** The search input is strictly debounced (e.g., 300ms) to prevent UI lag. It mathematically calculates Haversine distance and sorts results nearest to furthest.
-  * **Same-Name Resolution:** Explicitly stacks identical names (e.g., "Bonsai Garden") by proximity.
-  * **Dynamic Helper Text:** Dynamically computes the nearest major POI to each utility and appends it (e.g., `Water (near Glass House)`).
-
----
-
-## ✅ COMPLETED FIXES
 
 ### [DONE] 5. O(1) Edge Lookup for Map Rendering
 * **The Fix:** Replaced `Array.find()` with a pre-indexed Hash Map. Line drawing is now $O(1)$ constant time lookup, eliminating the $O(L \times E)$ UI hang when routing.
@@ -58,3 +44,15 @@
 ### [DONE] 9. Rejecting PostGIS (Offline Resilience)
 * **The Rule:** Do NOT migrate the core graph data to relational PostGIS tables for spatial queries.
 * **The Reason:** All spatial searching (like finding the nearest water or routing) is done instantly in-memory on the phone, guaranteeing zero-latency results even in park dead zones.
+
+### [DONE] 10. Category Palette Tokens
+* **The Rule:** `node_categories.color_theme` is a design-system palette token, not a generated Tailwind class name.
+* **Supported values:** Tailwind hue names (`amber`, `blue`, `cyan`, `emerald`, `fuchsia`, `gray`, `green`, `indigo`, `lime`, `neutral`, `orange`, `pink`, `purple`, `red`, `rose`, `slate`, `sky`, `stone`, `teal`, `violet`, `yellow`, `zinc`). Unknown values deliberately fall back to `amber`.
+
+### [DONE] 11. Offline-First Graph Caching & API Limits
+* **The Problem:** The app relied purely on the network for `nodes` and `edges`, which crashed in park dead zones. Furthermore, Supabase silently dropped map data beyond 1,000 rows.
+* **The Fix:** We implemented a strict **Offline-First Architecture**. The app boots instantly using a `localStorage` payload, rendering the map and unlocking AR without blocking on network requests. Concurrently, a background process queries Supabase with a massive explicit `.limit(10000)` and overwrites the local cache for the next boot.
+
+### [DONE] 12. Auto-Rerouting & GPS Jitter Filtering
+* **The Problem:** The A* route was generated once and never recalculated if the user took a wrong turn. Worse, fluctuating GPS signals under thick trees would trigger false "wrong turns."
+* **The Fix:** Implemented a silent `useEffect` engine monitoring Cross-Track Error. If the user drifts >15m off the `activeRoute`, a Web Worker silently recalculates and swaps the path instantly. Crucially, GPS pings with an accuracy > 30 meters are strictly filtered out to prevent reroute ping-pong and battery drain.

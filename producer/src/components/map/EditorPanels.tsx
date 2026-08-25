@@ -12,10 +12,10 @@ interface EditorPanelsProps {
     setSelectedNode: (node: any) => void;
     selectedEdge: any;
     setSelectedEdge: (edge: any) => void;
-    deleteNode: (id: string) => void;
-    deleteEdge: (from: string, to: string) => void;
-    updateEdge: (from: string, to: string, updates: any) => void;
-    updateNode: (id: string, updates: any) => void;
+    deleteNode: (id: number) => void;
+    deleteEdge: (from: number, to: number) => void;
+    updateEdge: (from: number, to: number, updates: any) => void;
+    updateNode: (id: number, updates: any) => void;
     isLocked: boolean;
     setTestingStamp: (node: any) => void;
     testRoutePath?: { path: any[]; totalDistance: number } | null;

@@ -78,10 +78,11 @@ snapping = how do you snap the user to the nearest node?
 this is super practical
 1. reverse context prompting - bmad does this amazingly
 2. iterative building with commits - catch the mess quickly, this requires patience.
-3. assigning a persona - code review this as an cybersec is different from senior code engineer. my fav blackhat hacker
+3. roleplay - give each agent differnt code review this as an cybersec is different from senior code engineer. my fav blackhat hacker
 4. prompt driven tdd - here you have a file with all the test cases, possibly a sheet and you can just maintain the state, completely abstracting the messy test code layer. 
 5. rubber ducking - become a better dev.
 6. mcp and skills
+7. pair programming between agents - not just pair prog but pm and all stakeholders on it
 
 ---
 

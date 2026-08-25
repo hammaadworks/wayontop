@@ -10,6 +10,8 @@ export function useGeolocation(
     const [currentAccuracy, setCurrentAccuracy] = useState<number | null>(null);
     const [rawTrace, setRawTrace] = useState<{ lat: number, lng: number }[]>([]);
     const lastRecordedNodeRef = useRef<GraphNode | null>(null);
+    const lastReactStateRef = useRef<{lat: number, lng: number} | null>(null);
+    const lastUpdateRef = useRef<number>(0);
 
     useEffect(() => {
         if (!recording) {
@@ -34,12 +36,31 @@ export function useGeolocation(
                 if (accuracy > 100) return;
 
                 const pos = {lat: position.coords.latitude, lng: position.coords.longitude};
-                setCurrentLocation(pos);
-                setCurrentAccuracy(accuracy);
+                
+                const now = Date.now();
+                const lastPos = lastReactStateRef.current;
+                const dist = lastPos ? distanceInMeters(lastPos.lat, lastPos.lng, pos.lat, pos.lng) : Infinity;
+
+                // Throttle React state updates to avoid massive re-renders
+                if (dist > 1 || now - lastUpdateRef.current > 2000) {
+                    setCurrentLocation(pos);
+                    setCurrentAccuracy(accuracy);
+                    lastReactStateRef.current = pos;
+                    lastUpdateRef.current = now;
+                }
                 
                 // Trace points when recording (be forgiving for indoor/testing)
                 if (recording && accuracy <= 40) {
-                    setRawTrace(prev => [...prev, pos]);
+                    setRawTrace(prev => {
+                        const lastTracePos = prev.length > 0 ? prev[prev.length - 1] : null;
+                        const traceDist = lastTracePos ? distanceInMeters(lastTracePos.lat, lastTracePos.lng, pos.lat, pos.lng) : Infinity;
+                        
+                        // Only add to trace if we moved at least 1 meter
+                        if (traceDist > 1) {
+                            return [...prev, pos];
+                        }
+                        return prev;
+                    });
                 }
             },
             (error) => console.error("Error watching position:", error),
@@ -52,46 +73,11 @@ export function useGeolocation(
     useEffect(() => {
         if (!currentLocation || !recording || currentAccuracy === null) return;
         
-        // Check before dropping nodes for the graph to prevent zig-zags (forgiving threshold)
+        // Check before tracking traces (forgiving threshold)
         if (currentAccuracy > 40) return;
 
-        const lastNode = lastRecordedNodeRef.current;
-
-        if (!lastNode) {
-            const newNode: GraphNode = {
-                id: `n_${Date.now()}`,
-                name: '',
-                lat: currentLocation.lat,
-                lng: currentLocation.lng,
-                type: 'track',
-                tags: ['auto']
-            };
-            setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
-            lastRecordedNodeRef.current = newNode;
-        } else {
-            const dist = distanceInMeters(lastNode.lat, lastNode.lng, currentLocation.lat, currentLocation.lng);
-            if (dist >= 5) {
-                const newNode: GraphNode = {
-                    id: `n_${Date.now()}`,
-                    name: '',
-                    lat: currentLocation.lat,
-                    lng: currentLocation.lng,
-                    type: 'track',
-                    tags: ['auto']
-                };
-                const newEdge: GraphEdge = {
-                    from: lastNode.id,
-                    to: newNode.id,
-                    distance_m: dist
-                };
-                setData(prev => ({
-                    ...prev,
-                    nodes: [...prev.nodes, newNode],
-                    edges: [...prev.edges, newEdge]
-                }));
-                lastRecordedNodeRef.current = newNode;
-            }
-        }
+        // Trace points are already handled in the watchPosition callback (lines 53-55)
+        // We no longer drop 'track' nodes automatically. The user will draw polylines later over the rawTraces.
     }, [currentLocation, currentAccuracy, recording, setData]);
 
     return {currentLocation, currentAccuracy, rawTrace, setRawTrace, lastRecordedNodeRef};

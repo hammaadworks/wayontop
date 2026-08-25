@@ -15,6 +15,8 @@ You **MUST** adhere to the root Design System (`../docs/design-system.md`). The 
 - **Critical:** You are dealing with volatile browser APIs (`getUserMedia`, `Geolocation`, `DeviceOrientationEvent`).
 - You MUST explicitly handle iOS vs Android quirks (e.g., iOS `webkitCompassHeading` vs Android `deviceorientationabsolute`, and iOS `playsinline` requirements).
 - Always implement graceful fallbacks. If the camera fails or permissions are denied, degrade elegantly to the beautifully designed 2D Map mode.
+- **Offline-First:** All map fetching must support offline caching (`localStorage`). Assume the user has zero cell service. Never block the UI on a Supabase network request.
+- **GPS Jitter:** Never blindly trust raw GPS data. Always filter out pings with `accuracy > MAX_GPS_ACCURACY_THRESHOLD` (defined in `constants.ts`) to prevent battery drain and UI ping-ponging.
 
 ### 3. Documentation Maintenance
 - You **MUST** update the `docs/` folder for any changes to state machines, routing logic, or AR rendering layers.

@@ -12,7 +12,7 @@ export function useGraph(currentVenue: Venue | null) {
         history: GraphData[];
         historyIndex: number;
     }>({
-        data: {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: []},
+        data: {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: [], categories: [], events: []},
         history: [],
         historyIndex: -1
     });
@@ -155,7 +155,7 @@ export function useGraph(currentVenue: Venue | null) {
 
             setSyncState('saving');
             const graphStamps = localData.nodes
-                .filter((n: any) => n.type === 'stamp' || n.has_stamp)
+                .filter((n: any) => n.category?.base_type === 'stamp' || n.has_stamp)
                 .map((n: any) => ({
                     id: n.id,
                     name: n.name || 'Hidden Stamp',
@@ -199,7 +199,7 @@ export function useGraph(currentVenue: Venue | null) {
                 timestamp: remoteTimestamp
             }));
         } else {
-            finalData = {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: []};
+            finalData = {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: [], categories: [], events: []};
             lastSavedData.current = JSON.stringify(finalData);
         }
 
@@ -285,48 +285,193 @@ export function useGraph(currentVenue: Venue | null) {
             return;
         }
         setSyncState('saving');
-        // Extract stamps from the graph as consumer expects
-        const graphStamps = data.nodes
-            .filter((n: any) => n.type === 'stamp' || n.has_stamp)
-            .map((n: any) => ({
-                id: n.id,
-                name: n.name || 'Hidden Stamp',
-                lat: n.lat,
-                lng: n.lng,
-                model_url: '/assets/models/stamp.glb',
-                ar_scale: 1,
-                points: 10
+
+        try {
+            // Step 1: Query the Database to Find Deletions
+            const { data: dbNodes, error: dbNodesErr } = await supabase.from('nodes').select('id').eq('venue_key', currentVenue.key);
+            if (dbNodesErr) throw dbNodesErr;
+            const { data: dbEdges, error: dbEdgesErr } = await supabase.from('edges').select('id').eq('venue_key', currentVenue.key);
+            if (dbEdgesErr) throw dbEdgesErr;
+
+            const dbNodeIds = new Set((dbNodes || []).map(n => n.id));
+            const dbEdgeIds = new Set((dbEdges || []).map(e => e.id));
+
+            const currentNodeIds = new Set(data.nodes.filter(n => n.id > 0).map(n => n.id));
+            const currentEdgeIds = new Set(data.edges.filter(e => e.id).map(e => e.id));
+
+            const nodeIdsToDelete = [...dbNodeIds].filter(id => !currentNodeIds.has(id));
+            const edgeIdsToDelete = [...dbEdgeIds].filter(id => !currentEdgeIds.has(id));
+
+            // Execute deletions early to avoid foreign key issues when recreating edges/nodes
+            if (edgeIdsToDelete.length > 0) {
+                const { error: delEdgeErr } = await supabase.from('edges').delete().in('id', edgeIdsToDelete);
+                if (delEdgeErr) throw delEdgeErr;
+            }
+            if (nodeIdsToDelete.length > 0) {
+                const { error: delNodeErr } = await supabase.from('nodes').delete().in('id', nodeIdsToDelete);
+                if (delNodeErr) throw delNodeErr;
+            }
+
+            // Step 2: Handle New Nodes (Negative IDs)
+            const newNodes = data.nodes.filter(n => n.id < 0);
+            const existingNodes = data.nodes.filter(n => n.id > 0);
+            const idMapping = new Map<number, number>();
+
+            for (const tempNode of newNodes) {
+                const { 
+                    id: fakeId, category_id, lat, lng, name, description, 
+                    synonyms, image_url, status, is_paid, event_id 
+                } = tempNode as any;
+                
+                const insertPayload = {
+                    category_id, lat, lng, name, description, synonyms, 
+                    image_url, status, is_paid, event_id,
+                    venue_key: currentVenue.key
+                };
+
+                const { data: savedNode, error } = await supabase
+                    .from('nodes')
+                    .insert(insertPayload)
+                    .select()
+                    .single();
+                    
+                if (error) throw error;
+                idMapping.set(fakeId, savedNode.id);
+            }
+
+            // Step 3: Update Existing Nodes
+            if (existingNodes.length > 0) {
+                const { error: upsertError } = await supabase
+                    .from('nodes')
+                    .upsert(existingNodes.map((n: any) => {
+                        const { 
+                            id, category_id, lat, lng, name, description, 
+                            synonyms, image_url, status, is_paid, event_id 
+                        } = n;
+                        
+                        return {
+                            id, category_id, lat, lng, name, description, synonyms, 
+                            image_url, status, is_paid, event_id,
+                            venue_key: currentVenue.key
+                        };
+                    }));
+                if (upsertError) throw upsertError;
+            }
+
+            // Step 4: Fix and Save Edges
+            const edgesToSave = data.edges.map(edge => {
+                const actualFromId = idMapping.get(edge.from) || edge.from;
+                const actualToId = idMapping.get(edge.to) || edge.to;
+                
+                const edgePayload: any = {
+                    venue_key: currentVenue.key,
+                    from_node_id: actualFromId,
+                    to_node_id: actualToId,
+                    distance_m: edge.distance_m || (edge as any).weight || 0,
+                    is_accessible: (edge as any).is_accessible ?? true,
+                    geometry: edge.geometry,
+                    is_hidden: edge.is_hidden ?? false
+                };
+                if (edge.id) {
+                    edgePayload.id = edge.id;
+                }
+                return edgePayload;
+            });
+
+            const edgeIdMapping = new Map<string, string>();
+
+            if (edgesToSave.length > 0) {
+                const { data: savedEdges, error: edgeError } = await supabase.from('edges').upsert(edgesToSave).select('id, from_node_id, to_node_id');
+                if (edgeError) throw edgeError;
+                
+                if (savedEdges) {
+                    savedEdges.forEach(dbEdge => {
+                        const key = `${dbEdge.from_node_id}-${dbEdge.to_node_id}`;
+                        edgeIdMapping.set(key, dbEdge.id);
+                    });
+                }
+            }
+
+            // Step 6: Save Legacy Data (Sponsors) to venue_content
+            // Note: Consumer reads categories and events directly from relational tables now.
+            // It only relies on venue_content for sponsors, sponsorZones, and defaultAds.
+            
+            // Fix: Map poi_ids in sponsorZones to real DB IDs if they were assigned to unsaved new nodes
+            const updatedSponsorZones = data.sponsorZones.map(zone => ({
+                ...zone,
+                poi_ids: (zone.poi_ids || []).map(id => idMapping.get(id) || id),
+                poi_id: zone.poi_id ? (idMapping.get(zone.poi_id) || zone.poi_id) : undefined
             }));
 
-        const {error} = await supabase.from('venue_content').upsert([
-            {
-                venue_key: currentVenue.key,
-                content_type: 'graph',
-                data: data,
-                version: Math.floor(Date.now() / 1000),
-                updated_at: new Date().toISOString()
-            },
-            {
-                venue_key: currentVenue.key,
-                content_type: 'stamps',
-                data: {stamps: graphStamps},
-                version: Math.floor(Date.now() / 1000),
-                updated_at: new Date().toISOString()
-            }
-        ], {onConflict: 'venue_key,content_type'});
+            const legacyGraphData = {
+                sponsorZones: updatedSponsorZones,
+                sponsors: data.sponsors,
+                defaultAds: data.defaultAds
+            };
 
-        if (error) {
+            const { error: legacyError } = await supabase.from('venue_content').upsert([
+                {
+                    venue_key: currentVenue.key,
+                    content_type: 'graph',
+                    data: legacyGraphData,
+                    version: Math.floor(Date.now() / 1000),
+                    updated_at: new Date().toISOString()
+                }
+            ], { onConflict: 'venue_key,content_type' });
+            
+            if (legacyError) throw legacyError;
+
+            // Step 7: Update Local React State
+            if (idMapping.size > 0 || edgeIdMapping.size > 0) {
+                setData((prevData: GraphData) => {
+                    const updatedNodes = prevData.nodes.map(n => 
+                        idMapping.has(n.id) ? { ...n, id: idMapping.get(n.id)! } : n
+                    );
+                    
+                    const updatedEdges = prevData.edges.map(e => {
+                        const actualFrom = idMapping.get(e.from) || e.from;
+                        const actualTo = idMapping.get(e.to) || e.to;
+                        const edgeKey = `${actualFrom}-${actualTo}`;
+                        return {
+                            ...e,
+                            from: actualFrom,
+                            to: actualTo,
+                            id: edgeIdMapping.get(edgeKey) || e.id
+                        };
+                    });
+                    
+                    return { ...prevData, nodes: updatedNodes, edges: updatedEdges, sponsorZones: updatedSponsorZones };
+                });
+            }
+
+            setSyncState('saved');
+            setTimeout(() => setSyncState('idle'), 3000);
+            
+            // Re-calculate the current string with new IDs to avoid unnecessary saves
+            const finalNodes = data.nodes.map(n => idMapping.has(n.id) ? { ...n, id: idMapping.get(n.id)! } : n);
+            const finalEdges = data.edges.map(e => {
+                const actualFrom = idMapping.get(e.from) || e.from;
+                const actualTo = idMapping.get(e.to) || e.to;
+                const edgeKey = `${actualFrom}-${actualTo}`;
+                return {
+                    ...e,
+                    from: actualFrom,
+                    to: actualTo,
+                    id: edgeIdMapping.get(edgeKey) || e.id
+                };
+            });
+            const finalData = { ...data, nodes: finalNodes, edges: finalEdges, sponsorZones: updatedSponsorZones };
+            
+            lastSavedData.current = JSON.stringify(finalData);
+            localStorage.setItem(`wayontop_graph_${currentVenue.key}`, JSON.stringify({
+                data: finalData,
+                timestamp: Date.now()
+            }));
+
+        } catch (error: any) {
             console.error("Save error:", error);
             toast.error(error.message || 'Failed to save');
             setSyncState('error');
-        } else {
-            setSyncState('saved');
-            setTimeout(() => setSyncState('idle'), 3000);
-            lastSavedData.current = currentStr;
-            localStorage.setItem(`wayontop_graph_${currentVenue.key}`, JSON.stringify({
-                data: data,
-                timestamp: Date.now()
-            }));
         }
     };
 

@@ -24,7 +24,7 @@ The AR Engine and A* Router strictly run off these 6 foundations.
 
 ### 2. Table A: `events` (The Time Controller)
 Manages seasonal overlays.
-* `id` | `name` | `start_date` | `end_date` | `is_active`
+* `id` (Integer) | `name` | `badge_name` | `description` | `start_date` | `end_date` | `is_active`
 
 ### 3. Table B: `node_categories` (The Master Dictionary)
 Dictates *what* things are and *how* they look. Used to populate the Producer mapping UI.
@@ -39,14 +39,14 @@ Dictates *what* things are and *how* they look. Used to populate the Producer ma
 * `color_theme` (String): Design System token (e.g., `cyan`).
 
 ### 4. Table C: `nodes` (The Physical Map Points)
-* `id` (UUID)
+* `id` (Integer): In Postgres, this is an auto-incrementing Sequence. **CRITICAL NOTE:** In the React MapEditor (offline mode), new nodes are temporarily assigned Optimistic Negative IDs (e.g., `-54321`) using `-(Date.now() % 1000000000)`. These negative IDs must be stripped before executing a Supabase INSERT to allow Postgres to generate a real ID.
 * `category_id` (UUID): Foreign key to `node_categories`. (Mandatory for all nodes, even POIs).
 * `lat` / `lng` (Float)
 * `name` (JSONB): Optional localized override. **Fallback:** `node_categories.name`.
 * `description` (JSONB): Rich text for the UI Drawer. **Fallback:** `node_categories.description`.
 * `synonyms` (JSONB): Optional node-specific synonyms. Combined with category synonyms during search.
 * `image_url` (String): URL to Supabase bucket. **UI UX Fallback Chain:** `node.image_url` ➡️ `category.image_url` ➡️ `category.icon_key`.
-* `event_id` (UUID): Optional foreign key to `events`. If the linked event is inactive (`is_active: false` or `today > end_date`), the app completely ignores this node for map rendering, searching, and A* routing.
+* `event_id` (Integer): Optional foreign key to `events`. If the linked event is inactive (`is_active: false` or `today > end_date`), the app completely ignores this node for map rendering, searching, and A* routing.
 * `status` (Enum): `active` or `construction`.
 * `is_paid` (Boolean): Renders the ₹ symbol.
 
@@ -98,11 +98,11 @@ When a user opens the search bar, the UI dynamically reacts to the node's DB mod
   * **Subtitle Row:** `80m away • near West Gate` *(Anchored to Gate)*
 
 #### 4. The Event Modifier (Temporary Canteen)
-* **DB State:** `base_type: 'utility_major'`, `name: {"en": "Flower Show Canteen"}`, `event_id: 'evt_9'`
+* **DB State:** `base_type: 'utility_major'`, `name: {"en": "Flower Show Canteen"}`, `event_id: 'evt_9'` (Event `badge_name`: `Flower Show`)
 * **Search Query:** "Food"
 * **UI Layout:**
   * **Icon:** An `amber` `Utensils` icon.
-  * **Title Row:** `Flower Show Canteen` `[✨ Flower Show]` *(Magenta Badge Component)*
+  * **Title Row:** `Flower Show Canteen` `[⭐ Flower Show]` *(Purple Badge Component that opens a Drawer when clicked)*
   * **Subtitle Row:** `300m away • near Glass House`
 * **Edge Case Handled:** The engine checks the `events` table. If `evt_9` is inactive or expired, this node vanishes completely from search and A* routing.
 
@@ -138,7 +138,7 @@ When a user opens the search bar, the UI dynamically reacts to the node's DB mod
 Stamps (`base_type: 'stamp'`) are highly specialized nodes used to drive foot traffic. To build curiosity, the Consumer app implements a strict **"UI Masking Layer" (Fog of War)** that hides the stamp's true identity, lore, and high-res images until the user physically discovers it in the real world.
 
 ### State Management & Progression
-Because the Consumer app operates frictionlessly without forced logins, discovery state is stored directly in the browser's `localStorage` as an array of collected IDs (e.g., `collected_stamps: ['uuid-1', 'uuid-2']`). This allows a user to close the app, go home, and **resume their collection journey** the next time they visit the park, completely seamlessly.
+Because the Consumer app operates frictionlessly without forced logins, discovery state is stored directly in the browser's `localStorage` as an array of collected numeric IDs (`wayontop_collected_stamps_v2`). On first run after the migration, numeric IDs from the legacy key are normalized into v2. Legacy non-numeric IDs cannot refer to the normalized node records and are intentionally not carried forward. This allows a user to close the app, go home, and **resume their collection journey** the next time they visit the park, completely seamlessly.
 
 ### UX Behavior Across the App
 The UI dynamically masks stamp data if its ID is missing from local storage.
@@ -174,3 +174,41 @@ The floating "Stamp" action button in the UI opens a frosted-glass bottom drawer
 * **Anonymous Identity:** When a user collects their *first* stamp, the app auto-generates a local identifier (e.g., `LalbaghExplorer_4022`). They can optionally edit this name to personalize their rank.
 * **Ranking Logic:** Ranks are sorted entirely by `total_stamps_collected` (DESC). Tie-breakers are resolved by the timestamp of their most recent collection (fastest time wins).
 * **UI Display:** Shows Top 10 players globally, plus a persistent sticky row at the bottom showing the user's current rank (e.g., `You: #42`).
+
+---
+
+## 7. Downloaded Graph Data Shape (For GlobalNodeSearch Agent)
+The Consumer app downloads the entire graph during the splash screen and passes it down as a `graph: GraphData` object to the UI components (including `<GlobalNodeSearch />`). 
+
+The `nodes` array inside this object has already been fully **joined** by Supabase, meaning the frontend does not need to perform manual lookups. The `category` object is natively attached to every node.
+
+Here is the exact JSON shape the `GlobalNodeSearch` component will receive to build its Fuse.js index:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "uuid-1234",
+      "category_id": "uuid-cat-water",
+      "lat": 12.95123,
+      "lng": 77.58432,
+      "name": { "en": "Glass House Water Station" },
+      "synonyms": { "en": ["drinking point"] },
+      "status": "active",
+      "is_paid": false,
+      "category": {
+        "base_type": "utility_major",
+        "icon_key": "Droplets",
+        "color_theme": "cyan",
+        "name": { "en": "Water" },
+        "synonyms": { "en": ["drink", "thirsty"] }
+      }
+    }
+  ],
+  "categories": [ ... ],
+  "events": [ ... ],
+  "edges": [ ... ]
+}
+```
+**Important search instructions:** 
+The search component must scan against **both** the node's specific name/synonyms (if they exist) AND the `category` name/synonyms, prioritizing the specific node name for the UI display.

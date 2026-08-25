@@ -1,15 +1,16 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState, useRef} from 'react';
 import {Globe, MapPin, Navigation, Settings, Sparkles, X, ArrowUp} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
-import Fuse from 'fuse.js';
+
 import html2canvas from 'html2canvas';
 import {ARView} from './components/ARView';
 import {MapView} from './components/MapView';
 import {Sheet, SheetContent, SheetTitle, SheetTrigger} from '@wayontop/ui/components/ui/sheet';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
 import {Button} from '@wayontop/ui/components/ui/button';
-import {supabase} from '@wayontop/ui/lib/supabase';
-import {distanceInMeters} from '@wayontop/ui/lib/routing';
+import {supabase, fetchAllPages} from '@wayontop/ui/lib/supabase';
+import {getNextRouteCoordinate, getRouteCoordinateSegments, pointToLineSegment} from '@wayontop/ui/lib/routing';
+import { calculateRoute } from '@wayontop/ui/lib/routingClient';
 import {useLocation} from './hooks/useLocation';
 import {PermissionGate} from '@wayontop/ui/components/PermissionGate';
 import {InAppBrowserBlocker} from './components/InAppBrowserBlocker';
@@ -22,8 +23,8 @@ import {FEATURE_FLAGS} from './lib/featureFlags';
 import {Gamification} from './lib/gamification';
 import {NavigationSheet} from './components/NavigationSheet';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
-import {GARBAGE_REGEX, isGarbageNode, TAG_SYNONYMS} from '@wayontop/ui/lib/types';
-import {INITIAL_VENUE, LAST_VENUE_STORAGE_KEY} from './lib/constants';
+import {INITIAL_VENUE, LAST_VENUE_STORAGE_KEY, OFFLINE_GRAPH_STORAGE_KEY} from './lib/constants';
+import {Analytics} from './lib/analytics';
 import {SplashScreen} from './components/SplashScreen';
 
 
@@ -37,7 +38,6 @@ type MainAppProps = Readonly<{
 
 function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefetchedStamps}: MainAppProps) {
     const [mode, setMode] = useState<'ar' | 'map' | 'satellite'>('satellite');
-    const [searchQuery, setSearchQuery] = useState('');
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [targetNode, setTargetNode] = useState<GraphNode | null>(null);
     const [activeRoute, setActiveRoute] = useState<{ path: GraphNode[]; totalDistance: number } | null>(null);
@@ -63,7 +63,6 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         location,
         routeTrack,
         distanceWalked,
-        startTime,
         elapsedTime,
         status,
         startTracking,
@@ -95,89 +94,33 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
 
     // Data is now prefetched in App.tsx
 
-    // Golden Stamp Spawning Logic
-    useEffect(() => {
-        if (!location) return;
 
-        // Check every 30 seconds if we should spawn a golden stamp
-        const interval = setInterval(() => {
-            // 10% chance to spawn if there isn't one already
-            if (Math.random() < 0.1 && !stamps.some(s => s.id.startsWith('golden'))) {
-                const newLat = location.lat + (Math.random() * 0.0004 - 0.0002); // very close to user (within ~20-30 meters)
-                const newLng = location.lng + (Math.random() * 0.0004 - 0.0002);
-                const goldenStamp: Stamp = {
-                    id: `golden_stamp_${Date.now()}`,
-                    name: prefetchedGraph?.goldenStampName || 'Golden Snitch Stamp',
-                    lat: newLat,
-                    lng: newLng,
-                    rarity: 'golden',
-                    poi_link: null
-                };
-                setStamps(prev => [...prev, goldenStamp]);
-            }
-        }, 30000);
 
-        return () => clearInterval(interval);
-    }, [location, stamps, prefetchedGraph?.goldenStampName]);
-
-    const pois = useMemo(() => {
-        if (!graph) return [];
-        const today = new Date().toISOString().split('T')[0];
-
-        return graph.nodes.filter(n => {
-            if (n.type === 'track') return false;
-            if (n.active_from && today < n.active_from) return false;
-            if (n.active_to && today > n.active_to) return false;
-            return true;
-        }).map(n => {
-            let searchAliases: string[] = [];
-            (n.tags || []).forEach(tag => {
-                if (TAG_SYNONYMS[tag]) {
-                    searchAliases.push(...TAG_SYNONYMS[tag]);
-                }
-            });
-            return {
-                ...n,
-                searchTags: [...(n.tags || []), ...searchAliases]
-            };
-        });
-    }, [graph]);
-
-    const fuse = useMemo(() => new Fuse(pois, {keys: ['name', 'searchTags'], threshold: 0.3}), [pois]);
-
-    const searchResults = useMemo(() => {
-        let results = pois;
-        if (searchQuery) {
-            results = fuse.search(searchQuery).map(res => res.item);
-        }
-
-        const isSearchingTrash = searchQuery && GARBAGE_REGEX.test(searchQuery);
-        if (!isSearchingTrash) {
-            results = results.filter(poi => !isGarbageNode(poi));
-        }
-
-        // Calculate distance and sort
-        if (location) {
-            results = results.map(poi => ({
-                ...poi,
-                distance: distanceInMeters(location.lat, location.lng, poi.lat, poi.lng)
-            })).sort((a: any, b: any) => a.distance - b.distance);
-        }
-
-        return results;
-    }, [searchQuery, pois, fuse, location]);
+    // Search logic moved to GlobalNodeSearch
 
     const handleRoute = (route: { path: GraphNode[]; totalDistance: number }, toNode: GraphNode) => {
+        Analytics.logEvent('route_started', { 
+            target_node_id: toNode.id, 
+            target_node_name: toNode.name?.en || toNode.category?.name?.en,
+            distance: route.totalDistance 
+        });
         setActiveRoute(route);
         setTargetNode(toNode);
         setIsNavSheetOpen(false);
     };
 
     const handlePOISelect = (poi: GraphNode) => {
+        Analytics.logEvent('poi_viewed', { 
+            node_id: poi.id, 
+            node_name: poi.name?.en || poi.category?.name?.en 
+        });
         setSelectedPOI(poi);
     };
 
     const cancelRoute = () => {
+        if (activeRoute) {
+            Analytics.logEvent('route_canceled', { target_node_id: targetNode?.id });
+        }
         setActiveRoute(null);
         setTargetNode(null);
     };
@@ -209,7 +152,71 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         }
     };
 
-    const nextWaypoint = activeRoute?.path[1] || targetNode;
+    const routeCoordinates = useMemo(() => {
+        if (!activeRoute || !graph) return [];
+        return getRouteCoordinateSegments(graph, activeRoute.path).flat();
+    }, [activeRoute, graph]);
+
+    const nextWaypoint = useMemo(() => {
+        if (!routeCoordinates.length) return targetNode;
+
+        const nextCoordinate = location
+            ? getNextRouteCoordinate(routeCoordinates, location.lat, location.lng)
+            : routeCoordinates[1] || routeCoordinates[0];
+
+        return nextCoordinate ? {lat: nextCoordinate[1], lng: nextCoordinate[0]} : targetNode;
+    }, [routeCoordinates, location, targetNode]);
+
+    const [isRerouting, setIsRerouting] = useState(false);
+    const abortRef = useRef<AbortController | null>(null);
+
+    // Auto-Reroute Engine: Monitor Cross-Track Error
+    useEffect(() => {
+        if (!activeRoute || !graph || !location || !targetNode || isRerouting) return;
+        
+        const coordinates = routeCoordinates;
+        if (coordinates.length < 2) return;
+
+        let nearestDist = Infinity;
+        for (let i = 0; i < coordinates.length - 1; i++) {
+            const [fromLng, fromLat] = coordinates[i];
+            const [toLng, toLat] = coordinates[i + 1];
+            const { dist } = pointToLineSegment(location.lng, location.lat, fromLng, fromLat, toLng, toLat);
+            if (dist < nearestDist) nearestDist = dist;
+        }
+
+        const OFF_ROUTE_THRESHOLD_METERS = 15;
+        if (nearestDist > OFF_ROUTE_THRESHOLD_METERS) {
+            console.log(`[Auto-Reroute] User is ${nearestDist.toFixed(1)}m off route. Recalculating...`);
+            Analytics.logEvent('reroute_triggered', { distance_off_route: nearestDist, target_node_id: targetNode.id });
+            
+            setIsRerouting(true);
+            
+            const controller = new AbortController();
+            abortRef.current = controller;
+            
+            calculateRoute({ graph, targetId: targetNode.id, lat: location.lat, lng: location.lng, signal: controller.signal })
+                .then(route => {
+                    setIsRerouting(false);
+                    setActiveRoute(route);
+                    abortRef.current = null;
+                })
+                .catch(error => {
+                    if (error.name !== 'AbortError') {
+                        setIsRerouting(false);
+                        abortRef.current = null;
+                    }
+                });
+
+        }
+        
+        return () => {
+            if (abortRef.current) {
+                abortRef.current.abort();
+                abortRef.current = null;
+            }
+        };
+    }, [location, activeRoute, graph, targetNode, isRerouting, routeCoordinates]);
 
     return (
         <InAppBrowserBlocker>
@@ -224,12 +231,12 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         <PermissionGate requiredPermissions="all">
                             <div
                                 className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
-                                <ARView targetNode={nextWaypoint || undefined} stamps={stamps}/>
+                                <ARView location={location} targetCoordinate={nextWaypoint || undefined} stamps={stamps}/>
                             </div>
                         </PermissionGate>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
-                            <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} mode={mode}/>
+                            <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode}/>
                         </div>
                     )}
                 </div>
@@ -372,7 +379,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 <p className="text-[12px] font-bold mt-1.5 text-emerald-300 uppercase tracking-widest">Head</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-black text-3xl tracking-tight leading-none drop-shadow-sm truncate">{targetNode.name}</h3>
+                                <h3 className="text-white font-black text-3xl tracking-tight leading-none drop-shadow-sm truncate">{t(targetNode.name?.en || targetNode.category?.name?.en || '')}</h3>
                                 <p className="text-emerald-100/80 text-[15px] font-semibold mt-2 tracking-wide truncate">Lalbagh Botanical Garden</p>
                             </div>
                         </div>
@@ -406,15 +413,13 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                             handleCapture={handleCapture}
                             endWalk={endWalk}
                             setShowReportModal={(show) => setReportModalConfig({show})}
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            searchResults={searchResults}
                             handlePOISelect={handlePOISelect}
                             onSponsorModalChange={setIsSponsorModalOpen}
                             onOpenNavigation={() => {
                                 setNavInitialTarget(null);
                                 setIsNavSheetOpen(true);
                             }}
+                            collectedStampIds={stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).map(s => s.id)}
                         />
                     </>
                 )}
@@ -429,7 +434,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                     <h2 className="text-emerald-400 font-black text-4xl leading-none tracking-tighter drop-shadow-sm">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}</h2>
                                     <span className="text-xl font-bold text-emerald-400/80 mb-0.5 tracking-tight">min</span>
                                 </div>
-                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {targetNode.name}</p>
+                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {t(targetNode.name?.en || targetNode.category?.name?.en || '')}</p>
                             </div>
                             <Button 
                                 onClick={cancelRoute}
@@ -531,7 +536,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         >
                             <div
                                 className="absolute inset-0 origin-center opacity-90 pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                                <MapView graph={graph} activeRoute={activeRoute} stamps={stamps} isRadar={true}
+                                <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} isRadar={true}
                                          mode={mode}/>
                             </div>
 
@@ -575,6 +580,9 @@ export default function App() {
     const [prefetchedGraph, setPrefetchedGraph] = useState<GraphData | null>(null);
     const [prefetchedStamps, setPrefetchedStamps] = useState<Stamp[] | null>(null);
     const [splashFinished, setSplashFinished] = useState(false);
+    const [isDataLoading, setIsDataLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     const handleVenueChange = (newVenue: string) => {
         setVenueKey(newVenue);
@@ -615,63 +623,144 @@ export default function App() {
 
     // 2. Prefetch data outside the permissions gate (Optimistic Data Loading)
     useEffect(() => {
+        if (!venueKey) return;
+
+        let isCurrentRequest = true;
+
         async function loadData() {
+            setIsDataLoading(true);
+            setLoadError(null);
+            
+            const offlineKey = OFFLINE_GRAPH_STORAGE_KEY + venueKey;
+
+            // 1. Instantly load from offline cache if available (Offline-First Architecture)
             try {
-                const [graphRes, stampsRes] = await Promise.all([
-                    supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'graph').maybeSingle(),
-                    supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'stamps').maybeSingle()
+                const cached = localStorage.getItem(offlineKey);
+                if (cached) {
+                    const parsedGraph = JSON.parse(cached) as GraphData;
+                    setPrefetchedGraph(parsedGraph);
+                    // Extract stamps for cached data
+                    const cachedStamps = parsedGraph.nodes
+                        .filter(n => n.category?.base_type === 'stamp')
+                        .map(n => ({
+                            id: n.id,
+                            name: n.name?.en || n.category?.name?.en || 'Mystery Stamp',
+                            lat: n.lat,
+                            lng: n.lng,
+                            rarity: 'common' as 'common',
+                            description: n.description?.en || n.category?.description?.en || 'You found a stamp!',
+                            poi_link: null,
+                            image_url: n.image_url || n.category?.image_url
+                        }));
+                    setPrefetchedStamps(cachedStamps);
+                    setIsDataLoading(false); // Unblock the UI instantly!
+                }
+            } catch(e) {
+                console.warn('Failed to parse offline cache', e);
+            }
+
+            // 2. Fetch fresh data silently in the background
+            try {
+                // Fetch the new 4 tables using full pagination to guarantee complete extraction
+                const [nodesData, edgesData, categoriesData, eventsData, legacyGraphRes] = await Promise.all([
+                    fetchAllPages(() => supabase.from('nodes').select('*, category:node_categories(*)').eq('venue_key', venueKey).order('id')),
+                    fetchAllPages(() => supabase.from('edges').select('*').eq('venue_key', venueKey).order('id')),
+                    fetchAllPages(() => supabase.from('node_categories').select('*').order('id')),
+                    fetchAllPages(() => supabase.from('events').select('*').eq('venue_key', venueKey).order('id')),
+                    // Temporary fetch for legacy sponsors/rawTraces until they are moved
+                    supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'graph').maybeSingle()
                 ]);
 
-                let activeGraph = graphRes.data?.data ? (graphRes.data.data as GraphData) : null;
+                if (!isCurrentRequest) return;
 
-                if (activeGraph) {
-                    const now = new Date().toISOString().split('T')[0]; // Current date as YYYY-MM-DD
-                    const validNodes = activeGraph.nodes.filter(node => {
-                        if (node.active_from && node.active_from > now) return false;
-                        if (node.active_to && node.active_to < now) return false;
-                        return true;
-                    });
+                if (legacyGraphRes.error) {
+                    throw legacyGraphRes.error;
+                }
 
-                    if (validNodes.length !== activeGraph.nodes.length) {
-                        const validNodeIds = new Set(validNodes.map(n => n.id));
-                        const validEdges = activeGraph.edges.filter(e => validNodeIds.has(e.from) && validNodeIds.has(e.to));
-                        activeGraph = {...activeGraph, nodes: validNodes, edges: validEdges};
+                const legacyData = legacyGraphRes.data?.data || {};
+
+                let activeGraph: GraphData = {
+                    nodes: nodesData || [],
+                    edges: (edgesData || []).map((e: any) => ({
+                        ...e,
+                        from: e.from_node_id,
+                        to: e.to_node_id
+                    })),
+                    categories: categoriesData || [],
+                    events: eventsData || [],
+                    sponsorZones: legacyData.sponsorZones || [],
+                    sponsors: legacyData.sponsors || [],
+                    defaultAds: legacyData.defaultAds || [],
+                    rawTraces: legacyData.rawTraces || []
+                };
+
+                const now = new Date().toISOString();
+                const validNodes = activeGraph.nodes.filter(node => {
+                    if (node.event_id) {
+                         const evt = activeGraph.events.find(e => e.id === node.event_id);
+                         if (!evt || !evt.is_active || now < evt.start_date || now > evt.end_date) return false;
                     }
+                    return true;
+                });
+
+                if (validNodes.length !== activeGraph.nodes.length) {
+                    const validNodeIds = new Set(validNodes.map(n => n.id));
+                    const validEdges = activeGraph.edges.filter(e => validNodeIds.has(e.from) && validNodeIds.has(e.to));
+                    activeGraph = {...activeGraph, nodes: validNodes, edges: validEdges};
+                }
+
+                // Save latest graph to offline cache
+                try {
+                    localStorage.setItem(offlineKey, JSON.stringify(activeGraph));
+                } catch (e) {
+                    console.warn('Failed to cache graph offline', e);
                 }
 
                 setPrefetchedGraph(activeGraph);
 
-                let loadedStamps = stampsRes.data?.data ? ((stampsRes.data.data as any).stamps || []) : [];
-
-                const graphStamps: Stamp[] = (activeGraph?.nodes || [])
-                    .filter(n => n.type === 'stamp')
+                // Extract stamps
+                const combinedStamps: Stamp[] = activeGraph.nodes
+                    .filter(n => n.category?.base_type === 'stamp')
                     .map(n => ({
                         id: n.id,
-                        name: n.name || 'Venue Stamp',
+                        name: n.name?.en || n.category?.name?.en || 'Mystery Stamp',
                         lat: n.lat,
                         lng: n.lng,
                         rarity: 'common',
-                        description: `You found a stamp at ${n.name || 'this location'}!`,
-                        poi_link: null
-                    })) || [];
+                        description: n.description?.en || n.category?.description?.en || 'You found a stamp!',
+                        poi_link: null,
+                        image_url: n.image_url || n.category?.image_url
+                    }));
 
-                const combinedStamps = [...loadedStamps, ...graphStamps];
                 setPrefetchedStamps(combinedStamps);
             } catch (e) {
-                console.error('Failed to load data', e);
-                setPrefetchedGraph(null);
-                setPrefetchedStamps([]);
+                console.error('Failed to fetch latest map data from network', e);
+                if (isCurrentRequest) {
+                    // Only show an error if we ALSO failed to load from cache
+                    if (!localStorage.getItem(offlineKey)) {
+                        setPrefetchedGraph(null);
+                        setPrefetchedStamps(null);
+                        setLoadError('We could not load Lalbagh’s map. Check your connection and try again.');
+                    }
+                }
+            } finally {
+                if (isCurrentRequest) {
+                    setIsDataLoading(false);
+                }
             }
         }
 
-        loadData();
-    }, [venueKey]);
+        void loadData();
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [venueKey, loadAttempt]);
 
     return (
         <>
             {!splashFinished && (
                 <SplashScreen 
-                    isLoading={!prefetchedGraph} 
+                    isLoading={isDataLoading} 
                     onFinish={() => setSplashFinished(true)} 
                 />
             )}
@@ -684,6 +773,20 @@ export default function App() {
                     prefetchedStamps={prefetchedStamps}
                 />
             </PermissionGate>
+            {loadError && splashFinished && (
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 p-6 text-white backdrop-blur-xl">
+                    <div className="glass-panel w-full max-w-sm p-6 text-center">
+                        <h1 className="text-xl font-black">Map unavailable</h1>
+                        <p className="mt-2 text-sm text-slate-300">{loadError}</p>
+                        <Button
+                            className="mt-6 w-full bg-emerald-500 font-bold text-white hover:bg-emerald-600"
+                            onClick={() => setLoadAttempt(attempt => attempt + 1)}
+                        >
+                            Retry loading map
+                        </Button>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

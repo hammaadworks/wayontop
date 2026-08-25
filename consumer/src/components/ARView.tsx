@@ -2,24 +2,24 @@ import React from 'react';
 import {Check, Gem, Navigation, Share2, X} from 'lucide-react';
 import {CameraFeed} from '@wayontop/ui/components/CameraFeed';
 import {useCompass} from '../hooks/useCompass';
-import {useLocation} from '../hooks/useLocation';
+import type {LocationData} from '../hooks/useLocation';
 import {distanceInMeters, getBearing} from '@wayontop/ui/lib/routing';
 import type {GraphNode, Stamp} from '@wayontop/ui/lib/types';
 import {Gamification} from '../lib/gamification';
 import {ViralSharing} from '../lib/sharing';
 import {useTranslation} from 'react-i18next';
-import {showAlert} from '../lib/events';
 
 interface ARViewProps {
     targetNode?: GraphNode;
+    targetCoordinate?: Readonly<{lat: number; lng: number}>;
+    location: LocationData | null;
     stamps?: Stamp[];
 }
 
-export function ARView({targetNode, stamps = []}: ARViewProps) {
+export function ARView({targetNode, targetCoordinate, location, stamps = []}: ARViewProps) {
     const {t} = useTranslation();
     const {heading} = useCompass();
-    const {location} = useLocation();
-    const [collectedStampIds, setCollectedStampIds] = React.useState<string[]>([]);
+    const [collectedStampIds, setCollectedStampIds] = React.useState<number[]>([]);
     const [justClaimedStamp, setJustClaimedStamp] = React.useState<Stamp | null>(null);
     const [infoStamp, setInfoStamp] = React.useState<Stamp | null>(null);
 
@@ -28,8 +28,9 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
     }, []);
 
     let targetBearing = 0;
-    if (location && targetNode) {
-        targetBearing = getBearing(location.lat, location.lng, targetNode.lat, targetNode.lng);
+    const navigationTarget = targetCoordinate || targetNode;
+    if (location && navigationTarget) {
+        targetBearing = getBearing(location.lat, location.lng, navigationTarget.lat, navigationTarget.lng);
     }
 
     // Nearby stamp detection
@@ -60,18 +61,7 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
     const handleClaimStamp = async () => {
         if (!nearbyStamp) return;
 
-        if (nearbyStamp.id.startsWith('golden')) {
-            try {
-                await Gamification.claimGoldenStamp(nearbyStamp.id, location?.lat || 0, location?.lng || 0);
-            } catch (e: any) {
-                showAlert(e.message || "Failed to claim golden stamp");
-                // Remove it so we don't try again
-                setCollectedStampIds(prev => [...prev, nearbyStamp.id]);
-                return;
-            }
-        } else {
-            Gamification.claimStamp(nearbyStamp.id);
-        }
+        Gamification.claimStamp(nearbyStamp.id);
 
         setCollectedStampIds(prev => [...prev, nearbyStamp.id]);
         setJustClaimedStamp(nearbyStamp);
@@ -101,7 +91,7 @@ export function ARView({targetNode, stamps = []}: ARViewProps) {
             <CameraFeed className="absolute inset-0 w-full h-full"/>
 
             {/* AR Overlay (3D Perspective) - Only show if navigating */}
-            {targetNode ? (
+            {navigationTarget ? (
                 <div
                     className="absolute bottom-[25%] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center pointer-events-none"
                     style={{perspective: '800px'}}>

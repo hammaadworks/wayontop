@@ -2,24 +2,29 @@ import {getDeviceUUID} from './device';
 import {supabase} from '@wayontop/ui/lib/supabase';
 import {Analytics} from './analytics';
 
-const STAMPS_KEY = 'wayontop_collected_stamps';
+const STAMPS_KEY = 'wayontop_collected_stamps_v2';
 
 export const Gamification = {
-    getCollectedStamps: (): string[] => {
+    getCollectedStamps: (): number[] => {
         const data = localStorage.getItem(STAMPS_KEY);
-        return data ? JSON.parse(data) : [];
+        if (!data) return [];
+        try {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
     },
 
-    hasCollected: (stampId: string): boolean => {
+    hasCollected: (stampId: number): boolean => {
         return Gamification.getCollectedStamps().includes(stampId);
     },
 
-    claimStamp: (stampId: string) => {
+    claimStamp: (stampId: number) => {
         const stamps = Gamification.getCollectedStamps();
         if (!stamps.includes(stampId)) {
             stamps.push(stampId);
             localStorage.setItem(STAMPS_KEY, JSON.stringify(stamps));
-
             Analytics.logEvent('stamp_collected', {stamp_id: stampId});
             void Gamification.syncTotalCount();
         }
@@ -45,30 +50,5 @@ export const Gamification = {
         } catch (e) {
             console.error('Leaderboard sync failed', e);
         }
-    },
-
-    claimGoldenStamp: async (stampId: string, newLat: number, newLng: number) => {
-        if (!navigator.onLine) {
-            throw new Error("Must be online to claim the Golden Stamp!");
-        }
-
-        const uuid = getDeviceUUID();
-        const venueKey = localStorage.getItem('wayontop_venue_key') || 'lalbagh';
-
-        const {data, error} = await supabase.rpc('claim_golden_stamp', {
-            stamp_id: stampId,
-            target_venue_key: venueKey,
-            player_id: uuid,
-            new_lat: newLat,
-            new_lng: newLng
-        });
-
-        if (error) throw error;
-        if (data === false) {
-            throw new Error("Too late! Someone else just claimed it!");
-        }
-
-        Analytics.logEvent('golden_stamp_collected', {stamp_id: stampId});
-        return true;
     }
 };

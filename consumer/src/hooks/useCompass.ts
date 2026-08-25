@@ -58,7 +58,13 @@ export function useCompass() {
 
   const frameRef = useRef<number | null>(null);
 
+  const lastUpdateRef = useRef<number>(0);
+
   const handleOrientation = (event: DeviceOrientationEvent) => {
+    const now = Date.now();
+    // Throttle to max 20 FPS (every 50ms) to save battery and reduce React re-renders
+    if (now - lastUpdateRef.current < 50) return;
+
     if (frameRef.current) return; // Drop frame if still processing
 
     frameRef.current = requestAnimationFrame(() => {
@@ -84,7 +90,8 @@ export function useCompass() {
     }
 
       if (compassHeading !== null) {
-        setHeading(compassHeading);
+        setHeading(Math.round(compassHeading));
+        lastUpdateRef.current = Date.now();
       }
       
       frameRef.current = null;

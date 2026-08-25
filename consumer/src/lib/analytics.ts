@@ -61,7 +61,8 @@ export const Analytics = {
                     event_type: q.event_type,
                     event_data: q.event_data,
                     created_at: new Date(q.timestamp).toISOString()
-                })));
+                })))
+                .select();
 
             if (!error) {
                 // Safely remove only the events we just processed to avoid race conditions

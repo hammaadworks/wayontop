@@ -15,7 +15,6 @@ const resources = {
             "ar_mode": "AR",
             "map_mode": "Map",
             "claim": "Claim",
-            "golden_stamp": "Golden Stamp",
             "poi_info": {
                 "famous_for": "Why it's famous",
                 "photo_spot": "Best photo spot",
@@ -58,7 +57,6 @@ const resources = {
             "ar_mode": "AR (ಏಆರ್)",
             "map_mode": "ನಕ್ಷೆ",
             "claim": "ಪಡೆಯಿರಿ",
-            "golden_stamp": "ಸುವರ್ಣ ಸ್ಟ್ಯಾಂಪ್",
             "poi_info": {
                 "famous_for": "ಇದು ಏಕೆ ಪ್ರಸಿದ್ಧವಾಗಿದೆ",
                 "photo_spot": "ಅತ್ಯುತ್ತಮ ಫೋಟೋ ಸ್ಪಾಟ್",
