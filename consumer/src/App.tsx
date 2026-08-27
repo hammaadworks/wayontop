@@ -661,23 +661,17 @@ export default function App() {
 
             // 2. Fetch fresh data silently in the background
             try {
-                // Fetch the new 4 tables using full pagination to guarantee complete extraction
-                const [nodesData, edgesData, categoriesData, eventsData, legacyGraphRes] = await Promise.all([
+                // Fetch the new tables using full pagination to guarantee complete extraction
+                const [nodesData, edgesData, categoriesData, eventsData, sponsorsData, sponsorZonesData] = await Promise.all([
                     fetchAllPages(() => supabase.from('nodes').select('*, category:node_categories(*)').eq('venue_key', venueKey).order('id')),
                     fetchAllPages(() => supabase.from('edges').select('*').eq('venue_key', venueKey).order('id')),
                     fetchAllPages(() => supabase.from('node_categories').select('*').order('id')),
                     fetchAllPages(() => supabase.from('events').select('*').eq('venue_key', venueKey).order('id')),
-                    // Temporary fetch for legacy sponsors/rawTraces until they are moved
-                    supabase.from('venue_content').select('data').eq('venue_key', venueKey).eq('content_type', 'graph').maybeSingle()
+                    fetchAllPages(() => supabase.from('sponsors').select('*').eq('venue_key', venueKey)),
+                    fetchAllPages(() => supabase.from('sponsor_zones').select('*').eq('venue_key', venueKey))
                 ]);
 
                 if (!isCurrentRequest) return;
-
-                if (legacyGraphRes.error) {
-                    throw legacyGraphRes.error;
-                }
-
-                const legacyData = legacyGraphRes.data?.data || {};
 
                 let activeGraph: GraphData = {
                     nodes: nodesData || [],
@@ -688,10 +682,10 @@ export default function App() {
                     })),
                     categories: categoriesData || [],
                     events: eventsData || [],
-                    sponsorZones: legacyData.sponsorZones || [],
-                    sponsors: legacyData.sponsors || [],
-                    defaultAds: legacyData.defaultAds || [],
-                    rawTraces: legacyData.rawTraces || []
+                    sponsorZones: sponsorZonesData || [],
+                    sponsors: (sponsorsData || []).filter(s => !s.is_default_ad),
+                    defaultAds: (sponsorsData || []).filter(s => s.is_default_ad),
+                    rawTraces: []
                 };
 
                 const now = new Date().toISOString();

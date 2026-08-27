@@ -50,7 +50,8 @@ export default function SponsorsPortal() {
   const zonesGeoJSON = {
     type: 'FeatureCollection',
     features: (graph?.sponsorZones || []).flatMap(zone => {
-      const isFilled = zone.sponsor_ids && zone.sponsor_ids.length > 0;
+      const activeSponsors = sponsors.filter(s => s.zone_ids?.includes(zone.id));
+      const isFilled = activeSponsors.length > 0;
       const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
       const nodes = graph?.nodes.filter(n => zonePoiIds.includes(n.id)) || [];
       if (nodes.length === 0) return [];
@@ -61,19 +62,17 @@ export default function SponsorsPortal() {
         properties: {
           id: zone.id,
           radius_m: zone.radius_m,
-          color: isFilled ? '#ef4444' : '#10b981', // red for filled, green for available
+          color: isFilled ? '#10b981' : '#94a3b8',
         }
       }));
     }).filter(Boolean) as any[]
   };
 
   const sponsorMarkerData = (graph?.sponsorZones || []).flatMap(zone => {
-      const isFilled = zone.sponsor_ids && zone.sponsor_ids.length > 0;
+      const activeSponsors = sponsors.filter(s => s.zone_ids?.includes(zone.id));
+      const isFilled = activeSponsors.length > 0;
       if (!isFilled) return [];
       
-      const activeSponsors = zone.sponsor_ids!.map(id => sponsors.find(s => s.id === id)).filter(Boolean);
-      if (activeSponsors.length === 0) return [];
-
       const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
       const nodes = graph?.nodes.filter(n => zonePoiIds.includes(n.id)) || [];
       if (nodes.length === 0) return [];
@@ -285,7 +284,7 @@ export default function SponsorsPortal() {
                   ))}
 
                   {/* Pulsing Target for Available Zones */}
-                  {(graph.sponsorZones || []).filter(z => !z.sponsor_ids || z.sponsor_ids.length === 0).map(zone => {
+                  {(graph.sponsorZones || []).filter(z => !sponsors.some(s => s.zone_ids?.includes(z.id))).map(zone => {
                     const zonePoiIds = zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []);
                     const poi = graph.nodes.find(n => n.id === zonePoiIds[0]);
                     if (!poi) return null;

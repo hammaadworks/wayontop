@@ -77,18 +77,22 @@ export default function SponsorsDashboard() {
         }
       }
 
-      // Fetch venue zones
-      const { data: venueData } = await supabase
-        .from('venue_content')
-        .select('data')
-        .eq('venue_key', 'lalbagh')
-        .eq('content_type', 'graph')
-        .maybeSingle();
+      // Fetch venue zones and nodes
+      const [zonesRes, nodesRes] = await Promise.all([
+        supabase.from('sponsor_zones').select('*').eq('venue_key', 'lalbagh'),
+        supabase.from('nodes').select('*').eq('venue_key', 'lalbagh')
+      ]);
 
-      if (venueData?.data) {
-        const graph = venueData.data as GraphData;
-        setGraph(graph);
-        setZones(graph.sponsorZones.map(z => ({ id: z.id, name: z.name })));
+      if (zonesRes.data && nodesRes.data) {
+        setGraph({
+          nodes: nodesRes.data,
+          edges: [],
+          categories: [],
+          events: [],
+          sponsorZones: zonesRes.data,
+          sponsors: []
+        } as unknown as GraphData);
+        setZones(zonesRes.data.map(z => ({ id: z.id, name: z.name })));
       }
 
       setLoading(false);

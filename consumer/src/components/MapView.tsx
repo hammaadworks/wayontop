@@ -45,9 +45,9 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
 
     const nodesAndStamps = useMemo(() => {
         if (!graph) return [];
-        const visibleNodes = graph.nodes.filter(n => n.category_id !== "999" /* Track */).map(n => ({
+        const visibleNodes = graph.nodes.filter(n => n.category?.base_type !== 'intersection').map(n => ({
             ...n,
-            priority: n.category_id === "2" /* Gate */ ? 10 : 5
+            priority: n.category?.base_type === 'gate' ? 10 : 5
         }));
         const visibleStamps = stamps.filter(s => !collectedStampIds.includes(s.id)).map(s => ({
             ...s,

@@ -20,7 +20,7 @@ export interface MapEvent {
 }
 
 export interface NodeCategory {
-    id: string;
+    id: number;
     code: string;                 
     base_type: NodeBaseType;      
     icon_key: string;             
@@ -33,7 +33,7 @@ export interface NodeCategory {
 
 export interface GraphNode {
     id: number;
-    category_id: string;          
+    category_id: number;          
     lat: number;
     lng: number;
     
@@ -51,6 +51,13 @@ export interface GraphNode {
     event_id?: number;            
     category?: NodeCategory;      // Populated by Supabase join
     venue_key?: string;           // Added for venue scope
+
+    // Newly added fields for Wizard
+    has_stamp?: boolean;
+    active_from?: string;
+    active_to?: string;
+    extra_info?: LocalizedText | any;
+    tags?: string[];
 }
 
 export interface GraphEdge {
@@ -72,6 +79,7 @@ export interface Sponsor {
     tagline?: string;
     cta_link?: string;
     is_default_ad?: boolean;
+    zone_ids?: string[];
 }
 
 export interface SponsorZone {
@@ -80,8 +88,6 @@ export interface SponsorZone {
     poi_id?: number; // legacy
     poi_ids: number[];
     radius_m: number;
-    sponsor_id?: string; // legacy
-    sponsor_ids?: string[];
 }
 
 export interface DefaultAd {

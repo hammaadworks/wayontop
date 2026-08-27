@@ -2,6 +2,7 @@ import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, Wif
 import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {SponsorManager} from '../SponsorManager';
+import {CategoryManager} from '../CategoryManager';
 import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 
 interface MapBottomBarProps {
@@ -19,6 +20,7 @@ interface MapBottomBarProps {
     data: any;
     setData: any;
     timeUntilSync: number | null;
+    venueKey: string;
 }
 
 export function MapBottomBar({
@@ -35,17 +37,14 @@ export function MapBottomBar({
                                  data,
                                  setData,
                                  setTestRoutePath,
-                                 timeUntilSync
-                             }: MapBottomBarProps) {
+                                 timeUntilSync,
+                                 venueKey
+                             }: Readonly<MapBottomBarProps>) {
     return (
         <div
             className="absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 -translate-x-1/2 z-30 w-[95%] sm:w-[90%] md:w-[80%] max-w-2xl flex flex-col items-center gap-5">
 
-            <SpecialToast
-                visible={mode === 'add_edge'}
-                message={edgeStartNode ? 'Continue (Pencil to end)' : 'Tap to start'}
-                icon={<ArrowRight className="w-4 h-4"/>}
-            />
+            
 
             <SpecialToast
                 visible={mode === 'test_route'}
@@ -66,7 +65,7 @@ export function MapBottomBar({
             />
 
             <div
-                className="glass-pill p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 grid grid-cols-5 gap-1 items-center w-full bg-black/60 backdrop-blur-3xl rounded-[2rem]">
+                className="glass-pill p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 grid grid-cols-6 gap-1 items-center w-full bg-black/60 backdrop-blur-3xl rounded-[2rem]">
 
                 <Button variant="ghost"
                         className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${!isLocked ? 'bg-amber-600/20 text-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.3)]' : 'bg-emerald-600/20 text-emerald-400'}`}
@@ -181,7 +180,10 @@ export function MapBottomBar({
                 </div>
 
                 <div className="flex items-center justify-center w-full">
-                    <SponsorManager data={data} setData={setData}/>
+                    <SponsorManager data={data} setData={setData} venueKey={venueKey}/>
+                </div>
+                <div className="flex items-center justify-center w-full">
+                    <CategoryManager data={data} setData={setData}/>
                 </div>
 
                 {isLocked ? (

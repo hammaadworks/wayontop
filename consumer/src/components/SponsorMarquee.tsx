@@ -56,9 +56,10 @@ export function SponsorMarquee({
         
         setCurrentZone(prevZone => {
             if (foundZone && prevZone?.id !== foundZone.id) {
+                const mappedSponsors = (graph?.sponsors || []).filter(s => s.zone_ids?.includes(foundZone.id));
                 Analytics.logEvent('sponsor_walk_in', {
                     zone_id: foundZone.id,
-                    sponsor_ids: foundZone.sponsor_ids || []
+                    sponsor_ids: mappedSponsors.map(s => s.id)
                 });
             }
             return foundZone;
@@ -81,9 +82,8 @@ export function SponsorMarquee({
     const defaultAds = useMemo(() => (graph?.sponsors || []).filter(s => s.is_default_ad), [graph?.sponsors]);
 
     const currentZoneSponsors = useMemo(() => {
-        return currentZone?.sponsor_ids?.length 
-            ? currentZone.sponsor_ids.map(id => graph?.sponsors?.find(s => s.id === id)).filter(Boolean) as Sponsor[]
-            : [];
+        if (!currentZone) return [];
+        return (graph?.sponsors || []).filter(s => s.zone_ids?.includes(currentZone.id));
     }, [currentZone, graph?.sponsors]);
 
     const slideItems = useMemo(() => {

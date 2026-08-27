@@ -14,9 +14,10 @@ import {supabase} from '@wayontop/ui/lib/supabase';
 interface SponsorManagerProps {
     data: GraphData;
     setData: React.Dispatch<React.SetStateAction<GraphData>>;
+    venueKey: string;
 }
 
-export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
+export function SponsorManager({data, setData, venueKey}: Readonly<SponsorManagerProps>) {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'zones' | 'sponsors'>('zones');
 
@@ -32,6 +33,7 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
 
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingCreative, setUploadingCreative] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const [deleteConfirm, setDeleteConfirm] = useState<{
         isOpen: boolean;
@@ -100,55 +102,87 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
         }
     };
 
-    const saveZone = () => {
+    const saveZone = async () => {
         if (!zoneForm.poi_ids?.length || !zoneForm.name || zoneForm.radius_m === undefined || zoneForm.radius_m <= 0) {
             toast.error('Name, at least one Center Node, and a valid Radius are required.');
             return;
         }
 
-        if (editingZoneId) {
-            setData(prev => ({
-                ...prev,
-                sponsorZones: (prev.sponsorZones || []).map(z => z.id === editingZoneId ? {...z, ...zoneForm} as SponsorZone : z)
-            }));
-        } else {
-            setData(prev => ({
-                ...prev,
-                sponsorZones: [...(prev.sponsorZones || []), {id: `sz_${Date.now()}`, ...zoneForm} as SponsorZone]
-            }));
+        setIsSaving(true);
+        try {
+            const payload = {
+                id: editingZoneId || `sz_${Date.now()}`,
+                venue_key: venueKey,
+                name: zoneForm.name,
+                poi_ids: zoneForm.poi_ids,
+                radius_m: zoneForm.radius_m
+            };
+
+            const {error} = await supabase.from('sponsor_zones').upsert(payload);
+            if (error) throw error;
+
+            if (editingZoneId) {
+                setData(prev => ({
+                    ...prev,
+                    sponsorZones: (prev.sponsorZones || []).map(z => z.id === editingZoneId ? {...z, ...zoneForm} as SponsorZone : z)
+                }));
+                toast.success('Zone updated successfully');
+            } else {
+                setData(prev => ({
+                    ...prev,
+                    sponsorZones: [...(prev.sponsorZones || []), payload as unknown as SponsorZone]
+                }));
+                toast.success('Zone created successfully');
+            }
+            setEditingZoneId(null);
+            setZoneForm({});
+            setShowZoneForm(false);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to save zone');
+        } finally {
+            setIsSaving(false);
         }
-        setEditingZoneId(null);
-        setZoneForm({});
-        setShowZoneForm(false);
     };
 
     const deleteZone = (id: string, name: string) => {
         setDeleteConfirm({isOpen: true, type: 'zone', id, name});
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (!deleteConfirm) return;
-        if (deleteConfirm.type === 'zone') {
-            setData(prev => ({
-                ...prev,
-                sponsorZones: (prev.sponsorZones || []).filter(z => z.id !== deleteConfirm.id)
-            }));
-            toast.success(`Zone deleted`);
-        } else {
-            setData(prev => ({
-                ...prev,
-                sponsors: (prev.sponsors || []).filter(s => s.id !== deleteConfirm.id),
-                sponsorZones: (prev.sponsorZones || []).map(z => ({
-                    ...z,
-                    sponsor_ids: z.sponsor_ids?.filter(sid => sid !== deleteConfirm.id) || []
-                }))
-            }));
-            toast.success(`Sponsor deleted`);
+        
+        try {
+            if (deleteConfirm.type === 'zone') {
+                const {error} = await supabase.from('sponsor_zones').delete().eq('id', deleteConfirm.id);
+                if (error) throw error;
+                
+                setData(prev => ({
+                    ...prev,
+                    sponsorZones: (prev.sponsorZones || []).filter(z => z.id !== deleteConfirm.id),
+                    sponsors: (prev.sponsors || []).map(s => ({
+                        ...s,
+                        zone_ids: s.zone_ids?.filter(zid => zid !== deleteConfirm.id) || []
+                    }))
+                }));
+                toast.success(`Zone deleted`);
+            } else {
+                const {error} = await supabase.from('sponsors').delete().eq('id', deleteConfirm.id);
+                if (error) throw error;
+                
+                setData(prev => ({
+                    ...prev,
+                    sponsors: (prev.sponsors || []).filter(s => s.id !== deleteConfirm.id)
+                }));
+                toast.success(`Sponsor deleted`);
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to delete');
+        } finally {
+            setDeleteConfirm(null);
         }
-        setDeleteConfirm(null);
     };
 
-    const saveSponsor = () => {
+    const saveSponsor = async () => {
         if (!sponsorForm.name) {
             toast.error('Sponsor name is required.');
             return;
@@ -164,20 +198,44 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
             return;
         }
 
-        if (editingSponsorId) {
-            setData(prev => ({
-                ...prev,
-                sponsors: (prev.sponsors || []).map(s => s.id === editingSponsorId ? {...s, ...sponsorForm} as Sponsor : s)
-            }));
-        } else {
-            setData(prev => ({
-                ...prev,
-                sponsors: [...(prev.sponsors || []), {id: `sp_${Date.now()}`, ...sponsorForm} as Sponsor]
-            }));
+        setIsSaving(true);
+        try {
+            const payload = {
+                id: editingSponsorId || `sp_${Date.now()}`,
+                venue_key: venueKey,
+                name: sponsorForm.name,
+                tagline: sponsorForm.tagline || null,
+                cta_link: sponsorForm.cta_link || null,
+                logo_asset: sponsorForm.logo_asset,
+                creative_asset: sponsorForm.creative_asset || null,
+                is_default_ad: sponsorForm.is_default_ad || false,
+                zone_ids: sponsorForm.zone_ids || []
+            };
+
+            const {error} = await supabase.from('sponsors').upsert(payload);
+            if (error) throw error;
+
+            if (editingSponsorId) {
+                setData(prev => ({
+                    ...prev,
+                    sponsors: (prev.sponsors || []).map(s => s.id === editingSponsorId ? {...s, ...sponsorForm} as Sponsor : s)
+                }));
+                toast.success('Sponsor updated successfully');
+            } else {
+                setData(prev => ({
+                    ...prev,
+                    sponsors: [...(prev.sponsors || []), payload as unknown as Sponsor]
+                }));
+                toast.success('Sponsor created successfully');
+            }
+            setEditingSponsorId(null);
+            setSponsorForm({});
+            setShowSponsorForm(false);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to save sponsor');
+        } finally {
+            setIsSaving(false);
         }
-        setEditingSponsorId(null);
-        setSponsorForm({});
-        setShowSponsorForm(false);
     };
 
     const deleteSponsor = (id: string, name: string) => {
@@ -323,45 +381,12 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                        }))}
                                                        className="bg-black/50 border-white/20 text-white"/>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300">Map to Sponsors (Select
-                                                    multiple)</Label>
-                                                <ScrollArea
-                                                    className="h-40 bg-black/50 border border-white/10 rounded-md p-2">
-                                                    <div className="space-y-2">
-                                                        {sponsors.map(sp => (
-                                                            <label key={sp.id}
-                                                                   className="flex items-center gap-2 cursor-pointer py-1 hover:bg-white/5 rounded px-2">
-                                                                <Checkbox
-                                                                    checked={zoneForm.sponsor_ids?.includes(sp.id) || false}
-                                                                    onCheckedChange={(checked) => {
-                                                                        setZoneForm(s => {
-                                                                            const current = s.sponsor_ids || [];
-                                                                            return {
-                                                                                ...s,
-                                                                                sponsor_ids: checked ? [...current, sp.id] : current.filter(id => id !== sp.id)
-                                                                            };
-                                                                        });
-                                                                    }}
-                                                                    className="border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                                                />
-                                                                <span className="text-sm text-slate-300">
-                                                                    {sp.name} {sp.is_default_ad ?
-                                                                    <span className="text-[10px] text-slate-500 ml-1">(Default Ad)</span> : ''}
-                                                                </span>
-                                                            </label>
-                                                        ))}
-                                                        {sponsors.length === 0 && (
-                                                            <p className="text-xs text-slate-500 italic p-2">No sponsors
-                                                                created yet.</p>
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
+
                                             <div className="flex gap-2 pt-2">
-                                                <Button onClick={saveZone}
-                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save
-                                                    Zone</Button>
+                                                <Button onClick={saveZone} disabled={isSaving}
+                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                    {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>} Save Zone
+                                                </Button>
                                                 <Button variant="outline"
                                                         className="border-red-500/50 text-red-500 hover:bg-red-500/10"
                                                         onClick={() => {
@@ -376,7 +401,7 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
 
                                 <div className="space-y-3">
                                     {sponsorZones.map(zone => {
-                                        const mappedSponsors = (zone.sponsor_ids || []).map(id => sponsors.find(s => s.id === id)).filter(Boolean) as Sponsor[];
+                                        const mappedSponsors = sponsors.filter(s => s.zone_ids?.includes(zone.id));
                                         const nodeNames = (zone.poi_ids || []).map(id => data.nodes.find(n => n.id === id)?.name || 'Unknown Node');
                                         return (
                                             <div key={zone.id}
@@ -416,8 +441,7 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                             setEditingZoneId(zone.id);
                                                             setZoneForm({
                                                                 ...zone,
-                                                                poi_ids: zone.poi_ids || (zone.poi_id ? [zone.poi_id] : []),
-                                                                sponsor_ids: zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : [])
+                                                                poi_ids: zone.poi_ids || (zone.poi_id ? [zone.poi_id] : [])
                                                             });
                                                             setShowZoneForm(true);
                                                         }}>
@@ -544,10 +568,42 @@ export function SponsorManager({data, setData}: Readonly<SponsorManagerProps>) {
                                                         className="underline hover:text-emerald-300">{sponsorForm.creative_asset}</a>
                                                     </p>}
                                             </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label className="text-slate-300">Map to Zones (Select multiple)</Label>
+                                                <ScrollArea className="h-40 bg-black/50 border border-white/10 rounded-md p-2">
+                                                    <div className="space-y-2">
+                                                        {sponsorZones.map(zone => (
+                                                            <label key={zone.id} className="flex items-center gap-2 cursor-pointer py-1 hover:bg-white/5 rounded px-2">
+                                                                <Checkbox
+                                                                    checked={sponsorForm.zone_ids?.includes(zone.id) || false}
+                                                                    onCheckedChange={(checked) => {
+                                                                        setSponsorForm(s => {
+                                                                            const current = s.zone_ids || [];
+                                                                            return {
+                                                                                ...s,
+                                                                                zone_ids: checked ? [...current, zone.id] : current.filter(id => id !== zone.id)
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                    className="border-white/20 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                                                />
+                                                                <span className="text-sm text-slate-300">
+                                                                    {zone.name}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                        {sponsorZones.length === 0 && (
+                                                            <p className="text-xs text-slate-500 italic p-2">No zones created yet.</p>
+                                                        )}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
                                             <div className="flex gap-2 pt-2">
-                                                <Button onClick={saveSponsor}
-                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">Save
-                                                    Sponsor</Button>
+                                                <Button onClick={saveSponsor} disabled={isSaving}
+                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                                    {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>} Save Sponsor
+                                                </Button>
                                                 <Button variant="outline"
                                                         className="border-red-500/50 text-red-500 hover:bg-red-500/10"
                                                         onClick={() => {

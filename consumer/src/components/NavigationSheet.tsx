@@ -148,7 +148,7 @@ export function NavigationSheet({
             }
 
             // Start node is handled dynamically in Web Worker via findNearestEdgePoint
-            startNode = { id: -999, lat: location.lat, lng: location.lng, name: {en: "Your Location", kn: "", hi: ""}, category_id: "0", status: 'active', is_paid: false };
+            startNode = { id: -999, lat: location.lat, lng: location.lng, name: {en: "Your Location", kn: "", hi: ""}, category_id: 0, status: 'active', is_paid: false };
         } else if (fromNode) {
             startNode = fromNode as GraphNode;
         }

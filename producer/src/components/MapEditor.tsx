@@ -8,10 +8,11 @@ setWorkerUrl(workerUrl);
 import * as turf from '@turf/turf';
 import type * as GeoJSON from 'geojson';
 import {toast} from 'sonner';
-import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake} from 'lucide-react';
+import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake, Check} from 'lucide-react';
 import {BaseModal} from '@wayontop/ui/components/BaseModal';
 
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
+import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
 
 import {CameraView} from './CameraView';
 import {TopNavigationBar} from './map/TopNavigationBar';
@@ -309,16 +310,17 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
     const handleMapClick = (latlng: { lat: number, lng: number }) => {
         if (mode === 'add_node') {
-            const newNode: GraphNode = {
+            const newNode = {
                 id: -(Date.now() % 1000000000),
+                _clientId: -(Date.now() % 1000000000),
                 name: {en: `Node ${data.nodes.length + 1}`, kn: '', hi: ''},
                 lat: latlng.lat,
                 lng: latlng.lng,
                 status: 'active',
                 is_paid: false,
-                category_id: "1",
-                category: {
-                    id: "1",
+                category_id: data.categories[0]?.id || 1,
+                category: data.categories[0] || {
+                    id: 1,
                     code: 'poi',
                     base_type: 'poi',
                     name: {en: 'POI', kn: '', hi: ''},
@@ -326,12 +328,32 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     color_theme: 'cyan',
                     synonyms: {en: [], kn: [], hi: []}
                 }
-            };
+            } as GraphNode & { _clientId: number };
             setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
             setMode('view');
         } else if (mode === 'add_edge') {
             if (!edgeStartNode) {
-                toast.error('First click a starting node to draw an edge');
+                const newNode = {
+                    id: -(Date.now() % 1000000000),
+                    _clientId: -(Date.now() % 1000000000),
+                    name: {en: `Track ${data.nodes.length + 1}`, kn: '', hi: ''},
+                    lat: latlng.lat,
+                    lng: latlng.lng,
+                    status: 'active',
+                    is_paid: false,
+                    category_id: 8,
+                    category: data.categories.find(c => c.id === 8) || {
+                        id: 8,
+                        code: 'intersection_default',
+                        base_type: 'intersection',
+                        name: {en: 'Intersection', kn: '', hi: ''},
+                        icon_key: 'Crosshair',
+                        color_theme: 'slate',
+                        synonyms: {en: [], kn: [], hi: []}
+                    }
+                } as GraphNode & { _clientId: number };
+                setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
+                setEdgeStartNode(newNode);
                 return;
             }
             setEdgeGeometry(prev => [...prev, [latlng.lng, latlng.lat]]);
@@ -346,6 +368,60 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             setEdgeStartNode(null);
             setEdgeGeometry([]);
         }
+    };
+
+    const finishPencilTrack = () => {
+        if (!edgeStartNode || edgeGeometry.length === 0) return;
+
+        const lastPt = edgeGeometry[edgeGeometry.length - 1];
+        const newGeom = edgeGeometry.slice(0, -1);
+        
+        const endNode = {
+            id: -(Date.now() % 1000000000) - 1,
+            _clientId: -(Date.now() % 1000000000) - 1,
+            name: {en: `Track ${data.nodes.length + 2}`, kn: '', hi: ''},
+            lat: lastPt[1],
+            lng: lastPt[0],
+            status: 'active',
+            is_paid: false,
+            category_id: 8,
+            category: data.categories.find(c => c.id === 8) || {
+                id: 8,
+                code: 'intersection_default',
+                base_type: 'intersection',
+                name: {en: 'Intersection', kn: '', hi: ''},
+                icon_key: 'Crosshair',
+                color_theme: 'slate',
+                synonyms: {en: [], kn: [], hi: []}
+            }
+        } as GraphNode & { _clientId: number };
+
+        let totalDist = 0;
+        let prevPt = [edgeStartNode.lng, edgeStartNode.lat];
+        for (const pt of newGeom) {
+            totalDist += distanceInMeters(prevPt[1], prevPt[0], pt[1], pt[0]);
+            prevPt = pt;
+        }
+        totalDist += distanceInMeters(prevPt[1], prevPt[0], endNode.lat, endNode.lng);
+        
+        const currentStartNode = data.nodes.find(n => n.id === edgeStartNode.id || (n as any)._clientId === edgeStartNode.id) || edgeStartNode;
+        const newEdge: GraphEdge = {
+            from: currentStartNode.id, 
+            to: endNode.id, 
+            distance_m: Math.round(totalDist),
+            geometry: newGeom.length > 0 ? newGeom : undefined
+        };
+
+        setData(prev => ({
+            ...prev, 
+            nodes: [...prev.nodes, endNode],
+            edges: [...prev.edges, newEdge]
+        }));
+        
+        toast.success(`Track created (${Math.round(totalDist)}m)`);
+        setEdgeStartNode(null);
+        setEdgeGeometry([]);
+        setMode('view');
     };
 
     const handleAddEdgeModeClick = (node: GraphNode) => {
@@ -368,8 +444,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 }
                 totalDist += distanceInMeters(prevPt[1], prevPt[0], node.lat, node.lng);
                 
+                const currentStartNode = data.nodes.find(n => n.id === edgeStartNode.id || (n as any)._clientId === edgeStartNode.id) || edgeStartNode;
                 const newEdge: GraphEdge = {
-                    from: edgeStartNode.id, 
+                    from: currentStartNode.id, 
                     to: node.id, 
                     distance_m: Math.round(totalDist),
                     geometry: edgeGeometry.length > 0 ? edgeGeometry : undefined
@@ -380,8 +457,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 toast.error('Edge already exists between these nodes');
             }
         }
-        setEdgeStartNode(node);
+        setEdgeStartNode(null);
         setEdgeGeometry([]);
+        setMode('view');
     };
 
     const handleTestRouteModeClick = (node: GraphNode) => {
@@ -553,9 +631,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
             if (nodes.length === 0) return [];
             
-            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
-            const mappedSponsors = sponsorIds.length > 0 
-                ? sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)).filter(Boolean)
+            const activeSponsors = (data.sponsors || []).filter(s => s.zone_ids?.includes(zone.id));
+            const mappedSponsors = activeSponsors.length > 0 
+                ? activeSponsors
                 : [undefined];
                 
             return nodes.flatMap(node => {
@@ -717,9 +795,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         });
     }, [sponsorMarkerData, layers.filledSponsors, layers.openSponsors, showSponsorLogos]);
 
-    const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
-        type: 'FeatureCollection',
-        features: data.edges.map(edge => {
+    const edgesGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+        const features = data.edges.map(edge => {
             const start = data.nodes.find(n => n.id === edge.from);
             const end = data.nodes.find(n => n.id === edge.to);
             if (!start || !end) return null;
@@ -730,9 +807,19 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 properties: {...edge, isSelected},
                 geometry: {type: 'LineString', coordinates: coords}
             };
-        }).filter(Boolean) as GeoJSON.Feature[]
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [data.edges, data.nodes, selectedEdge]);
+        }).filter(Boolean) as GeoJSON.Feature[];
+
+        if (mode === 'add_edge' && edgeStartNode && edgeGeometry.length > 0) {
+            const coords = [[edgeStartNode.lng, edgeStartNode.lat], ...edgeGeometry];
+            features.push({
+                type: 'Feature',
+                properties: { isSelected: true, isTemp: true },
+                geometry: { type: 'LineString', coordinates: coords }
+            });
+        }
+
+        return { type: 'FeatureCollection', features };
+    }, [data.edges, data.nodes, selectedEdge, mode, edgeStartNode, edgeGeometry]);
 
     const testRouteGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
         const features: GeoJSON.Feature[] = [];
@@ -773,13 +860,12 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const filledSponsorsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
         features: (data.sponsorZones || []).filter(z => {
-            const sponsorIds = z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : []);
-            const sponsors = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id));
+            const sponsors = (data.sponsors || []).filter(s => s.zone_ids?.includes(z.id));
             return sponsors.some(sp => isSponsorFilled(sp));
         }).flatMap(zone => {
             const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
-            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
-            const names = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)?.name).filter(Boolean);
+            const sponsors = (data.sponsors || []).filter(s => s.zone_ids?.includes(zone.id));
+            const names = sponsors.map(s => s.name).filter(Boolean);
             const title = names.length > 0 ? names.join(', ') : zone.name || 'Unnamed';
             
             return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
@@ -793,14 +879,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const openSponsorsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => ({
         type: 'FeatureCollection',
         features: (data.sponsorZones || []).filter(z => {
-            const sponsorIds = z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : []);
-            if (sponsorIds.length === 0) return true;
-            const sponsors = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id));
+            const sponsors = (data.sponsors || []).filter(s => s.zone_ids?.includes(z.id));
+            if (sponsors.length === 0) return true;
             return !sponsors.some(sp => isSponsorFilled(sp));
         }).flatMap(zone => {
             const nodes = data.nodes.filter(n => zone.poi_ids?.includes(n.id) || n.id === zone.poi_id);
-            const sponsorIds = zone.sponsor_ids || (zone.sponsor_id ? [zone.sponsor_id] : []);
-            const names = sponsorIds.map(id => (data.sponsors || []).find(s => s.id === id)?.name).filter(Boolean);
+            const sponsors = (data.sponsors || []).filter(s => s.zone_ids?.includes(zone.id));
+            const names = sponsors.map(s => s.name).filter(Boolean);
             const title = names.length > 0 ? names.join(', ') : zone.name || 'Unnamed';
 
             return nodes.map(node => turf.circle([node.lng, node.lat], zone.radius_m, {
@@ -965,7 +1050,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     {nodeMarkers}
                     {sponsorMarkers}
 
-                    {showRoutes && layers.paths && data.edges.length > 0 && (
+                    {showRoutes && layers.paths && (data.edges.length > 0 || (mode === 'add_edge' && edgeGeometry.length > 0)) && (
                         <Source id="edges-source" type="geojson" data={edgesGeoJSON}>
                             <Layer id="edges-glow" type="line" paint={EDGES_GLOW_PAINT} layout={ROUND_LAYOUT}/>
                             <Layer id="edges-core" type="line"
@@ -1117,6 +1202,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 testRoutePath={testRoutePath}
                 setTestRoutePath={setTestRoutePath}
                 availableTags={availableTags}
+                categories={data.categories || []}
                 selectedTrace={selectedTrace}
                 setSelectedTrace={setSelectedTrace}
                 deleteTrace={(index) => {
@@ -1131,6 +1217,30 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     setSelectedTrace(null);
                 }}
             />
+
+            {mode === 'add_edge' && (
+                <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+                    {!edgeStartNode && (
+                        <SpecialToast
+                            message="Tap to start"
+                        />
+                    )}
+                    {edgeStartNode && edgeGeometry.length === 0 && (
+                        <SpecialToast
+                            message="Draw or connect"
+                        />
+                    )}
+                    {edgeStartNode && edgeGeometry.length > 0 && (
+                        <div onClick={finishPencilTrack} className="cursor-pointer">
+                            <SpecialToast
+                                message="Tap to end"
+                                icon={<Check className="w-4 h-4" />}
+                                className="pointer-events-auto cursor-pointer hover:bg-emerald-400 transition-colors shadow-[0_0_30px_rgba(16,185,129,0.9)]"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
             <MapBottomBar
                 mode={mode}
@@ -1147,6 +1257,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 data={data}
                 setData={setData}
                 timeUntilSync={timeUntilSync}
+                venueKey={currentVenue.key}
             />
 
             {testingStamp && (

@@ -81,14 +81,11 @@ export function useGraph(currentVenue: Venue | null) {
             // Old format detected
             const oldSponsors = migrated.sponsors;
             migrated.sponsorZones = oldSponsors.map((s: any) => {
-                const isFilled = s.logo_asset || s.creative_asset || s.tagline;
-                const spId = isFilled ? `sp_${s.id}` : undefined;
                 return {
                     id: s.id,
                     name: s.name,
                     poi_ids: [s.poi_id],
-                    radius_m: s.radius_m,
-                    sponsor_ids: spId ? [spId] : []
+                    radius_m: s.radius_m
                 };
             });
             migrated.sponsors = oldSponsors.filter((s: any) => s.logo_asset || s.creative_asset || s.tagline).map((s: any) => ({
@@ -98,14 +95,14 @@ export function useGraph(currentVenue: Venue | null) {
                 creative_asset: s.creative_asset,
                 tagline: s.tagline,
                 cta_link: '',
-                is_default_ad: false
+                is_default_ad: false,
+                zone_ids: [s.id]
             }));
         } else {
-            // Ensure poi_ids and sponsor_ids exist on existing zones
+            // Fix: Just ensure poi_ids exists, drop sponsor_ids completely
             migrated.sponsorZones = migrated.sponsorZones.map((z: any) => ({
                 ...z,
-                poi_ids: z.poi_ids || (z.poi_id ? [z.poi_id] : []),
-                sponsor_ids: z.sponsor_ids || (z.sponsor_id ? [z.sponsor_id] : [])
+                poi_ids: z.poi_ids || (z.poi_id ? [z.poi_id] : [])
             }));
         }
         return migrated;
@@ -115,19 +112,37 @@ export function useGraph(currentVenue: Venue | null) {
         if (!currentVenue) return;
         setLoadingGraph(true);
 
-        let remoteData: GraphData | null = null;
+        let remoteData: GraphData = {nodes: [], edges: [], sponsorZones: [], sponsors: [], defaultAds: [], categories: [], events: []};
         let remoteTimestamp = 0;
 
-        const {data: blob, error} = await supabase.from('venue_content')
-            .select('data, updated_at')
-            .eq('venue_key', currentVenue.key)
-            .eq('content_type', 'graph')
-            .single();
+        // Fetch Relational Data
+        const [
+            { data: nodesData, error: nodesError },
+            { data: edgesData, error: edgesError },
+            { data: catsData, error: catsError },
+            { data: blob, error: blobError }
+        ] = await Promise.all([
+            supabase.from('nodes').select('*, category:node_categories(*)').eq('venue_key', currentVenue.key),
+            supabase.from('edges').select('*').eq('venue_key', currentVenue.key),
+            supabase.from('node_categories').select('*'),
+            supabase.from('venue_content').select('data, updated_at').eq('venue_key', currentVenue.key).eq('content_type', 'graph').single()
+        ]);
 
-        if (error && error.code !== 'PGRST116') {
-            toast.error('Failed to load graph: ' + error.message);
+        if (nodesError) toast.error('Failed to load nodes: ' + nodesError.message);
+        if (edgesError) toast.error('Failed to load edges: ' + edgesError.message);
+        if (catsError) toast.error('Failed to load categories: ' + catsError.message);
+
+        remoteData.nodes = nodesData || [];
+        remoteData.edges = (edgesData || []).map(e => ({...e, from: e.from_node_id, to: e.to_node_id}));
+        remoteData.categories = catsData || [];
+
+        if (blobError && blobError.code !== 'PGRST116') {
+            toast.error('Failed to load legacy graph data: ' + blobError.message);
         } else if (blob?.data) {
-            remoteData = migrateGraphData(blob.data);
+            const migratedLegacy = migrateGraphData(blob.data);
+            remoteData.sponsorZones = migratedLegacy.sponsorZones || [];
+            remoteData.sponsors = migratedLegacy.sponsors || [];
+            remoteData.defaultAds = migratedLegacy.defaultAds || [];
             remoteTimestamp = new Date(blob.updated_at).getTime();
         }
 
@@ -140,6 +155,9 @@ export function useGraph(currentVenue: Venue | null) {
                 const parsed = JSON.parse(localRaw);
                 if (parsed.data && parsed.timestamp) {
                     localData = migrateGraphData(parsed.data);
+                    // Ensure we don't clobber the newly fetched relational nodes with stale local JSON blob nodes 
+                    // unless they're actually newer. But since relational is the source of truth, it's safer to always use remote nodes.
+                    // Actually, let's keep the existing logic that prefers localData if localTimestamp > remoteTimestamp
                     localTimestamp = parsed.timestamp;
                 }
             } catch (e) {
@@ -320,12 +338,26 @@ export function useGraph(currentVenue: Venue | null) {
             for (const tempNode of newNodes) {
                 const { 
                     id: fakeId, category_id, lat, lng, name, description, 
-                    synonyms, image_url, status, is_paid, event_id 
+                    synonyms, image_url, status, is_paid, event_id,
+                    has_stamp, active_from, active_to, extra_info, tags 
                 } = tempNode as any;
                 
                 const insertPayload = {
-                    category_id, lat, lng, name, description, synonyms, 
-                    image_url, status, is_paid, event_id,
+                    category_id, 
+                    lat, 
+                    lng, 
+                    name, 
+                    description: description ?? null, 
+                    synonyms: synonyms ?? {}, 
+                    image_url: image_url ?? null, 
+                    status: status ?? 'active', 
+                    is_paid: is_paid ?? false, 
+                    event_id: event_id ?? null,
+                    has_stamp: has_stamp ?? false, 
+                    active_from: active_from ?? null, 
+                    active_to: active_to ?? null, 
+                    extra_info: extra_info ?? null, 
+                    tags: tags ?? [],
                     venue_key: currentVenue.key
                 };
 
@@ -346,12 +378,27 @@ export function useGraph(currentVenue: Venue | null) {
                     .upsert(existingNodes.map((n: any) => {
                         const { 
                             id, category_id, lat, lng, name, description, 
-                            synonyms, image_url, status, is_paid, event_id 
+                            synonyms, image_url, status, is_paid, event_id,
+                            has_stamp, active_from, active_to, extra_info, tags 
                         } = n;
                         
                         return {
-                            id, category_id, lat, lng, name, description, synonyms, 
-                            image_url, status, is_paid, event_id,
+                            id, 
+                            category_id, 
+                            lat, 
+                            lng, 
+                            name, 
+                            description: description ?? null, 
+                            synonyms: synonyms ?? {}, 
+                            image_url: image_url ?? null, 
+                            status: status ?? 'active', 
+                            is_paid: is_paid ?? false, 
+                            event_id: event_id ?? null,
+                            has_stamp: has_stamp ?? false, 
+                            active_from: active_from ?? null, 
+                            active_to: active_to ?? null, 
+                            extra_info: extra_info ?? null, 
+                            tags: tags ?? [],
                             venue_key: currentVenue.key
                         };
                     }));
@@ -359,7 +406,10 @@ export function useGraph(currentVenue: Venue | null) {
             }
 
             // Step 4: Fix and Save Edges
-            const edgesToSave = data.edges.map(edge => {
+            const newEdgesToSave: any[] = [];
+            const existingEdgesToUpdate: any[] = [];
+            
+            data.edges.forEach(edge => {
                 const actualFromId = idMapping.get(edge.from) || edge.from;
                 const actualToId = idMapping.get(edge.to) || edge.to;
                 
@@ -368,27 +418,38 @@ export function useGraph(currentVenue: Venue | null) {
                     from_node_id: actualFromId,
                     to_node_id: actualToId,
                     distance_m: edge.distance_m || (edge as any).weight || 0,
-                    geometry: edge.geometry,
+                    geometry: edge.geometry || null, // MUST use null, otherwise JSON.stringify drops undefined keys!
                     is_hidden: edge.is_hidden ?? false
                 };
+                
                 if (edge.id) {
                     edgePayload.id = edge.id;
+                    existingEdgesToUpdate.push(edgePayload);
+                } else {
+                    newEdgesToSave.push(edgePayload);
                 }
-                return edgePayload;
             });
 
             const edgeIdMapping = new Map<string, string>();
+            const allSavedEdges: any[] = [];
 
-            if (edgesToSave.length > 0) {
-                const { data: savedEdges, error: edgeError } = await supabase.from('edges').upsert(edgesToSave).select('id, from_node_id, to_node_id');
+            if (existingEdgesToUpdate.length > 0) {
+                const { data: savedEdges, error: edgeError } = await supabase.from('edges').upsert(existingEdgesToUpdate).select('id, from_node_id, to_node_id');
                 if (edgeError) throw edgeError;
-                
-                if (savedEdges) {
-                    savedEdges.forEach(dbEdge => {
-                        const key = `${dbEdge.from_node_id}-${dbEdge.to_node_id}`;
-                        edgeIdMapping.set(key, dbEdge.id);
-                    });
-                }
+                if (savedEdges) allSavedEdges.push(...savedEdges);
+            }
+
+            if (newEdgesToSave.length > 0) {
+                const { data: savedEdges, error: edgeError } = await supabase.from('edges').insert(newEdgesToSave).select('id, from_node_id, to_node_id');
+                if (edgeError) throw edgeError;
+                if (savedEdges) allSavedEdges.push(...savedEdges);
+            }
+            
+            if (allSavedEdges.length > 0) {
+                allSavedEdges.forEach(dbEdge => {
+                    const key = `${dbEdge.from_node_id}-${dbEdge.to_node_id}`;
+                    edgeIdMapping.set(key, dbEdge.id);
+                });
             }
 
             // Step 6: Save Legacy Data (Sponsors) to venue_content

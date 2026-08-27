@@ -271,7 +271,7 @@ it; no app rebuild required.
       Instagram/Facebook), the UI must hard-block. It cannot automatically force a redirect; instead, it must visually
       instruct the user exactly *how* to exit (e.g., "Tap the 3 dots in the top right and select 'Open in System
       Browser'"). This guarantees we do not lose `localStorage` session state.
-    - **User Identity & The Leaderboard (3 Tabs - Online):** On first load, the app generates a persistent, hidden
+    - **User Identity:** On first load, the app generates a persistent, hidden
       `device_uuid` in `localStorage`. All backend records and analytics tie strictly to this UUID.
     - **Anti-Cheat Mechanics:** To claim a stamp, the user must have their AR camera active, and the 3D stamp asset must
       be visibly rendered on their screen (proving they are physically at the correct GPS coordinates and pointing the
