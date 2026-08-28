@@ -24,9 +24,10 @@ type MapViewProps = Readonly<{
     location: LocationData | null;
     isRadar?: boolean;
     mode?: 'map' | 'satellite' | 'ar';
+    onSelectNode?: (node: GraphNode) => void;
 }>;
 
-export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map'}: MapViewProps) {
+export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map', onSelectNode}: MapViewProps) {
     const collectedStampIds = Gamification.getCollectedStamps();
     const [activePopup, setActivePopup] = useState<number | null>(null);
     const mapRef = useRef<any>(null);
@@ -257,11 +258,19 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                             <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => { if (!isRadar) setActivePopup(activePopup === Number(node.id) ? null : node.id); }}
+                                onClick={() => { 
+                                    if (!isRadar) {
+                                        setActivePopup(activePopup === Number(node.id) ? null : node.id); 
+                                        if (onSelectNode) onSelectNode(node);
+                                    }
+                                }}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault();
-                                        if (!isRadar) setActivePopup(activePopup === Number(node.id) ? null : node.id);
+                                        if (!isRadar) {
+                                            setActivePopup(activePopup === Number(node.id) ? null : node.id);
+                                            if (onSelectNode) onSelectNode(node);
+                                        }
                                     }
                                 }}
                             >
@@ -282,11 +291,19 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                         <div
                             role="button"
                             tabIndex={0}
-                            onClick={() => { if (!isRadar) setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id); }}
+                            onClick={() => { 
+                                if (!isRadar) {
+                                    setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
+                                    if (onSelectNode) onSelectNode(stamp as unknown as GraphNode);
+                                }
+                            }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
-                                    if (!isRadar) setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
+                                    if (!isRadar) {
+                                        setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
+                                        if (onSelectNode) onSelectNode(stamp as unknown as GraphNode);
+                                    }
                                 }
                             }}
                         >
@@ -313,7 +330,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
             {/* Recenter Button */}
             {!isRadar && (
                 <div
-                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto">
+                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto hide-on-permission">
                     <button
                         className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                         onClick={() => {

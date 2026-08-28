@@ -46,25 +46,25 @@ export function MapBottomBar({
 
             
 
-            <SpecialToast
+            <ProducerToast
                 visible={mode === 'test_route'}
                 message={edgeStartNode ? 'Select to' : 'Select from'}
                 icon={<ArrowRight className="w-4 h-4"/>}
             />
 
-            <SpecialToast
+            <ProducerToast
                 visible={mode === 'add_node'}
                 message="Tap to place"
                 icon={<MapPin className="w-4 h-4"/>}
             />
 
-            <SpecialToast
+            <ProducerToast
                 visible={mode === 'erase'}
                 message="Tap track node or path to erase"
                 icon={<Eraser className="w-4 h-4"/>}
             />
 
-            <SpecialToast
+            <ProducerToast
                 visible={mode === 'auto_link'}
                 message="Click Start & End to link, or draw lasso"
                 icon={<Link className="w-4 h-4"/>}

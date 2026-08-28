@@ -239,7 +239,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </div>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
-                            <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode}/>
+                            <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode} onSelectNode={setSelectedPOI}/>
                         </div>
                     )}
                 </div>
@@ -329,7 +329,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                             </p>
                                         </div>
                                     </div>
-                                    <Select value={i18n.language} onValueChange={(val) => i18n.changeLanguage(val)}>
+                                    <Select value={i18n.language} onValueChange={(val) => { if (val) i18n.changeLanguage(val) }}>
                                         <SelectTrigger
                                             className="w-[120px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0">
                                             <SelectValue placeholder="Language"/>
@@ -475,7 +475,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     location={location}
                     onStartNavigation={handleRoute}
                     onReportBug={(issueType, message) => {
-                        setReportModalConfig({show: true, issueType, message, fixed: true});
+                        setReportModalConfig({show: true, issueType: issueType || undefined, message: message || undefined, fixed: true});
                         setIsNavSheetOpen(false);
                     }}
                 />
@@ -542,6 +542,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 }
                             }}
                             className="w-32 h-32 rounded-full border-[3px] border-white/30 shadow-[0_12px_40px_rgba(0,0,0,0.6)] overflow-hidden relative bg-black/20 backdrop-blur-md transform-gpu transition-all animate-in zoom-in-95 duration-300 cursor-pointer group"
+                            style={{ WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
                         >
                             <div
                                 className="absolute inset-0 origin-center opacity-90 pointer-events-none group-hover:scale-110 transition-transform duration-500">
@@ -573,7 +574,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     <ReportModal
                         onClose={() => setReportModalConfig({show: false})}
                         defaultIssueType={reportModalConfig.issueType}
-                        defaultMessage={reportModalConfig.message}
+                        defaultMessage={reportModalConfig.message || undefined}
                         fixedIssueType={reportModalConfig.fixed}
                     />
                 )}

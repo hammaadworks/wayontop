@@ -1508,18 +1508,18 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             {mode === 'add_edge' && (
                 <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
                     {!edgeStartNode && (
-                        <SpecialToast
+                        <ProducerToast
                             message="Tap to start"
                         />
                     )}
                     {edgeStartNode && edgeGeometry.length === 0 && (
-                        <SpecialToast
+                        <ProducerToast
                             message="Draw or connect"
                         />
                     )}
                     {edgeStartNode && edgeGeometry.length > 0 && (
                         <div onClick={finishPencilTrack} className="cursor-pointer">
-                            <SpecialToast
+                            <ProducerToast
                                 message="Tap to end"
                                 icon={<Check className="w-4 h-4" />}
                                 className="pointer-events-auto cursor-pointer hover:bg-emerald-400 transition-colors shadow-[0_0_30px_rgba(16,185,129,0.9)]"
