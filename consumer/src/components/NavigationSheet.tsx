@@ -10,6 +10,7 @@ import { calculateRoute } from '@wayontop/ui/lib/routingClient';
 import { distanceInMeters } from '@wayontop/ui/lib/routing';
 import { Gamification } from '../lib/gamification';
 import { NodeSearchResultItem } from '@wayontop/ui/components/NodeSearchResultItem';
+import { getNodeName } from '@wayontop/ui/lib/utils';
 
 interface NavigationSheetProps {
     isOpen: boolean;
@@ -30,8 +31,8 @@ export function NavigationSheet({
                                     onStartNavigation,
                                     onReportBug
                                 }: NavigationSheetProps) {
-    const {t} = useTranslation();
-    const getTitle = (node: GraphNode | null) => node ? (node.name?.en || node.category?.name?.en || '') : '';
+    const {t, i18n} = useTranslation();
+    const getTitle = (node: GraphNode | null) => node ? (getNodeName(node, i18n.language) || '') : '';
     const [fromQuery, setFromQuery] = useState('Your Location');
     const [toQuery, setToQuery] = useState(getTitle(initialToNode));
     const [activeInput, setActiveInput] = useState<'from' | 'to' | null>(null);
@@ -68,7 +69,7 @@ export function NavigationSheet({
                 Object.values(n.synonyms).forEach(arr => searchAliases.push(...arr));
             }
 
-            const primaryName = n.name?.en || n.category?.name?.en || '';
+            const primaryName = getNodeName(n, i18n.language) || '';
 
             return {
                 ...n,
@@ -114,7 +115,7 @@ export function NavigationSheet({
                 }
                 
                 if (nearestMajor) {
-                    anchorName = nearestMajor.name?.en || nearestMajor.searchName;
+                    anchorName = getNodeName(nearestMajor, i18n.language) || nearestMajor.searchName;
                 }
             }
             return {
@@ -128,11 +129,23 @@ export function NavigationSheet({
         if (activeInput === 'from') {
             setFromNode(node);
             setFromQuery(node === 'current' ? 'Your Location' : node.searchName);
-            setActiveInput('to');
+            
+            // Only jump to destination if it's not filled yet
+            if (!toNode) {
+                setActiveInput('to');
+            } else {
+                setActiveInput(null);
+            }
         } else if (activeInput === 'to') {
             setToNode(node);
             setToQuery(node.searchName);
-            setActiveInput(null);
+            
+            // Jump to start if it's missing, otherwise clear focus
+            if (!fromNode) {
+                setActiveInput('from');
+            } else {
+                setActiveInput(null);
+            }
         }
     };
 
@@ -188,7 +201,7 @@ export function NavigationSheet({
             }
 
             // Start node is handled dynamically in Web Worker via findNearestEdgePoint
-            startNode = { id: -999, lat: location.lat, lng: location.lng, name: {en: "Your Location", kn: "", hi: ""}, category_id: 0, status: 'active', is_paid: false };
+            startNode = { id: -999, lat: location.lat, lng: location.lng, name: {en: "Your Location", kn: "", es: ""}, category_id: 0, status: 'active', is_paid: false };
         } else if (fromNode) {
             startNode = fromNode as GraphNode;
         }
@@ -346,6 +359,7 @@ export function NavigationSheet({
                                     <NodeSearchResultItem
                                         key={poi.id}
                                         poi={poi}
+                                        language={i18n.language}
                                         onClick={() => {
                                             if (wasKeyboardOpenRef.current) {
                                                 wasKeyboardOpenRef.current = false;

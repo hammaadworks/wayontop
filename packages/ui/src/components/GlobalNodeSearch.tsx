@@ -8,6 +8,7 @@ import {getPOIStyle} from '../lib/poiStyles';
 import { NodeSearchResultItem } from './NodeSearchResultItem';
 import type {GraphData, GraphNode} from '../lib/types';
 import {useTranslation} from 'react-i18next';
+import { getNodeName, getNodeCategoryName } from '../lib/utils';
 
 import {Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerClose} from './ui/drawer';
 import type {MapEvent} from '../lib/types';
@@ -28,6 +29,7 @@ interface GlobalNodeSearchProps {
     onSelectNode: (node: GraphNode) => void;
     onClose?: () => void;
     collectedStampIds?: number[];
+    language?: string;
     onSearchEvent?: (query: string) => void;
     initialQuery?: string;
 }
@@ -38,6 +40,7 @@ export function GlobalNodeSearch({
                                      onSelectNode,
                                      onClose,
                                      collectedStampIds = [],
+                                     language = 'en',
                                      onSearchEvent,
                                      initialQuery = ''
                                  }: Readonly<GlobalNodeSearchProps>) {
@@ -63,7 +66,7 @@ export function GlobalNodeSearch({
         
         graph.nodes.forEach(n => {
             if (!n.category || n.category.base_type === 'intersection') return;
-            const label = n.category.name?.en;
+            const label = getNodeCategoryName(n.category, language);
             if (!label) return;
             if (!counts.has(label)) {
                 counts.set(label, { label, count: 0, category: n.category });
@@ -74,7 +77,7 @@ export function GlobalNodeSearch({
         const sorted = Array.from(counts.values()).sort((a, b) => b.count - a.count);
         // Exclude stamp from top generic ones (we might add it explicitly if wanted, but here let's just show top 5 regular ones)
         return sorted.filter(f => f.category.base_type !== 'stamp').slice(0, 5);
-    }, [graph]);
+    }, [graph, language]);
 
     const pois = useMemo(() => {
         if (!graph) return [];
@@ -89,7 +92,7 @@ export function GlobalNodeSearch({
                 Object.values(n.synonyms).forEach(arr => searchAliases.push(...arr));
             }
 
-            let primaryName = n.name?.en || n.category?.name?.en || '';
+            let primaryName = getNodeName(n, language);
             
             // Apply Fog of War for stamps
             if (n.category?.base_type === 'stamp' && !collectedStampIds.includes(n.id)) {
@@ -103,7 +106,7 @@ export function GlobalNodeSearch({
                 searchTags: searchAliases
             };
         });
-    }, [graph, collectedStampIds]);
+    }, [graph, collectedStampIds, language]);
 
     const fuse = useMemo(() => new Fuse(pois, {
         keys: ['searchName', 'searchTags'],
@@ -222,6 +225,7 @@ export function GlobalNodeSearch({
                                 isSelectedEvent={false}
                                 onSelectEvent={setSelectedEvent}
                                 event={poi.event_id ? graph?.events.find(e => e.id === poi.event_id) : undefined}
+                                language={language}
                             />
                         );
                     })}

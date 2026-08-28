@@ -11,6 +11,7 @@ import {Button} from '@wayontop/ui/components/ui/button';
 import {supabase, fetchAllPages} from '@wayontop/ui/lib/supabase';
 import {getNextRouteCoordinate, getRouteCoordinateSegments, pointToLineSegment} from '@wayontop/ui/lib/routing';
 import { calculateRoute } from '@wayontop/ui/lib/routingClient';
+import { getNodeName, getNodeDescription } from '@wayontop/ui/lib/utils';
 import {useLocation} from './hooks/useLocation';
 import {PermissionGate} from '@wayontop/ui/components/PermissionGate';
 import {InAppBrowserBlocker} from './components/InAppBrowserBlocker';
@@ -106,7 +107,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const handleRoute = (route: { path: GraphNode[]; totalDistance: number }, toNode: GraphNode) => {
         Analytics.logEvent('route_started', { 
             target_node_id: toNode.id, 
-            target_node_name: toNode.name?.en || toNode.category?.name?.en,
+            target_node_name: getNodeName(toNode, i18n.language),
             distance: route.totalDistance 
         });
         setActiveRoute(route);
@@ -117,7 +118,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const handlePOISelect = (poi: GraphNode) => {
         Analytics.logEvent('poi_viewed', { 
             node_id: poi.id, 
-            node_name: poi.name?.en || poi.category?.name?.en 
+            node_name: getNodeName(poi, i18n.language) 
         });
         setSelectedPOI(poi);
     };
@@ -297,14 +298,14 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 <div
                                     className="flex items-center bg-black/40 rounded-[20px] p-0.5 border border-white/5 shadow-inner w-full h-10">
                                     <button onClick={() => setMode('satellite')}
-                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('nav_sat')}
                                     </button>
                                     <button onClick={() => setMode('ar')}
                                             className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
-                                            <Sparkles className="w-3 h-3" /> AR
+                                            <Sparkles className="w-3 h-3" /> {t('nav_ar')}
                                     </button>
                                     <button onClick={() => setMode('map')}
-                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
+                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('nav_map')}
                                     </button>
                                 </div>
                             </div>
@@ -396,7 +397,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 <p className="text-[12px] font-bold mt-1.5 text-emerald-300 uppercase tracking-widest">Head</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-black text-3xl tracking-tight leading-none drop-shadow-sm truncate">{t(targetNode.name?.en || targetNode.category?.name?.en || '')}</h3>
+                                <h3 className="text-white font-black text-3xl tracking-tight leading-none drop-shadow-sm truncate">{t(getNodeName(targetNode, i18n.language))}</h3>
                                 <p className="text-emerald-100/80 text-[15px] font-semibold mt-2 tracking-wide truncate">Lalbagh Botanical Garden</p>
                             </div>
                         </div>
@@ -408,11 +409,11 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     <>
                         {/* Stamps Pill (Bottom Left) */}
                         <div
-                            className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto hide-on-permission"
+                            className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-1/2 -translate-x-1/2 w-full max-w-[420px] flex justify-start px-4 z-10 pointer-events-none hide-on-permission"
                             data-html2canvas-ignore={isCapturing}>
                             <button
                                 onClick={() => setIsStampModalOpen(true)}
-                                className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90 hover:bg-[#1C1C1E] active:scale-95 transition-all cursor-pointer">
+                                className="pointer-events-auto bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90 hover:bg-[#1C1C1E] active:scale-95 transition-all cursor-pointer">
                                 <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
                                     <Sparkles
                                         className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
@@ -456,7 +457,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                     <h2 className="text-emerald-400 font-black text-4xl leading-none tracking-tighter drop-shadow-sm">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}</h2>
                                     <span className="text-xl font-bold text-emerald-400/80 mb-0.5 tracking-tight">min</span>
                                 </div>
-                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {t(targetNode.name?.en || targetNode.category?.name?.en || '')}</p>
+                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {t(getNodeName(targetNode, i18n.language))}</p>
                             </div>
                             <Button 
                                 onClick={cancelRoute}
@@ -678,11 +679,11 @@ export default function App() {
                         .filter(n => n.category?.base_type === 'stamp')
                         .map(n => ({
                             id: n.id,
-                            name: n.name?.en || n.category?.name?.en || 'Mystery Stamp',
+                            name: getNodeName(n, i18n.language) || 'Mystery Stamp',
                             lat: n.lat,
                             lng: n.lng,
                             rarity: 'common' as const,
-                            description: n.description?.en || n.category?.description?.en || 'You found a stamp!',
+                            description: getNodeDescription(n, i18n.language) || 'You found a stamp!',
                             poi_link: null,
                             image_url: n.image_url || n.category?.image_url
                         }));
@@ -751,11 +752,11 @@ export default function App() {
                     .filter(n => n.category?.base_type === 'stamp')
                     .map(n => ({
                         id: n.id,
-                        name: n.name?.en || n.category?.name?.en || 'Mystery Stamp',
+                        name: getNodeName(n, i18n.language) || 'Mystery Stamp',
                         lat: n.lat,
                         lng: n.lng,
                         rarity: 'common',
-                        description: n.description?.en || n.category?.description?.en || 'You found a stamp!',
+                        description: getNodeDescription(n, i18n.language) || 'You found a stamp!',
                         poi_link: null,
                         image_url: n.image_url || n.category?.image_url
                     }));

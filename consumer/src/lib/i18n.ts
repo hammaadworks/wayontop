@@ -42,7 +42,14 @@ const resources = {
             "claimed": "Claimed!",
             "share_triumph": "Share Triumph",
             "continue_journey": "Continue Journey",
-            "navigate_here": "Navigate Here"
+            "navigate_here": "Navigate Here",
+            "run": "Run",
+            "contact": "Contact",
+            "explore": "Explore",
+            "settings": "Settings",
+            "nav_sat": "Sat",
+            "nav_ar": "AR",
+            "nav_map": "Map"
         }
     },
     kn: {
@@ -84,7 +91,14 @@ const resources = {
             "claimed": "ಪಡೆಯಲಾಗಿದೆ!",
             "share_triumph": "ಗೆಲುವನ್ನು ಹಂಚಿಕೊಳ್ಳಿ",
             "continue_journey": "ಪ್ರಯಾಣ ಮುಂದುವರಿಸಿ",
-            "navigate_here": "ಇಲ್ಲಿಗೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ"
+            "navigate_here": "ಇಲ್ಲಿಗೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ",
+            "run": "ಓಟ",
+            "contact": "ಸಂಪರ್ಕ",
+            "explore": "ಅನ್ವೇಷಿಸಿ",
+            "settings": "ಸೆಟ್ಟಿಂಗ್ಸ್",
+            "nav_sat": "ಸ್ಯಾಟ್",
+            "nav_ar": "ಏಆರ್",
+            "nav_map": "ನಕ್ಷೆ"
         }
     },
     es: {
@@ -98,7 +112,14 @@ const resources = {
             "remaining_distance": "{{distance}}m restantes",
             "ar_mode": "AR",
             "map_mode": "Mapa",
-            "claim": "Reclamar"
+            "claim": "Reclamar",
+            "run": "Correr",
+            "contact": "Contacto",
+            "explore": "Explorar",
+            "settings": "Ajustes",
+            "nav_sat": "Sat",
+            "nav_ar": "RA",
+            "nav_map": "Mapa"
         }
     }
 };

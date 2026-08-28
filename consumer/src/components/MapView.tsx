@@ -12,6 +12,8 @@ import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS, LALBAGH_GEOFENCE_RADIUS_METERS} from '@wayontop/ui/lib/constants';
 import {LocateFixed} from 'lucide-react';
+import {useTranslation} from 'react-i18next';
+import {getNodeName} from '@wayontop/ui/lib/utils';
 
 setWorkerUrl(workerUrl);
 
@@ -29,6 +31,7 @@ type MapViewProps = Readonly<{
 }>;
 
 export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map', onSelectNode, selectedNodeId}: MapViewProps) {
+    const { i18n } = useTranslation();
     const collectedStampIds = Gamification.getCollectedStamps();
     const [activePopup, setActivePopup] = useState<number | null>(null);
     const mapRef = useRef<any>(null);
@@ -293,7 +296,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                                     }
                                 }}
                             >
-                                <MapNodeMarker type={node.category?.base_type || 'poi'} category={node.category} name={node.name?.en || ''} isZoomedIn={showThisMarkerName}
+                                <MapNodeMarker type={node.category?.base_type || 'poi'} category={node.category} name={getNodeName(node, i18n.language) || ''} isZoomedIn={showThisMarkerName}
                                     isLabelVisible={visibleLabels.has(node.id)}
                                     isSelected={activePopup === Number(node.id)}
                                     isPaid={node.is_paid}
@@ -348,25 +351,25 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
 
             {/* Recenter Button */}
             {!isRadar && (
-                <div
-                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] right-4 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto hide-on-permission">
-                    <button
-                        className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                        onClick={() => {
-                            if (mapRef.current && location) {
-                                const dist = distanceInMeters(
-                                    location.lat,
-                                    location.lng,
-                                    LALBAGH_CENTER.lat,
-                                    LALBAGH_CENTER.lng
-                                );
+                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-1/2 -translate-x-1/2 w-full max-w-[420px] flex justify-end px-4 z-10 pointer-events-none hide-on-permission">
+                    <div className="flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full pointer-events-auto">
+                        <button
+                            className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                            onClick={() => {
+                                if (mapRef.current && location) {
+                                    const dist = distanceInMeters(
+                                        location.lat,
+                                        location.lng,
+                                        LALBAGH_CENTER.lat,
+                                        LALBAGH_CENTER.lng
+                                    );
 
-                                if (dist <= LALBAGH_GEOFENCE_RADIUS_METERS) {
-                                    mapRef.current.flyTo({
-                                        center: [location.lng, location.lat],
-                                        zoom: 18,
-                                        essential: true
-                                    });
+                                    if (dist <= LALBAGH_GEOFENCE_RADIUS_METERS) {
+                                        mapRef.current.flyTo({
+                                            center: [location.lng, location.lat],
+                                            zoom: 18,
+                                            essential: true
+                                        });
                                 } else {
                                     mapRef.current.flyTo({
                                         center: [location.lng, location.lat],
@@ -396,6 +399,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                     >
                         <LocateFixed className="w-6 h-6 drop-shadow-md"/>
                     </button>
+                    </div>
                 </div>
             )}
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { getPOIStyle } from '../lib/poiStyles';
 import { Badge } from './ui/badge';
+import { getNodeCategoryName } from '../lib/utils';
 
 interface NodeSearchResultItemProps {
     poi: any;
@@ -11,6 +12,7 @@ interface NodeSearchResultItemProps {
     isSelectedEvent?: boolean;
     onSelectEvent?: (event: any) => void;
     event?: any;
+    language?: string;
 }
 
 export function NodeSearchResultItem({
@@ -20,7 +22,8 @@ export function NodeSearchResultItem({
     t,
     isUndiscoveredStamp = false,
     onSelectEvent,
-    event
+    event,
+    language = 'en'
 }: Readonly<NodeSearchResultItemProps>) {
     const {icon: Icon, bgClass, textClass} = getPOIStyle(poi);
     
@@ -117,10 +120,10 @@ export function NodeSearchResultItem({
                             <span className="truncate">near {t(poi.anchorName)}</span>
                         </>
                     )}
-                    {!isUndiscoveredStamp && poi.category?.base_type !== 'stamp' && !poi.anchorName && poi.category?.name?.en && (
+                    {!isUndiscoveredStamp && poi.category?.base_type !== 'stamp' && !poi.anchorName && getNodeCategoryName(poi.category, language) && (
                         <>
                             <span className="text-white/20 shrink-0">•</span>
-                            <span className="truncate capitalize">{poi.category.name.en}</span>
+                            <span className="truncate capitalize">{getNodeCategoryName(poi.category, language)}</span>
                         </>
                     )}
                 </div>

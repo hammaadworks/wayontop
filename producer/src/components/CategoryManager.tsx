@@ -20,8 +20,8 @@ const DEFAULT_CATEGORY: Partial<NodeCategory> = {
     base_type: 'poi',
     icon_key: 'MapPin',
     color_theme: 'cyan',
-    name: {en: '', kn: '', hi: ''},
-    synonyms: {en: [], kn: [], hi: []}
+    name: {en: '', kn: '', es: ''},
+    synonyms: {en: [], kn: [], es: []}
 };
 
 export function CategoryManager({data, setData}: Readonly<CategoryManagerProps>) {
@@ -31,7 +31,7 @@ export function CategoryManager({data, setData}: Readonly<CategoryManagerProps>)
     const [categoryForm, setCategoryForm] = useState<Partial<NodeCategory>>(DEFAULT_CATEGORY);
     const [showForm, setShowForm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [lang, setLang] = useState<'en' | 'kn' | 'hi'>('en');
+    const [lang, setLang] = useState<'en' | 'kn' | 'es'>('en');
     
     const [deleteConfirm, setDeleteConfirm] = useState<{isOpen: boolean; id: number; name: string} | null>(null);
 
@@ -201,7 +201,7 @@ export function CategoryManager({data, setData}: Readonly<CategoryManagerProps>)
                                                 <div className="flex items-center justify-between">
                                                     <Label className="text-slate-300">Name</Label>
                                                     <div className="flex bg-black/40 rounded-md p-1 border border-white/10 w-fit">
-                                                        {(['en', 'kn', 'hi'] as const).map(l => (
+                                                        {(['en', 'kn', 'es'] as const).map(l => (
                                                             <button key={l} type="button" onClick={() => setLang(l)} className={`px-3 py-0.5 text-[10px] font-bold rounded-sm uppercase ${lang === l ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'text-slate-400 hover:text-white'}`}>
                                                                 {l}
                                                             </button>
@@ -220,7 +220,7 @@ export function CategoryManager({data, setData}: Readonly<CategoryManagerProps>)
                                                 <Label className="text-slate-300">Description (Optional)</Label>
                                                 <textarea
                                                     value={categoryForm.description?.[lang] || ''} 
-                                                    onChange={e => setCategoryForm(s => ({...s, description: {...(s.description || {en:'',kn:'',hi:''}), [lang]: e.target.value}}))} 
+                                                    onChange={e => setCategoryForm(s => ({...s, description: {...(s.description || {en:'',kn:'',es:''}), [lang]: e.target.value}}))} 
                                                     placeholder={`Category description in ${lang.toUpperCase()}...`}
                                                     className="w-full h-16 rounded-md bg-black/50 border border-white/10 text-white px-3 py-2 text-sm resize-none"
                                                 />
@@ -230,7 +230,7 @@ export function CategoryManager({data, setData}: Readonly<CategoryManagerProps>)
                                                 <Label className="text-slate-300">Synonyms (Comma separated, Optional)</Label>
                                                 <Input 
                                                     value={categoryForm.synonyms?.[lang]?.join(', ') || ''} 
-                                                    onChange={e => setCategoryForm(s => ({...s, synonyms: {...(s.synonyms || {en:[],kn:[],hi:[]}), [lang]: e.target.value.split(',').map(x => x.trim()).filter(Boolean)}}))} 
+                                                    onChange={e => setCategoryForm(s => ({...s, synonyms: {...(s.synonyms || {en:[],kn:[],es:[]}), [lang]: e.target.value.split(',').map(x => x.trim()).filter(Boolean)}}))} 
                                                     placeholder={`e.g. toilet, restroom in ${lang.toUpperCase()}...`}
                                                     className="bg-black/50 border-white/10 text-white"
                                                 />

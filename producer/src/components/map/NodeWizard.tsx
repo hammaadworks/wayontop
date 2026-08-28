@@ -30,11 +30,11 @@ export function NodeWizard({
     onClose
 }: Readonly<NodeWizardProps>) {
     const [step, setStep] = useState(1);
-    const [lang, setLang] = useState<'en' | 'kn' | 'hi'>('en');
+    const [lang, setLang] = useState<'en' | 'kn' | 'es'>('en');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [tagInput, setTagInput] = useState('');
 
-    const safeName = node.name || {en: '', kn: '', hi: ''};
+    const safeName = node.name || {en: '', kn: '', es: ''};
 
     return (
         <Card className="shadow-2xl glass-panel border-white/20 bg-[#09090b]/90 backdrop-blur-3xl text-white flex flex-col rounded-2xl overflow-hidden w-full max-w-sm">
@@ -71,7 +71,7 @@ export function NodeWizard({
                 {step === 1 && (
                     <div className="flex flex-col gap-2 animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="flex bg-black/40 rounded-md p-1 border border-white/10 w-fit">
-                            {(['en', 'kn', 'hi'] as const).map(l => (
+                            {(['en', 'kn', 'es'] as const).map(l => (
                                 <button key={l} onClick={() => setLang(l)} className={`px-3 py-0.5 text-[10px] font-bold rounded-sm uppercase ${lang === l ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-400 hover:text-white'}`}>
                                     {l}
                                 </button>
@@ -173,7 +173,7 @@ export function NodeWizard({
                                 value={typeof node.extra_info === 'string' ? node.extra_info : (node.extra_info?.en || '')}
                                 onChange={e => {
                                     // Storing as JSONB for consistency with 'name', defaulting to EN for now
-                                    const current = typeof node.extra_info === 'object' && node.extra_info !== null ? node.extra_info : {en: '', kn: '', hi: ''};
+                                    const current = typeof node.extra_info === 'object' && node.extra_info !== null ? node.extra_info : {en: '', kn: '', es: ''};
                                     updateNode(node.id, {extra_info: {...current, en: e.target.value}});
                                 }}
                                 placeholder="Details for promo card..."

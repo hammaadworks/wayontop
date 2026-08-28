@@ -395,7 +395,7 @@ export function findShortestPathFromGPS(
             id: VIRTUAL_ID,
             lat: snap.lat,
             lng: snap.lng,
-            name: {en: "Your Location", kn: "", hi: ""},
+            name: {en: "Your Location", kn: "", es: ""},
             category_id: 0,
             status: 'active' as const,
             is_paid: false,

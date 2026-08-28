@@ -6,8 +6,8 @@ export type NodeBaseType =
     | 'stamp'         
     | 'intersection'; 
 
-export type LocalizedText = Record<'en' | 'kn' | 'hi', string>;
-export type LocalizedList = Record<'en' | 'kn' | 'hi', string[]>;
+export type LocalizedText = Record<'en' | 'kn' | 'es', string>;
+export type LocalizedList = Record<'en' | 'kn' | 'es', string[]>;
 
 export interface MapEvent {
     id: number;

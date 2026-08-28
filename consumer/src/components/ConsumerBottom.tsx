@@ -1,3 +1,4 @@
+import {useTranslation} from "react-i18next";
 import {useState, useEffect} from 'react';
 import {
     Activity,
@@ -50,6 +51,7 @@ export function ConsumerBottom({
                                    onExploreOpenChange,
                                    initialExploreQuery = ''
                                }: ConsumerBottomProps) {
+    const {t, i18n} = useTranslation();
     const [internalSheetOpen, setInternalSheetOpen] = useState(false);
     const sheetOpen = isExploreOpen !== undefined ? isExploreOpen : internalSheetOpen;
     const setSheetOpen = onExploreOpenChange || setInternalSheetOpen;
@@ -101,7 +103,7 @@ export function ConsumerBottom({
                     onClick={endWalk}
                 >
                     <Activity className="w-[22px] h-[22px] text-white stroke-[1.5] mb-0.5"/>
-                    <span className="text-[10px] text-white/70 font-medium tracking-wide">Run</span>
+                    <span className="text-[10px] text-white/70 font-medium tracking-wide">{t('run')}</span>
                 </button>
 
                 {/* Contact Button */}
@@ -109,7 +111,7 @@ export function ConsumerBottom({
                     className="flex flex-col items-center justify-center w-[52px] h-[52px] rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer"
                     onClick={() => setShowReportModal(true)}>
                     <MessageCircle className="w-[22px] h-[22px] text-white stroke-[1.5] mb-0.5"/>
-                    <span className="text-[10px] text-white/70 font-medium tracking-wide">Contact</span>
+                    <span className="text-[10px] text-white/70 font-medium tracking-wide">{t('contact')}</span>
                 </button>
 
                 {/* Navigate Button (Center, Prominent) */}
@@ -125,7 +127,7 @@ export function ConsumerBottom({
                                    onClick={() => setSheetOpen(true)}
                                    className="flex flex-col items-center justify-center w-[52px] h-[52px] rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer">
                     <Search className="w-[22px] h-[22px] text-white stroke-[1.5] mb-0.5"/>
-                    <span className="text-[10px] text-white/70 font-medium tracking-wide">Explore</span>
+                    <span className="text-[10px] text-white/70 font-medium tracking-wide">{t('explore')}</span>
                 </button>
 
                 {sheetOpen && createPortal(
@@ -151,7 +153,7 @@ export function ConsumerBottom({
                                     onSearchEvent={(query) => {
                                         Analytics.logEvent('search_performed', { query });
                                     }}
-                                    initialQuery={initialExploreQuery}
+                                    initialQuery={initialExploreQuery} language={i18n.language}
                                 />
                             </div>
                         </div>
@@ -164,7 +166,7 @@ export function ConsumerBottom({
                     className="flex flex-col items-center justify-center w-[52px] h-[52px] rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer"
                     onClick={onOpenSettings}>
                     <Settings className="w-[22px] h-[22px] text-white stroke-[1.5] mb-0.5"/>
-                    <span className="text-[10px] text-white/70 font-medium tracking-wide">Settings</span>
+                    <span className="text-[10px] text-white/70 font-medium tracking-wide">{t('settings')}</span>
                 </button>
 
             </div>

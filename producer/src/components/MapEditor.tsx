@@ -842,6 +842,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 >
                     <MapNodeMarker
                         type={baseType || 'poi'}
+                        category={node.category}
                         name={fallbackNameStr}
                         isZoomedIn={showThisMarkerName}
                         isLabelVisible={visibleLabels.has(node.id)}
