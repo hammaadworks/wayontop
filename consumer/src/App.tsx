@@ -610,6 +610,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
 }
 
 export default function App() {
+    const { i18n } = useTranslation();
     const [venueKey, setVenueKey] = useState(localStorage.getItem(LAST_VENUE_STORAGE_KEY) || '');
     const [availableVenues, setAvailableVenues] = useState<string[]>([]);
     const [prefetchedGraph, setPrefetchedGraph] = useState<GraphData | null>(null);

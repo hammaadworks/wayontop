@@ -404,7 +404,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             const newNode = {
                 id: -(Date.now() % 1000000000),
                 _clientId: -(Date.now() % 1000000000),
-                name: {en: `Node ${data.nodes.length + 1}`, kn: '', hi: ''},
+                name: {en: `Node ${data.nodes.length + 1}`, kn: '', es: ''},
                 lat: latlng.lat,
                 lng: latlng.lng,
                 status: 'active',
@@ -414,10 +414,10 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     id: 1,
                     code: 'poi',
                     base_type: 'poi',
-                    name: {en: 'POI', kn: '', hi: ''},
+                    name: {en: 'POI', kn: '', es: ''},
                     icon_key: 'MapPin',
                     color_theme: 'cyan',
-                    synonyms: {en: [], kn: [], hi: []}
+                    synonyms: {en: [], kn: [], es: []}
                 }
             } as GraphNode & { _clientId: number };
             setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
@@ -427,7 +427,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 const newNode = {
                     id: -(Date.now() % 1000000000),
                     _clientId: -(Date.now() % 1000000000),
-                    name: {en: `Track ${data.nodes.length + 1}`, kn: '', hi: ''},
+                    name: {en: `Track ${data.nodes.length + 1}`, kn: '', es: ''},
                     lat: latlng.lat,
                     lng: latlng.lng,
                     status: 'active',
@@ -437,10 +437,10 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         id: 8,
                         code: 'intersection_default',
                         base_type: 'intersection',
-                        name: {en: 'Intersection', kn: '', hi: ''},
+                        name: {en: 'Intersection', kn: '', es: ''},
                         icon_key: 'Crosshair',
                         color_theme: 'slate',
-                        synonyms: {en: [], kn: [], hi: []}
+                        synonyms: {en: [], kn: [], es: []}
                     }
                 } as GraphNode & { _clientId: number };
                 setData(prev => ({...prev, nodes: [...prev.nodes, newNode]}));
@@ -472,7 +472,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         const endNode = {
             id: -(Date.now() % 1000000000) - 1,
             _clientId: -(Date.now() % 1000000000) - 1,
-            name: {en: `Track ${data.nodes.length + 2}`, kn: '', hi: ''},
+            name: {en: `Track ${data.nodes.length + 2}`, kn: '', es: ''},
             lat: lastPt[1],
             lng: lastPt[0],
             status: 'active',
@@ -482,10 +482,10 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 id: 8,
                 code: 'intersection_default',
                 base_type: 'intersection',
-                name: {en: 'Intersection', kn: '', hi: ''},
+                name: {en: 'Intersection', kn: '', es: ''},
                 icon_key: 'Crosshair',
                 color_theme: 'slate',
-                synonyms: {en: [], kn: [], hi: []}
+                synonyms: {en: [], kn: [], es: []}
             }
         } as GraphNode & { _clientId: number };
 

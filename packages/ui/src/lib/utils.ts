@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-import { GraphNode, NodeCategory, LocalizedText } from "./types";
+import type { GraphNode, NodeCategory, LocalizedText } from "./types";
 
 export function getLocalizedText(
     textObj: LocalizedText | undefined | null,
