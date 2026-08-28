@@ -221,6 +221,15 @@ export function useGraph(currentVenue: Venue | null) {
             lastSavedData.current = JSON.stringify(finalData);
         }
 
+        if (finalData && remoteData.categories) {
+            // Guarantee fresh categories across all nodes, curing any stale local caches
+            finalData.nodes = finalData.nodes.map(n => ({
+                ...n,
+                category: remoteData.categories.find(c => c.id === n.category_id) || n.category
+            }));
+            finalData.categories = remoteData.categories;
+        }
+
         setState({
             data: finalData,
             history: [finalData],

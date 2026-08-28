@@ -7,7 +7,7 @@ export interface SpecialToastProps extends React.HTMLAttributes<HTMLDivElement> 
     visible?: boolean;
 }
 
-export function SpecialToast({
+export function ProducerToast({
                                  message,
                                  icon,
                                  visible = true,

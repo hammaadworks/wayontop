@@ -7,6 +7,7 @@ interface PermissionGateProps {
     children: ReactNode;
     isProducerApp?: boolean;
     requiredPermissions?: 'location' | 'all';
+    className?: string;
 }
 
 export type PermState = 'unknown' | 'granted' | 'denied' | 'blocked' | 'unsupported';
@@ -112,7 +113,7 @@ function getBrowser() {
     return 'other';
 }
 
-export function PermissionGate({children, isProducerApp, requiredPermissions = isProducerApp ? 'all' : 'location'}: Readonly<PermissionGateProps>) {
+export function PermissionGate({children, isProducerApp, requiredPermissions = isProducerApp ? 'all' : 'location', className}: Readonly<PermissionGateProps>) {
     const [gateState, setGateState] = useState<GateState>({
         camera: 'unknown',
         location: 'unknown',
@@ -124,7 +125,25 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
     const [retryFeedback, setRetryFeedback] = useState<string | null>(null);
 
     const applyPatch = useCallback((patch: Partial<GateState>) => {
-        setGateState(prev => ({...prev, ...patch}));
+        setGateState(prev => {
+            const next = { ...prev };
+            if (patch.camera !== undefined) {
+                if (!(prev.camera === 'granted' && (patch.camera === 'unknown' || patch.camera === ('prompt' as any)))) {
+                    next.camera = patch.camera;
+                }
+            }
+            if (patch.location !== undefined) {
+                if (!(prev.location === 'granted' && (patch.location === 'unknown' || patch.location === ('prompt' as any)))) {
+                    next.location = patch.location;
+                }
+            }
+            if (patch.compass !== undefined) {
+                if (!(prev.compass === 'granted' && (patch.compass === 'unknown' || patch.compass === ('prompt' as any)))) {
+                    next.compass = patch.compass;
+                }
+            }
+            return next;
+        });
     }, []);
 
     useEffect(() => {
@@ -203,14 +222,20 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
     const isTouchupBypass = typeof window !== 'undefined' &&
         window.location.search.includes('touchup=true');
 
-    const isLocationGranted = gateState.location === 'granted';
-    const isAllGranted = isLocationGranted && 
-        (gateState.compass === 'granted' || gateState.compass === 'unsupported') && 
-        gateState.camera === 'granted';
+    const isGranted = (requiredPermissions === 'all' 
+        ? (gateState.location === 'granted' && (gateState.compass === 'granted' || gateState.compass === 'unsupported') && gateState.camera === 'granted') 
+        : gateState.location === 'granted') || isTouchupBypass;
 
-    const canProceed = (requiredPermissions === 'all' ? isAllGranted : isLocationGranted) || isTouchupBypass;
+    useEffect(() => {
+        if (!isGranted) {
+            document.body.classList.add('permission-gate-active');
+        } else {
+            document.body.classList.remove('permission-gate-active');
+        }
+        return () => document.body.classList.remove('permission-gate-active');
+    }, [isGranted]);
 
-    if (canProceed) {
+    if (isGranted) {
         return <>{children}</>;
     }
 
@@ -287,7 +312,7 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
 
     return (
         <div
-            className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden">
+            className={className || "fixed inset-0 z-9999 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden"}>
             {/* Fullscreen Video Background */}
             <video
                 src="/parkgif.mp4"

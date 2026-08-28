@@ -86,6 +86,20 @@ const resources = {
             "continue_journey": "ಪ್ರಯಾಣ ಮುಂದುವರಿಸಿ",
             "navigate_here": "ಇಲ್ಲಿಗೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಿ"
         }
+    },
+    es: {
+        translation: {
+            "search_placeholder": "Buscar un lugar o instalación",
+            "photo_spots": "Lugares para fotos",
+            "facilities": "Instalaciones",
+            "all_places": "Todos los lugares",
+            "search_no_results": "No hay resultados para \"{{query}}\"",
+            "end_walk": "FINALIZAR",
+            "remaining_distance": "{{distance}}m restantes",
+            "ar_mode": "AR",
+            "map_mode": "Mapa",
+            "claim": "Reclamar"
+        }
     }
 };
 

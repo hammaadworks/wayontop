@@ -12,6 +12,7 @@ interface MapNodeMarkerProps {
     isLabelVisible?: boolean;
     opacity?: string;
     isPaid?: boolean;
+    imageUrl?: string;
 }
 
 export function MapNodeMarker({
@@ -22,7 +23,8 @@ export function MapNodeMarker({
                                   isSelected = false,
                                   isLabelVisible = true,
                                   opacity = 'opacity-100',
-                                  isPaid = false
+                                  isPaid = false,
+                                  imageUrl
                               }: Readonly<MapNodeMarkerProps>) {
     const isNamed = name && name.trim() !== '';
 
@@ -93,12 +95,20 @@ export function MapNodeMarker({
                     {/* Inner Colored Glow */}
                     <div className={cn("absolute inset-0 blur-xl opacity-50 mix-blend-screen", glowColorClass)}></div>
 
-                    {/* Premium Icon */}
-                    <Icon className={cn(
-                        "relative z-10 transition-all duration-300 drop-shadow-[0_0_8px_currentColor]",
-                        iconColorClass,
-                        isSelected ? "w-5 h-5" : "w-4 h-4"
-                    )} strokeWidth={2.5}/>
+                    {/* Premium Icon or Custom Image */}
+                    {imageUrl ? (
+                        <img 
+                            src={imageUrl} 
+                            alt={name || 'Node thumbnail'} 
+                            className="relative z-10 w-full h-full object-cover rounded-full" 
+                        />
+                    ) : (
+                        <Icon className={cn(
+                            "relative z-10 transition-all duration-300 drop-shadow-[0_0_8px_currentColor]",
+                            iconColorClass,
+                            isSelected ? "w-5 h-5" : "w-4 h-4"
+                        )} strokeWidth={2.5}/>
+                    )}
                 </div>
 
                 {/* Paid Superscript Indicator */}

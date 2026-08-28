@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { MapPin, Target, Users, Compass, Navigation } from 'lucide-react';
+import { MapPin, Target, Users, Compass } from 'lucide-react';
 
 const INITIAL_SCREENS = [
-  { quote: 'EXPLORE THE 3,000-MILLION-YEAR-OLD LALBAGH ROCK IN AR.', label: 'AR MODE', id: 'NO. 01', icon: MapPin },
-  { quote: 'COLLECT AR STAMPS & UNLOCK EXCLUSIVE REWARDS.', label: 'GAMIFICATION', id: 'NO. 02', icon: Target },
-  { quote: 'DISCOVER THE SECRETS OF THE HISTORIC GLASS HOUSE.', label: 'SPONSOR ZONES', id: 'NO. 03', icon: Users },
-  { quote: 'CALIBRATING AUGMENTED REALITY COMPASS...', label: 'CALIBRATING', id: 'NO. 04', icon: Compass },
+  { quote: 'EXPLORE THE 3,000-MILLION-YEAR-OLD LALBAGH ROCK IN AR.', label: 'NAVIGATE', id: 'NO. 01', icon: MapPin, image: '/splash/1.png' },
+  { quote: 'COLLECT AR STAMPS & UNLOCK EXCLUSIVE REWARDS.', label: 'GAMIFY AR', id: 'NO. 02', icon: Target, image: '/splash/2.png' },
+  { quote: 'COMMUNICATE WITH THE CROWD.', label: 'ATTENTION BAR', id: 'NO. 03', icon: Users, image: '/splash/3.png' },
+  { quote: 'CALIBRATING AUGMENTED REALITY COMPASS...', label: 'CALIBRATING', id: 'NO. 04', icon: Compass, image: '/splash/4.png' },
 ];
 
 interface SplashScreenProps {
@@ -81,15 +81,15 @@ export function SplashScreen({ isLoading, onFinish }: SplashScreenProps) {
             {/* Centered Content Group */}
             <div className="relative z-10 flex flex-col items-center justify-center gap-6 sm:gap-10 w-full max-w-[90vw] sm:max-w-md px-4 mt-8">
                 
-                {/* Logo Container (Glassmorphic) */}
+                {/* Image Container (Glassmorphic) */}
                 <div 
                     key={`logo-${currentIndex}`}
-                    className={`relative flex items-center justify-center p-6 sm:p-8 rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${currentRotation} transition-all duration-700`}
+                    className={`relative flex items-center justify-center p-2 sm:p-4 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${currentRotation} transition-all duration-700`}
                     style={{ animation: 'appFadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}
                 >
-                    <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-3xl p-[1px] shadow-[0_0_40px_rgba(52,211,153,0.3)]">
-                        <div className="w-full h-full bg-[#1C1C1E] rounded-[23px] flex items-center justify-center backdrop-blur-xl">
-                            <Navigation className="w-9 h-9 sm:w-12 sm:h-12 text-emerald-400 -ml-1 mt-1 transform -rotate-45" />
+                    <div className="w-48 h-48 sm:w-64 sm:h-64 bg-gradient-to-tr from-emerald-600/50 to-emerald-400/50 rounded-[2rem] p-[2px] shadow-[0_0_40px_rgba(52,211,153,0.3)]">
+                        <div className="w-full h-full bg-[#1C1C1E] rounded-[30px] overflow-hidden flex items-center justify-center backdrop-blur-xl">
+                            <img src={currentScreen.image} alt={currentScreen.label} className="w-full h-full object-cover" />
                         </div>
                     </div>
                 </div>

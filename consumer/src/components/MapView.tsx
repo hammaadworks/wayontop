@@ -7,10 +7,10 @@ import type * as GeoJSON from 'geojson';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
 import type {LocationData} from '../hooks/useLocation';
 import {Gamification} from '../lib/gamification';
-import {findNearestEdgePoint, getRouteCoordinateSegments} from '@wayontop/ui/lib/routing';
+import {findNearestEdgePoint, getRouteCoordinateSegments, distanceInMeters} from '@wayontop/ui/lib/routing';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
-import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS} from '@wayontop/ui/lib/constants';
+import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS, LALBAGH_GEOFENCE_RADIUS_METERS} from '@wayontop/ui/lib/constants';
 import {LocateFixed} from 'lucide-react';
 
 setWorkerUrl(workerUrl);
@@ -269,6 +269,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                                     isLabelVisible={visibleLabels.has(node.id)}
                                     isSelected={activePopup === Number(node.id)}
                                     isPaid={node.is_paid}
+                                    imageUrl={node.image_url || node.category?.image_url}
                                 />
                             </div>
                         </Marker>
@@ -292,6 +293,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                             <MapNodeMarker type="stamp" name={stamp.name || ''} isZoomedIn={zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN}
                                 isLabelVisible={visibleLabels.has(stamp.id)}
                                 isSelected={activePopup === Number(stamp.id)}
+                                imageUrl={stamp.image_url}
                             />
                         </div>
                     </Marker>
@@ -316,11 +318,43 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                         className="rounded-full w-12 h-12 flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                         onClick={() => {
                             if (mapRef.current && location) {
-                                mapRef.current.flyTo({
-                                    center: [location.lng, location.lat],
-                                    zoom: 18,
-                                    essential: true
-                                });
+                                const dist = distanceInMeters(
+                                    location.lat,
+                                    location.lng,
+                                    LALBAGH_CENTER.lat,
+                                    LALBAGH_CENTER.lng
+                                );
+
+                                if (dist <= LALBAGH_GEOFENCE_RADIUS_METERS) {
+                                    mapRef.current.flyTo({
+                                        center: [location.lng, location.lat],
+                                        zoom: 18,
+                                        essential: true
+                                    });
+                                } else {
+                                    mapRef.current.flyTo({
+                                        center: [location.lng, location.lat],
+                                        zoom: 18,
+                                        essential: true
+                                    });
+                                    
+                                    setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('sponsor-toast', {
+                                            detail: {
+                                                message: "Taking you back...",
+                                                description: "You're a bit far from Lalbagh.",
+                                                duration: 3000
+                                            }
+                                        }));
+                                        if (mapRef.current) {
+                                            mapRef.current.flyTo({
+                                                center: [LALBAGH_CENTER.lng, LALBAGH_CENTER.lat],
+                                                zoom: 16,
+                                                essential: true
+                                            });
+                                        }
+                                    }, 1800);
+                                }
                             }
                         }}
                     >

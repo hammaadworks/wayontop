@@ -1,13 +1,13 @@
-import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, WifiOff, Eraser} from 'lucide-react';
+import {AlertCircle, ArrowRight, Check, Loader2, Lock, MapPin, Save, Unlock, WifiOff, Eraser, Link} from 'lucide-react';
 import type {GraphEdge, GraphNode} from '@wayontop/ui/lib/types';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {SponsorManager} from '../SponsorManager';
 import {CategoryManager} from '../CategoryManager';
-import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
+import {ProducerToast} from '@wayontop/ui/components/ui/ProducerToast.tsx';
 
 interface MapBottomBarProps {
-    mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase';
-    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase') => void;
+    mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase' | 'auto_link';
+    setMode: (mode: 'view' | 'add_node' | 'add_edge' | 'test_route' | 'merge_nodes' | 'erase' | 'auto_link') => void;
     isLocked: boolean;
     setIsLocked: (val: boolean) => void;
     edgeStartNode: GraphNode | null;
@@ -62,6 +62,12 @@ export function MapBottomBar({
                 visible={mode === 'erase'}
                 message="Tap track node or path to erase"
                 icon={<Eraser className="w-4 h-4"/>}
+            />
+
+            <SpecialToast
+                visible={mode === 'auto_link'}
+                message="Click Start & End to link, or draw lasso"
+                icon={<Link className="w-4 h-4"/>}
             />
 
             <div

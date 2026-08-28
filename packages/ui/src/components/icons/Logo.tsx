@@ -1,0 +1,24 @@
+import * as React from "react"
+
+export function Logo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <defs>
+        <linearGradient id="emeraldBrand" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="100%" stopColor="#047857" />
+        </linearGradient>
+      </defs>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M 50 95 C 50 95, 15 60, 15 35 C 15 15.67, 30.67 0, 50 0 C 69.33 0, 85 15.67, 85 35 C 85 60, 50 95, 50 95 Z M 50 21 C 40 21, 38 35, 50 49 C 62 35, 60 21, 50 21 Z"
+        fill="url(#emeraldBrand)"
+      />
+    </svg>
+  )
+}

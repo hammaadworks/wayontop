@@ -12,7 +12,7 @@ import {AlertTriangle, Crosshair, DoorClosed, Gem, HeartHandshake, Check} from '
 import {BaseModal} from '@wayontop/ui/components/BaseModal';
 
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
-import {SpecialToast} from '@wayontop/ui/components/ui/special-toast';
+import {ProducerToast} from '@wayontop/ui/components/ui/ProducerToast.tsx';
 
 import {CameraView} from './CameraView';
 import {TopNavigationBar} from './map/TopNavigationBar';
@@ -190,6 +190,18 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const [nodesToMerge, setNodesToMerge] = useState<GraphNode[]>([]);
     const [edgeGeometry, setEdgeGeometry] = useState<[number, number][]>([]);
 
+    const [autoLinkLassoPoints, setAutoLinkLassoPoints] = useState<[number, number][]>([]);
+    const [autoLinkNodes, setAutoLinkNodes] = useState<GraphNode[]>([]);
+    const [autoLinkStartNode, setAutoLinkStartNode] = useState<GraphNode | null>(null);
+
+    useEffect(() => {
+        if (mode !== 'auto_link') {
+            setAutoLinkLassoPoints([]);
+            setAutoLinkNodes([]);
+            setAutoLinkStartNode(null);
+        }
+    }, [mode]);
+
     useEffect(() => {
         if (!edgeStartNode) setEdgeGeometry([]);
     }, [edgeStartNode]);
@@ -271,6 +283,85 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         setMode('view');
         setLassoPoints([]);
         toast.success(`Merged ${nodesToMerge.length} nodes into one`);
+    };
+
+    const collapsePath = (pathNodes: GraphNode[]) => {
+        if (pathNodes.length < 2) return;
+        let currentAnchor = pathNodes[0];
+        let intermediateGeometry: [number, number][] = [];
+        let edgesToAdd: GraphEdge[] = [];
+        let nodeIdsToDelete: Set<number> = new Set();
+
+        for (let i = 1; i < pathNodes.length; i++) {
+            const node = pathNodes[i];
+            const isEnd = (i === pathNodes.length - 1);
+            const isIntersection = node.category?.base_type === 'intersection';
+
+            if (isIntersection && !isEnd) {
+                intermediateGeometry.push([node.lng, node.lat]);
+                nodeIdsToDelete.add(node.id);
+            } else {
+                let totalDist = 0;
+                let prevPt = [currentAnchor.lng, currentAnchor.lat];
+                for (const geomPt of intermediateGeometry) {
+                    totalDist += distanceInMeters(prevPt[1], prevPt[0], geomPt[1], geomPt[0]);
+                    prevPt = geomPt;
+                }
+                totalDist += distanceInMeters(prevPt[1], prevPt[0], node.lat, node.lng);
+
+                edgesToAdd.push({
+                    from: currentAnchor.id,
+                    to: node.id,
+                    distance_m: Math.round(totalDist),
+                    geometry: intermediateGeometry.length > 0 ? [...intermediateGeometry] : undefined
+                });
+
+                currentAnchor = node;
+                intermediateGeometry = [];
+            }
+        }
+
+        setData((prev: any) => {
+            const newNodes = prev.nodes.filter((n: any) => !nodeIdsToDelete.has(n.id));
+            const newEdges = prev.edges.filter((e: any) => !nodeIdsToDelete.has(e.from) && !nodeIdsToDelete.has(e.to));
+            
+            const edgesToAddKeys = new Set(edgesToAdd.map(e => `${e.from}-${e.to}`));
+            const edgesToAddKeysRev = new Set(edgesToAdd.map(e => `${e.to}-${e.from}`));
+            
+            const finalEdges = newEdges.filter((e: any) => {
+                const k1 = `${e.from}-${e.to}`;
+                const k2 = `${e.to}-${e.from}`;
+                if (edgesToAddKeys.has(k1) || edgesToAddKeys.has(k2) || edgesToAddKeysRev.has(k1) || edgesToAddKeysRev.has(k2)) return false;
+                return true;
+            });
+
+            return { ...prev, nodes: newNodes, edges: [...finalEdges, ...edgesToAdd] };
+        });
+        
+        toast.success(`Linked path into ${edgesToAdd.length} edge(s) & removed ${nodeIdsToDelete.size} intermediate nodes.`);
+        setMode('view');
+    };
+
+    const handleAutoLinkLassoConfirm = (points: [number, number][]) => {
+        if (points.length < 3) {
+            setAutoLinkLassoPoints([]);
+            return;
+        }
+
+        const polygon = turf.polygon([[...points, points[0]]]);
+        const selected = data.nodes.filter(n => {
+            const pt = turf.point([n.lng, n.lat]);
+            return turf.booleanPointInPolygon(pt, polygon);
+        });
+
+        if (selected.length > 1) {
+            setAutoLinkNodes(selected);
+            setAutoLinkLassoPoints([]);
+            toast.info('Select the Start Node from the highlighted area');
+        } else {
+            toast.error('Select at least two nodes within the drawn area');
+            setAutoLinkLassoPoints([]);
+        }
     };
 
     const handleLassoMerge = (points: [number, number][]) => {
@@ -359,6 +450,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             setEdgeGeometry(prev => [...prev, [latlng.lng, latlng.lat]]);
         } else if (mode === 'merge_nodes') {
             setLassoPoints(prev => [...prev, [latlng.lng, latlng.lat]]);
+        } else if (mode === 'auto_link' && autoLinkNodes.length === 0 && !autoLinkStartNode) {
+            setAutoLinkLassoPoints(prev => [...prev, [latlng.lng, latlng.lat]]);
         } else {
             setMode('view');
             setSelectedNode(null);
@@ -506,6 +599,51 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 deleteNode(node.id);
             } else {
                 toast.error('Eraser tool only works on track nodes or paths');
+            }
+        } else if (mode === 'auto_link') {
+            if (autoLinkNodes.length > 0) {
+                if (!autoLinkNodes.find(n => n.id === node.id)) {
+                    import('sonner').then(m => m.toast.error('Select a node from within the drawn area'));
+                    return;
+                }
+                if (!autoLinkStartNode) {
+                    setAutoLinkStartNode(node);
+                    import('sonner').then(m => m.toast.info('Select the End Node'));
+                } else if (autoLinkStartNode.id !== node.id) {
+                    const startPt = turf.point([autoLinkStartNode.lng, autoLinkStartNode.lat]);
+                    const endPt = turf.point([node.lng, node.lat]);
+                    const line = turf.lineString([startPt.geometry.coordinates, endPt.geometry.coordinates]);
+
+                    const nodesWithProj = autoLinkNodes.map(n => {
+                        const pt = turf.point([n.lng, n.lat]);
+                        const snapped = turf.nearestPointOnLine(line, pt) as any;
+                        return { node: n, t: (snapped.properties?.location || 0) as number };
+                    });
+
+                    nodesWithProj.sort((a, b) => a.t - b.t);
+                    const sortedNodes = nodesWithProj.map(x => x.node);
+                    const idx1 = sortedNodes.findIndex(n => n.id === autoLinkStartNode.id);
+                    const idx2 = sortedNodes.findIndex(n => n.id === node.id);
+                    const minIdx = Math.min(idx1, idx2);
+                    const maxIdx = Math.max(idx1, idx2);
+                    const pathNodes = sortedNodes.slice(minIdx, maxIdx + 1);
+                    if (idx1 > idx2) pathNodes.reverse();
+
+                    collapsePath(pathNodes);
+                }
+            } else {
+                if (!autoLinkStartNode) {
+                    setAutoLinkStartNode(node);
+                    import('sonner').then(m => m.toast.info('Select the End Node to path'));
+                } else if (autoLinkStartNode.id !== node.id) {
+                    const result = findShortestPath(data, autoLinkStartNode.id, node.id);
+                    if (result && result.path.length >= 2) {
+                        collapsePath(result.path);
+                    } else {
+                        import('sonner').then(m => m.toast.error('No connected path found between these nodes'));
+                        setAutoLinkStartNode(null);
+                    }
+                }
             }
         } else if (mode === 'add_edge') {
             handleAddEdgeModeClick(node);
@@ -682,8 +820,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
             return true;
         }).map(node => {
-            const isSelected = selectedNode?.id === node.id;
-            const opacity = mode === 'add_edge' && edgeStartNode?.id === node.id ? 'opacity-50' : 'opacity-100';
+            const isSelected = selectedNode?.id === node.id || autoLinkStartNode?.id === node.id || (autoLinkNodes.length > 0 && !!autoLinkNodes.find(n => n.id === node.id));
+            const opacity = (mode === 'add_edge' && edgeStartNode?.id === node.id) ? 'opacity-50' : 'opacity-100';
             
             const baseType = node.category?.base_type;
             const isMajorNode = baseType === 'poi' || baseType === 'utility_major' || baseType === 'gate';
@@ -710,12 +848,13 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         isSelected={isSelected}
                         opacity={opacity}
                         isPaid={node.is_paid}
+                        imageUrl={node.image_url || node.category?.image_url}
                     />
                 </Marker>
             );
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, mode, isLocked, showMajorNames, showAllNames, showMajorPins, showAllPins, visibleLabels]);
+    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, autoLinkStartNode, autoLinkNodes, mode, isLocked, showMajorNames, showAllNames, showMajorPins, showAllPins, visibleLabels]);
 
     const sponsorMarkers = useMemo(() => {
         if (!showSponsorLogos) return null;
@@ -820,6 +959,11 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
         return { type: 'FeatureCollection', features };
     }, [data.edges, data.nodes, selectedEdge, mode, edgeStartNode, edgeGeometry]);
+
+    const selectedEdgeFull = useMemo(() => {
+        if (!selectedEdge) return null;
+        return data.edges.find(e => e.from === selectedEdge.from && e.to === selectedEdge.to);
+    }, [selectedEdge, data.edges]);
 
     const testRouteGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
         const features: GeoJSON.Feature[] = [];
@@ -1135,6 +1279,149 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                             <Layer id="lasso-fill" type="fill" filter={['has', 'isFill']}
                                    paint={{'fill-color': '#6366f1', 'fill-opacity': 0.2}}/>
                         </Source>
+                    )}
+
+                    {autoLinkLassoPoints.length > 0 && mode === 'auto_link' && autoLinkNodes.length === 0 && (
+                        <Marker
+                            longitude={autoLinkLassoPoints[0][0]}
+                            latitude={autoLinkLassoPoints[0][1]}
+                            anchor="center"
+                            onClick={(e) => {
+                                e.originalEvent.stopPropagation();
+                                if (autoLinkLassoPoints.length >= 3) {
+                                    handleAutoLinkLassoConfirm(autoLinkLassoPoints);
+                                } else {
+                                    import('sonner').then(m => m.toast.error('You need at least 3 points to form an area'));
+                                }
+                            }}
+                        >
+                            <div
+                                className="w-5 h-5 bg-fuchsia-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(217,70,239,0.8)] animate-pulse cursor-pointer flex items-center justify-center"
+                                title="Click to close area">
+                                <div className="w-2 h-2 bg-white rounded-full"/>
+                            </div>
+                        </Marker>
+                    )}
+                    {autoLinkLassoPoints.length > 1 && mode === 'auto_link' && autoLinkNodes.length === 0 && autoLinkLassoPoints.slice(1).map((pt, i) => (
+                        <Marker key={`auto-lasso-pt-${i}`} longitude={pt[0]} latitude={pt[1]} anchor="center">
+                            <div
+                                className="w-3 h-3 bg-fuchsia-400 border-2 border-white rounded-full shadow-md pointer-events-none"/>
+                        </Marker>
+                    ))}
+                    {autoLinkLassoPoints.length > 1 && mode === 'auto_link' && autoLinkNodes.length === 0 && (
+                        <Source id="auto-lasso-source" type="geojson" data={{
+                            type: 'FeatureCollection',
+                            features: [
+                                {
+                                    type: 'Feature',
+                                    properties: {},
+                                    geometry: {type: 'LineString', coordinates: autoLinkLassoPoints}
+                                },
+                                ...(autoLinkLassoPoints.length >= 3 ? [{
+                                    type: 'Feature',
+                                    properties: {isFill: true},
+                                    geometry: {type: 'Polygon', coordinates: [[...autoLinkLassoPoints, autoLinkLassoPoints[0]]]}
+                                }] : [])
+                            ]
+                        } as any}>
+                            <Layer id="auto-lasso-line" type="line" filter={['!has', 'isFill']}
+                                   paint={{'line-color': '#d946ef', 'line-width': 2, 'line-dasharray': [2, 2]}}/>
+                            <Layer id="auto-lasso-fill" type="fill" filter={['has', 'isFill']}
+                                   paint={{'fill-color': '#d946ef', 'fill-opacity': 0.2}}/>
+                        </Source>
+                    )}
+
+                    {selectedEdgeFull && !isLocked && mode === 'view' && (
+                        (() => {
+                            const startNode = data.nodes.find(n => n.id === selectedEdgeFull.from);
+                            const endNode = data.nodes.find(n => n.id === selectedEdgeFull.to);
+                            if (!startNode || !endNode) return null;
+
+                            const geom = selectedEdgeFull.geometry || [];
+                            const fullPath = [
+                                [startNode.lng, startNode.lat],
+                                ...geom,
+                                [endNode.lng, endNode.lat]
+                            ];
+
+                            const markers = [];
+                            
+                            geom.forEach((pt, i) => {
+                                markers.push(
+                                    <Marker
+                                        key={`geom-pt-${i}`}
+                                        longitude={pt[0]}
+                                        latitude={pt[1]}
+                                        draggable
+                                        onDragEnd={(e) => {
+                                            const newGeom = [...geom];
+                                            newGeom[i] = [e.lngLat.lng, e.lngLat.lat];
+                                            
+                                            let totalDist = 0;
+                                            let prev = [startNode.lng, startNode.lat];
+                                            for(const g of newGeom) {
+                                                totalDist += distanceInMeters(prev[1], prev[0], g[1], g[0]);
+                                                prev = g;
+                                            }
+                                            totalDist += distanceInMeters(prev[1], prev[0], endNode.lat, endNode.lng);
+
+                                            updateEdge(selectedEdgeFull.from, selectedEdgeFull.to, { geometry: newGeom, distance_m: Math.round(totalDist) });
+                                        }}
+                                        onClick={(e) => {
+                                            e.originalEvent.stopPropagation();
+                                            const newGeom = [...geom];
+                                            newGeom.splice(i, 1);
+                                            
+                                            let totalDist = 0;
+                                            let prev = [startNode.lng, startNode.lat];
+                                            for(const g of newGeom) {
+                                                totalDist += distanceInMeters(prev[1], prev[0], g[1], g[0]);
+                                                prev = g;
+                                            }
+                                            totalDist += distanceInMeters(prev[1], prev[0], endNode.lat, endNode.lng);
+
+                                            updateEdge(selectedEdgeFull.from, selectedEdgeFull.to, { geometry: newGeom, distance_m: Math.round(totalDist) });
+                                        }}
+                                    >
+                                        <div className="w-4 h-4 bg-white border-4 border-emerald-500 rounded-full shadow-md cursor-grab active:cursor-grabbing hover:scale-125 transition-transform" title="Drag to move, Click to delete" />
+                                    </Marker>
+                                );
+                            });
+
+                            for (let i = 0; i < fullPath.length - 1; i++) {
+                                const p1 = fullPath[i];
+                                const p2 = fullPath[i+1];
+                                const midLng = (p1[0] + p2[0]) / 2;
+                                const midLat = (p1[1] + p2[1]) / 2;
+
+                                markers.push(
+                                    <Marker
+                                        key={`geom-mid-${i}`}
+                                        longitude={midLng}
+                                        latitude={midLat}
+                                        draggable
+                                        onDragEnd={(e) => {
+                                            const newGeom = [...geom];
+                                            newGeom.splice(i, 0, [e.lngLat.lng, e.lngLat.lat]);
+                                            
+                                            let totalDist = 0;
+                                            let prev = [startNode.lng, startNode.lat];
+                                            for(const g of newGeom) {
+                                                totalDist += distanceInMeters(prev[1], prev[0], g[1], g[0]);
+                                                prev = g;
+                                            }
+                                            totalDist += distanceInMeters(prev[1], prev[0], endNode.lat, endNode.lng);
+
+                                            updateEdge(selectedEdgeFull.from, selectedEdgeFull.to, { geometry: newGeom, distance_m: Math.round(totalDist) });
+                                        }}
+                                    >
+                                        <div className="w-3 h-3 bg-white/60 border-2 border-emerald-500/60 rounded-full cursor-grab hover:bg-white hover:border-emerald-500 hover:scale-125 transition-all shadow-sm" title="Drag to add point" />
+                                    </Marker>
+                                );
+                            }
+
+                            return markers;
+                        })()
                     )}
                 </MapGL>
             </div>

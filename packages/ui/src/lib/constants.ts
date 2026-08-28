@@ -11,6 +11,8 @@ export const CONSUMER_MAP_ZOOM_TIERS = {
     ALL_NAMES_MIN: 17.0,
 };
 
+export const LALBAGH_GEOFENCE_RADIUS_METERS = 1500;
+
 export const PRODUCER_MAP_ZOOM_TIERS = {
     ...CONSUMER_MAP_ZOOM_TIERS,
     // Show sponsors much earlier in the editor so producers can see them

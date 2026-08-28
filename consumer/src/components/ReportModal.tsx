@@ -75,9 +75,9 @@ export function ReportModal({ onClose, defaultIssueType = 'bug', fixedIssueType 
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[#1C1C1E] border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-auto">
+      <div className="w-full h-full max-h-[90dvh] max-w-md bg-[#1C1C1E] border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-400" />
             {issueType === 'sponsor' ? 'Contact Sales' : 'Contact Developer'}
@@ -87,73 +87,75 @@ export function ReportModal({ onClose, defaultIssueType = 'bug', fixedIssueType 
           </Button>
         </div>
 
-        {/* Quick Contact Buttons */}
-        <div className="grid grid-cols-2 gap-3 p-4 pb-0">
-          <a href="mailto:hammaadworks@gmail.com" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-2 transition-colors">
-            <Mail className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-medium text-white truncate">Email</span>
-          </a>
-          <a href="https://wa.me/918310428923" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-2 transition-colors">
-            <MessageCircle className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-medium text-white truncate">WhatsApp</span>
-          </a>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">Topic</label>
-            <select
-              value={issueType}
-              onChange={e => setIssueType(e.target.value)}
-              disabled={fixedIssueType}
-              className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="bug">Report Bug / Glitch</option>
-              <option value="feedback">General Feedback</option>
-              <option value="data">Missing POI / Wrong Data</option>
-              <option value="contact">Get in touch with dev</option>
-              <option value="sponsor">Sponsor a Zone</option>
-            </select>
+        <div className="flex-1 overflow-y-auto">
+          {/* Quick Contact Buttons */}
+          <div className="grid grid-cols-2 gap-3 p-4 pb-0">
+            <a href="mailto:hammaadworks@gmail.com" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-2 transition-colors">
+              <Mail className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-medium text-white truncate">Email</span>
+            </a>
+            <a href="https://wa.me/918310428923" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-2 transition-colors">
+              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-medium text-white truncate">WhatsApp</span>
+            </a>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">Message</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={issueType === 'sponsor' ? "Thanks for loving Lalbagh. Share your brand name and contact, we'd be honored to have you." : "How can we help?"}
-              className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-sm min-h-[120px] focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              required
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Topic</label>
+              <select
+                value={issueType}
+                onChange={e => setIssueType(e.target.value)}
+                disabled={fixedIssueType}
+                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="bug">Report Bug / Glitch</option>
+                <option value="feedback">General Feedback</option>
+                <option value="data">Missing POI / Wrong Data</option>
+                <option value="contact">Get in touch with dev</option>
+                <option value="sponsor">Sponsor a Zone</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Message</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder={issueType === 'sponsor' ? "Thanks for loving Lalbagh. Share your brand name and contact, we'd be honored to have you." : "How can we help?"}
+                className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-sm min-h-[120px] focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1">Email / Phone</label>
-            <Input
-              value={contact}
-              onChange={e => {
-                setContact(e.target.value);
-                setContactError(false);
-              }}
-              placeholder="So we can reach back to you"
-              className={`w-full bg-black/50 border ${contactError ? 'border-red-500 focus:ring-red-500' : 'border-white/10 focus:ring-emerald-500'} rounded-xl px-3 h-12 text-white text-sm focus:ring-2`}
-            />
-            {contactError && <p className="text-red-400 text-xs mt-1.5 animate-in slide-in-from-top-1">Hehe, stop kidding! Enter a valid phone / email.</p>}
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-1">Email / Phone</label>
+              <Input
+                value={contact}
+                onChange={e => {
+                  setContact(e.target.value);
+                  setContactError(false);
+                }}
+                placeholder="So we can reach back to you"
+                className={`w-full bg-black/50 border ${contactError ? 'border-red-500 focus:ring-red-500' : 'border-white/10 focus:ring-emerald-500'} rounded-xl px-3 h-12 text-white text-sm focus:ring-2`}
+              />
+              {contactError && <p className="text-red-400 text-xs mt-1.5 animate-in slide-in-from-top-1">Hehe, stop kidding! Enter a valid phone / email.</p>}
+            </div>
 
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2 mt-2"
-          >
-            {isSubmitting ? 'Sending...' : (
-              <>
-                <Send className="w-5 h-5" />
-                Send Message
-              </>
-            )}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2 mt-2"
+            >
+              {isSubmitting ? 'Sending...' : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Send Message
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
 import React, {useState, useMemo, useEffect} from 'react';
-import {Drawer, DrawerContent, DrawerHeader, DrawerTitle} from '@wayontop/ui/components/ui/drawer';
 import {Input} from '@wayontop/ui/components/ui/input';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {MapPin, X, ArrowDownUp, Navigation, LocateFixed} from 'lucide-react';
@@ -184,16 +183,24 @@ export function NavigationSheet({
             });
     };
 
-    return (
-        <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DrawerContent className="!h-[90svh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
-                <div
-                    className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)]">
-                    <DrawerHeader className="p-6 pb-4 relative border-b border-white/10 shrink-0">
-                        <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4"></div>
-                        <DrawerTitle className="text-white text-left sr-only">Route Planner</DrawerTitle>
+    if (!isOpen) return null;
 
-                        <div className="flex gap-3 items-center">
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full h-full max-h-[90dvh] max-w-md bg-[#1C1C1E] border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Navigation className="w-5 h-5 text-emerald-400" />
+                        Route Planner
+                    </h3>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                <div className="flex-1 flex flex-col overflow-hidden">
+
+                        <div className="flex gap-3 items-center shrink-0 p-4 pb-2">
                             <div className="flex flex-col items-center gap-1.5 pt-2">
                                 <div className="w-3 h-3 rounded-full border-2 border-emerald-400"></div>
                                 <div className="w-0.5 h-6 bg-white/20"></div>
@@ -260,7 +267,6 @@ export function NavigationSheet({
                                 <ArrowDownUp className="w-5 h-5 text-white/70"/>
                             </button>
                         </div>
-                    </DrawerHeader>
 
                     {activeInput ? (
                         <div className="flex-1 px-4 py-2 overflow-y-auto">
@@ -384,7 +390,7 @@ export function NavigationSheet({
                         </div>
                     )}
                 </div>
-            </DrawerContent>
-        </Drawer>
+            </div>
+        </div>
     );
 }

@@ -52,6 +52,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     }>({show: false});
     const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
     const [isNavSheetOpen, setIsNavSheetOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [navInitialTarget, setNavInitialTarget] = useState<GraphNode | null>(null);
 
     const {t, i18n} = useTranslation();
@@ -228,12 +229,14 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 {/* 1. Main View Area (Behind everything) */}
                 <div className="absolute inset-0 z-0 bg-transparent">
                     {mode === 'ar' ? (
-                        <PermissionGate requiredPermissions="all">
-                            <div
-                                className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
-                                <ARView location={location} targetCoordinate={nextWaypoint || undefined} stamps={stamps}/>
-                            </div>
-                        </PermissionGate>
+                        <div className="w-full h-full">
+                            <PermissionGate requiredPermissions="all" className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden">
+                                <div
+                                    className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
+                                    <ARView location={location} targetCoordinate={nextWaypoint || undefined} stamps={stamps}/>
+                                </div>
+                            </PermissionGate>
+                        </div>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
                             <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode}/>
@@ -241,103 +244,36 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     )}
                 </div>
 
-                {/* Unified Top Navigation Bar & Status */}
+                {/* Unified Top Navigation Bar */}
                 {!isSponsorModalOpen && (
                     <div
-                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
+                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
                         <div
-                            className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative">
+                            className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative gap-2">
 
                             {/* 1. Venue (Left) */}
-                            <div className="h-10 px-3 flex items-center shrink-0 relative z-10">
-                            <span
-                                className="text-[13px] font-black text-emerald-400 uppercase tracking-widest truncate max-w-[90px]">
-                                {t(venueKey).toUpperCase()}
-                            </span>
+                            <div className="h-10 px-3 flex items-center relative z-10 flex-1 min-w-0">
+                                <span
+                                    className="text-[13px] font-black text-emerald-400 uppercase tracking-widest truncate w-full text-left">
+                                    {t(venueKey).toUpperCase()}
+                                </span>
                             </div>
 
-                            {/* 2. Sat/AR/Map (Middle) */}
+                            {/* 2. Sat/AR/Map (Right) */}
                             <div
-                                className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner w-[170px] justify-between z-0">
+                                className="flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner flex-1 justify-between relative z-10 h-10">
                                 <button onClick={() => setMode('satellite')}
-                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
                                 </button>
                                 <button onClick={() => setMode('ar')}
-                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center gap-1 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
+                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center gap-1 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
                                         <Sparkles className="w-2.5 h-2.5" /> AR
                                 </button>
                                 <button onClick={() => setMode('map')}
-                                        className={`flex-1 py-1.5 text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
+                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
                                 </button>
                             </div>
 
-                            {/* 3. Settings (Right) */}
-                            <Sheet>
-                                <SheetTrigger
-                                    className="flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 hover:bg-white/5 transition-all cursor-pointer shrink-0 mr-1 relative z-10">
-                                    <Settings className="w-5 h-5 text-white/80 stroke-[1.5]"/>
-                                </SheetTrigger>
-                                <SheetContent side="bottom"
-                                              className="h-[auto] max-h-[90svh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
-                                    <div
-                                        className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] p-6">
-                                        <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
-                                        <SheetTitle
-                                            className="text-2xl font-black text-white mb-6 tracking-tight text-left">Preferences</SheetTitle>
-                                        <div className="space-y-6">
-                                            <div
-                                                className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div
-                                                        className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                                        <Globe className="w-5 h-5"/>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-white font-bold text-[15px]">Language</p>
-                                                        <p className="text-white/50 text-[13px] font-medium">{i18n.language === 'en' ? 'English' : 'ಕನ್ನಡ (Kannada)'}</p>
-                                                    </div>
-                                                </div>
-                                                <Button variant="secondary"
-                                                        className="bg-white/10 hover:bg-white/20 text-white rounded-full font-bold px-4 border-0"
-                                                        onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'kn' : 'en')}>
-                                                    {i18n.language === 'en' ? 'ಕನ್ನಡ' : 'English'}
-                                                </Button>
-                                            </div>
-                                            {FEATURE_FLAGS.enableVenueSwitcher && (
-                                                <div
-                                                    className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div
-                                                            className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
-                                                            <MapPin className="w-5 h-5"/>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white font-bold text-[15px]">Venue</p>
-                                                            <p className="text-white/50 text-[13px] font-medium">Exploring: {venueKey}</p>
-                                                        </div>
-                                                    </div>
-                                                    <Select value={venueKey} onValueChange={setVenueKey}>
-                                                        <SelectTrigger
-                                                            className="w-[130px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0 capitalize">
-                                                            <SelectValue placeholder="Select Venue"/>
-                                                        </SelectTrigger>
-                                                        <SelectContent
-                                                            className="bg-[#2C2C2E] text-white border-white/10 rounded-xl shadow-2xl">
-                                                            {availableVenues.map(v => (
-                                                                <SelectItem key={v} value={v}
-                                                                            className="font-bold focus:bg-white/10 focus:text-white capitalize cursor-pointer">
-                                                                    {v}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
-                                            {/* Report Issue moved to Bottom Bar */}
-                                        </div>
-                                    </div>
-                                </SheetContent>
-                            </Sheet>
                         </div>
 
                         {/* Status Pills (Accuracy) */}
@@ -365,9 +301,81 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 )}
                             </div>
                         </div>
+
                     </div>
                 )}
-
+                
+                {/* Settings Sheet */}
+                <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                    <SheetContent side="bottom"
+                                  className="h-[auto] max-h-[90svh] bg-transparent border-0 p-0 text-white !shadow-none z-[100]">
+                        <div
+                            className="h-full w-full bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] overflow-hidden flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] p-6">
+                            <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
+                            <SheetTitle
+                                className="text-2xl font-black text-white mb-6 tracking-tight text-left">Preferences</SheetTitle>
+                            <div className="space-y-6">
+                                <div
+                                    className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                            <Globe className="w-5 h-5"/>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold text-[15px]">Language</p>
+                                            <p className="text-white/50 text-[13px] font-medium">
+                                                {i18n.language === 'en' ? 'English' : i18n.language === 'kn' ? 'ಕನ್ನಡ (Kannada)' : 'Español (Spanish)'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Select value={i18n.language} onValueChange={(val) => i18n.changeLanguage(val)}>
+                                        <SelectTrigger
+                                            className="w-[120px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0">
+                                            <SelectValue placeholder="Language"/>
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            className="bg-[#2C2C2E] text-white border-white/10 rounded-xl shadow-2xl">
+                                            <SelectItem value="en" className="font-bold focus:bg-white/10 focus:text-white cursor-pointer">English</SelectItem>
+                                            <SelectItem value="kn" className="font-bold focus:bg-white/10 focus:text-white cursor-pointer">ಕನ್ನಡ</SelectItem>
+                                            <SelectItem value="es" className="font-bold focus:bg-white/10 focus:text-white cursor-pointer">Español</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {FEATURE_FLAGS.enableVenueSwitcher && (
+                                    <div
+                                        className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                                                <MapPin className="w-5 h-5"/>
+                                            </div>
+                                            <div>
+                                                <p className="text-white font-bold text-[15px]">Venue</p>
+                                                <p className="text-white/50 text-[13px] font-medium">Exploring: {venueKey}</p>
+                                            </div>
+                                        </div>
+                                        <Select value={venueKey} onValueChange={setVenueKey}>
+                                            <SelectTrigger
+                                                className="w-[130px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0 capitalize">
+                                                <SelectValue placeholder="Select Venue"/>
+                                            </SelectTrigger>
+                                            <SelectContent
+                                                className="bg-[#2C2C2E] text-white border-white/10 rounded-xl shadow-2xl">
+                                                {availableVenues.map(v => (
+                                                    <SelectItem key={v} value={v}
+                                                                className="font-bold focus:bg-white/10 focus:text-white capitalize cursor-pointer">
+                                                        {v}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </SheetContent>
+                </Sheet>
 
                 {/* Active Route HUD - Google Maps Style (Top Banner) */}
                 {activeRoute && targetNode && (
@@ -391,7 +399,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     <>
                         {/* Stamps Pill (Bottom Left) */}
                         <div
-                            className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto"
+                            className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto hide-on-permission"
                             data-html2canvas-ignore={isCapturing}>
                             <div
                                 className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
@@ -419,6 +427,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 setNavInitialTarget(null);
                                 setIsNavSheetOpen(true);
                             }}
+                            onOpenSettings={() => setIsSettingsOpen(true)}
                             collectedStampIds={stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).map(s => s.id)}
                         />
                     </>
@@ -520,7 +529,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
 
                 {/* Radar Map (PUBG/PoGo style mini-map) */}
                 {mode === 'ar' && (
-                    <div className="absolute top-44 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2"
+                    <div className="absolute top-44 right-4 z-40 pointer-events-auto flex flex-col items-end gap-2 hide-on-permission"
                          data-html2canvas-ignore={isCapturing}>
                         <div
                             role="button"
@@ -758,7 +767,7 @@ export default function App() {
                     onFinish={() => setSplashFinished(true)} 
                 />
             )}
-            <PermissionGate>
+            <div className="w-full h-full">
                 <MainApp
                     venueKey={venueKey}
                     setVenueKey={handleVenueChange}
@@ -766,7 +775,7 @@ export default function App() {
                     prefetchedGraph={prefetchedGraph}
                     prefetchedStamps={prefetchedStamps}
                 />
-            </PermissionGate>
+            </div>
             {loadError && splashFinished && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 p-6 text-white backdrop-blur-xl">
                     <div className="glass-panel w-full max-w-sm p-6 text-center">

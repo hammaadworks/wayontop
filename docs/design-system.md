@@ -17,6 +17,17 @@ All design tokens and `shadcn/ui` components are strictly centralized in the `@w
 - **Component Imports:** Always import components from the shared package: `import { Card } from '@wayontop/ui/components/ui/card'`.
 - **Custom Shared Components:** Foundational UI like `PermissionGate.tsx` are also centralized here.
 
+### Brand Identity (Logo & Favicon)
+- **Concept:** A minimalist, elegant map pin with a leaf-shaped cutout to represent the Lalbagh Botanical Garden. It uses a clean Emerald Green gradient.
+- **Favicon:** Hosted directly at `consumer/public/favicon.svg` and `producer/public/favicon.svg`. These are automatically loaded by the `index.html` files.
+- **React Component:** A reusable `<Logo />` component is available in the shared UI package for use in navbars, splash screens, or empty states.
+  ```tsx
+  import { Logo } from '@wayontop/ui/components/icons/Logo'
+  
+  // Usage
+  <Logo className="w-8 h-8 drop-shadow-md" />
+  ```
+
 ### Colors
 - **Backgrounds**: Deep slate (`bg-slate-950`) acts as the canvas. This is heavily augmented by absolute-positioned glowing orbs using `mix-blend-screen` and `mix-blend-overlay` to create iridescent, holographic backdrops.
 - **Primary Accents (The Crystals)**: Ethereal Pastels. We use gradients combining `teal-300/20`, `fuchsia-300/10`, `indigo-400/20`, and `rose-400/20` to mimic the light catching translucent crystals.

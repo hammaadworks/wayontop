@@ -1,4 +1,4 @@
-import {Combine, Layers, Camera} from 'lucide-react';
+import {Combine, Layers, Camera, Link} from 'lucide-react';
 import {Popover, PopoverContent, PopoverTrigger} from '@wayontop/ui/components/ui/popover';
 
 interface TopNavigationBarProps {
@@ -81,6 +81,20 @@ export function TopNavigationBar({
                         className={`w-9 h-9 flex items-center justify-center rounded-full transition-all outline-none ${mode === 'merge_nodes' ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-pulse' : (isLocked ? 'text-slate-500 cursor-help' : 'text-slate-300 hover:text-white hover:bg-white/10')}`}
                     >
                         <Combine className="w-4 h-4"/>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (isLocked) {
+                                import('sonner').then(m => m.toast.info("Unlock edit mode to use auto link"));
+                            } else {
+                                setMode(mode === 'auto_link' ? 'view' : 'auto_link');
+                            }
+                        }}
+                        title={isLocked ? "Auto link nodes in edit mode" : "Auto link nodes"}
+                        className={`w-9 h-9 flex items-center justify-center rounded-full transition-all outline-none ${mode === 'auto_link' ? 'bg-fuchsia-500 text-white shadow-[0_0_15px_rgba(217,70,239,0.5)] animate-pulse' : (isLocked ? 'text-slate-500 cursor-help' : 'text-slate-300 hover:text-white hover:bg-white/10')}`}
+                    >
+                        <Link className="w-4 h-4"/>
                     </button>
 
                     <div className="w-px h-4 bg-white/20 mx-0.5"/>
