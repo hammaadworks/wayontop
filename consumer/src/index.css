@@ -7,3 +7,11 @@ body.permission-gate-active .hide-on-permission {
     visibility: hidden !important;
     pointer-events: none !important;
 }
+
+.show-on-permission {
+    display: none !important;
+}
+
+body.permission-gate-active .show-on-permission {
+    display: flex !important;
+}

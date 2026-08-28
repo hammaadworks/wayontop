@@ -25,12 +25,31 @@ type MapViewProps = Readonly<{
     isRadar?: boolean;
     mode?: 'map' | 'satellite' | 'ar';
     onSelectNode?: (node: GraphNode) => void;
+    selectedNodeId?: number | null;
 }>;
 
-export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map', onSelectNode}: MapViewProps) {
+export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map', onSelectNode, selectedNodeId}: MapViewProps) {
     const collectedStampIds = Gamification.getCollectedStamps();
     const [activePopup, setActivePopup] = useState<number | null>(null);
     const mapRef = useRef<any>(null);
+
+    // Sync active popup with external selection and fly to it
+    useEffect(() => {
+        if (selectedNodeId !== undefined) {
+            setActivePopup(selectedNodeId);
+            if (selectedNodeId !== null && mapRef.current) {
+                const node = graph?.nodes.find(n => n.id === selectedNodeId) || stamps.find(s => s.id === selectedNodeId);
+                if (node) {
+                    mapRef.current.flyTo({
+                        center: [node.lng, node.lat],
+                        zoom: Math.max(mapRef.current.getZoom(), 18),
+                        duration: 1200,
+                        essential: true
+                    });
+                }
+            }
+        }
+    }, [selectedNodeId, graph, stamps]);
 
     const actualSkin = mode === 'satellite' ? 'satellite' : 'animated';
     const [zoom, setZoom] = useState(isRadar ? 16.5 : 16);

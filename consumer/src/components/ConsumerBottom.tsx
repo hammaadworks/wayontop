@@ -29,6 +29,9 @@ interface ConsumerBottomProps {
     onOpenNavigation: () => void;
     onOpenSettings?: () => void;
     collectedStampIds?: number[];
+    isExploreOpen?: boolean;
+    onExploreOpenChange?: (open: boolean) => void;
+    initialExploreQuery?: string;
 }
 
 export function ConsumerBottom({
@@ -42,9 +45,15 @@ export function ConsumerBottom({
                                    onSponsorModalChange,
                                    onOpenNavigation,
                                    onOpenSettings,
-                                   collectedStampIds = []
+                                   collectedStampIds = [],
+                                   isExploreOpen,
+                                   onExploreOpenChange,
+                                   initialExploreQuery = ''
                                }: ConsumerBottomProps) {
-    const [sheetOpen, setSheetOpen] = useState(false);
+    const [internalSheetOpen, setInternalSheetOpen] = useState(false);
+    const sheetOpen = isExploreOpen !== undefined ? isExploreOpen : internalSheetOpen;
+    const setSheetOpen = onExploreOpenChange || setInternalSheetOpen;
+
     const [sponsorToast, setSponsorToast] = useState<{message: string, description?: string} | null>(null);
 
     useEffect(() => {
@@ -142,6 +151,7 @@ export function ConsumerBottom({
                                     onSearchEvent={(query) => {
                                         Analytics.logEvent('search_performed', { query });
                                     }}
+                                    initialQuery={initialExploreQuery}
                                 />
                             </div>
                         </div>

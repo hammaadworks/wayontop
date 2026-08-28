@@ -55,6 +55,9 @@ async function requestCamera(): Promise<PermState> {
     activeStream?.getTracks().forEach(t => t.stop()); // release before re-requesting — fixes "unable to access camera"
     try {
         activeStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+        activeStream.getTracks().forEach(t => t.stop()); // Immediately release so ARView can use the camera
+        activeStream = null;
+        await new Promise(r => setTimeout(r, 200)); // Give OS time to release hardware lock before ARView requests it
         return 'granted';
     } catch (err: any) {
         if (err.name === 'NotAllowedError') return 'denied';
@@ -113,12 +116,34 @@ function getBrowser() {
     return 'other';
 }
 
+// Cache the state in sessionStorage so users don't get prompted repeatedly when navigating between tabs or reloading
+const getCachedState = (): GateState | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const cached = sessionStorage.getItem('wayontop_permissions');
+        if (cached) return JSON.parse(cached) as GateState;
+    } catch {}
+    return null;
+};
+
+const saveCachedState = (state: GateState) => {
+    if (typeof window === 'undefined') return;
+    try {
+        sessionStorage.setItem('wayontop_permissions', JSON.stringify(state));
+    } catch {}
+};
+
 export function PermissionGate({children, isProducerApp, requiredPermissions = isProducerApp ? 'all' : 'location', className}: Readonly<PermissionGateProps>) {
-    const [gateState, setGateState] = useState<GateState>({
+    const [gateState, setGateState] = useState<GateState>(() => getCachedState() || {
         camera: 'unknown',
         location: 'unknown',
         compass: 'unknown'
     });
+
+    // Sync to cache whenever state updates
+    useEffect(() => {
+        saveCachedState(gateState);
+    }, [gateState]);
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -360,7 +385,7 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
                     <button
                         onClick={onGrantTap}
                         disabled={isProcessing}
-                        className="w-full relative overflow-hidden group bg-white/10 hover:bg-white/20 border border-white/20 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-2xl shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 transition-all duration-300 text-sm sm:text-base flex items-center justify-center gap-2"
+                        className="w-full relative overflow-hidden group bg-emerald-500 hover:bg-emerald-400 border border-emerald-400/50 text-white font-bold py-3.5 px-6 rounded-2xl shadow-[0_10px_40px_rgba(16,185,129,0.3)] active:scale-95 transition-all duration-300 text-sm sm:text-base flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
                     >
                         {/* Animated gradient sheen */}
                         <div

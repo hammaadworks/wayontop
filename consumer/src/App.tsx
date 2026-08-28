@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState, useRef} from 'react';
-import {Globe, MapPin, Navigation, Settings, Sparkles, X, ArrowUp} from 'lucide-react';
+import {Globe, MapPin, Navigation, Settings, Sparkles, X, ArrowUp, Map} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 
 import html2canvas from 'html2canvas';
@@ -18,6 +18,7 @@ import {ConsumerBottom} from './components/ConsumerBottom';
 import {RouteSummary} from './components/RouteSummary';
 import {ReportModal} from './components/ReportModal';
 import {POICard} from './components/POICard';
+import {StampModal} from './components/StampModal';
 import {ViralSharing} from './lib/sharing';
 import {FEATURE_FLAGS} from './lib/featureFlags';
 import {Gamification} from './lib/gamification';
@@ -54,6 +55,9 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     const [isNavSheetOpen, setIsNavSheetOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [navInitialTarget, setNavInitialTarget] = useState<GraphNode | null>(null);
+    const [isStampModalOpen, setIsStampModalOpen] = useState(false);
+    const [isExploreOpen, setIsExploreOpen] = useState(false);
+    const [exploreQuery, setExploreQuery] = useState('');
 
     const {t, i18n} = useTranslation();
 
@@ -230,7 +234,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 <div className="absolute inset-0 z-0 bg-transparent">
                     {mode === 'ar' ? (
                         <div className="w-full h-full">
-                            <PermissionGate requiredPermissions="all" className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden">
+                            <PermissionGate 
+                                requiredPermissions="all" 
+                                className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden"
+                            >
                                 <div
                                     className="h-full w-full flex items-center justify-center flex-col relative overflow-hidden bg-gradient-to-b from-slate-900 to-black">
                                     <ARView location={location} targetCoordinate={nextWaypoint || undefined} stamps={stamps}/>
@@ -239,7 +246,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         </div>
                     ) : (
                         <div className="h-full w-full bg-[#E5E3DF] flex items-center justify-center">
-                            <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode} onSelectNode={setSelectedPOI}/>
+                            <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} mode={mode} onSelectNode={setSelectedPOI} selectedNodeId={selectedPOI?.id} />
                         </div>
                     )}
                 </div>
@@ -247,59 +254,61 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                 {/* Unified Top Navigation Bar */}
                 {!isSponsorModalOpen && (
                     <div
-                        className="absolute top-[calc(env(safe-area-inset-top)+12px)] left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-3">
+                        className="absolute top-[calc(env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px] pointer-events-none flex flex-col items-center gap-2">
+                        
+                        {/* Compact Dynamic Island Container */}
                         <div
-                            className="pointer-events-auto p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-full relative gap-2">
+                            className="pointer-events-auto p-1 shadow-[0_16px_32px_rgba(0,0,0,0.6)] border border-white/10 flex flex-col w-full bg-[#1C1C1E]/90 backdrop-blur-3xl rounded-[24px] relative gap-0.5">
 
-                            {/* 1. Venue (Left) */}
-                            <div className="h-10 px-3 flex items-center relative z-10 flex-1 min-w-0">
-                                <span
-                                    className="text-[13px] font-black text-emerald-400 uppercase tracking-widest truncate w-full text-left">
-                                    {t(venueKey).toUpperCase()}
-                                </span>
+                            {/* Top Row: Venue & GPS */}
+                            <div className="flex items-center justify-between w-full relative z-10">
+                                {/* 1. Venue (Left) */}
+                                <div className="h-8 px-3 flex items-center relative z-10 flex-1 min-w-0">
+                                    <span
+                                        className="text-[12px] font-black text-emerald-400 uppercase tracking-widest truncate w-full text-left">
+                                        {t(venueKey).toUpperCase()}
+                                    </span>
+                                </div>
+
+                                {/* 2. GPS Accuracy (Right) */}
+                                <div className="flex items-center justify-end relative z-10 pr-3 h-8 shrink-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <div
+                                            className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${!location ? 'bg-amber-500 text-amber-500 animate-pulse' : location.accuracy < 15 ? 'bg-emerald-400 text-emerald-400' : location.accuracy < 30 ? 'bg-amber-400 text-amber-400' : 'bg-red-500 text-red-500 animate-pulse'}`}/>
+                                        <span className="text-[10px] font-bold tracking-wider uppercase text-slate-200 whitespace-nowrap">
+                                            {!location ? 'Firing GPS...' : `GPS: ${Math.round(location.accuracy)}m`}
+                                        </span>
+                                        {location && location.accuracy > 15 && (
+                                            <span className="text-[10px] text-red-300 font-semibold border-l border-white/20 pl-2 hidden sm:inline-block whitespace-nowrap">
+                                                Go Out
+                                            </span>
+                                        )}
+                                        {location && location.accuracy > 5 && location.accuracy <= 15 && (
+                                            <span className="text-[10px] text-amber-300 font-semibold border-l border-white/20 pl-2 hidden sm:inline-block whitespace-nowrap">
+                                                Wait
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* 2. Sat/AR/Map (Right) */}
-                            <div
-                                className="flex items-center bg-black/50 backdrop-blur-3xl rounded-full p-1 border border-white/5 shadow-inner flex-1 justify-between relative z-10 h-10">
-                                <button onClick={() => setMode('satellite')}
-                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
-                                </button>
-                                <button onClick={() => setMode('ar')}
-                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center gap-1 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
-                                        <Sparkles className="w-2.5 h-2.5" /> AR
-                                </button>
-                                <button onClick={() => setMode('map')}
-                                        className={`flex-1 h-full text-[10px] uppercase tracking-wider rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
-                                </button>
-                            </div>
-
-                        </div>
-
-                        {/* Status Pills (Accuracy) */}
-                        <div className="flex justify-center pointer-events-auto mt-1"
-                             data-html2canvas-ignore={isCapturing}>
-                            <div
-                                className="glass-pill bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)]"
-                            >
+                            {/* Bottom Row: Map Mode Toggle */}
+                            <div className="w-full px-0.5 pb-0.5" data-html2canvas-ignore={isCapturing}>
                                 <div
-                                    className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] ${!location ? 'bg-amber-500 text-amber-500 animate-pulse' : location.accuracy < 15 ? 'bg-emerald-400 text-emerald-400' : location.accuracy < 30 ? 'bg-amber-400 text-amber-400' : 'bg-red-500 text-red-500 animate-pulse'}`}/>
-                                <span className="text-[10px] font-black tracking-wider uppercase text-slate-200">
-                                {!location ? 'Connecting GPS...' : `GPS: ${Math.round(location.accuracy)}m`}
-                            </span>
-                                {location && location.accuracy > 15 && (
-                                    <span
-                                        className="text-[10px] text-red-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
-                                    Move outdoors / Calibrate compass
-                                </span>
-                                )}
-                                {location && location.accuracy > 5 && location.accuracy <= 15 && (
-                                    <span
-                                        className="text-[10px] text-amber-300 font-bold border-l border-white/20 pl-2 hidden sm:inline-block">
-                                    Stay still to improve
-                                </span>
-                                )}
+                                    className="flex items-center bg-black/40 rounded-[20px] p-0.5 border border-white/5 shadow-inner w-full h-10">
+                                    <button onClick={() => setMode('satellite')}
+                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'satellite' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Sat
+                                    </button>
+                                    <button onClick={() => setMode('ar')}
+                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'ar' ? 'bg-white/20 text-white shadow-sm' : 'text-emerald-400 hover:text-emerald-300'}`}>
+                                            <Sparkles className="w-3 h-3" /> AR
+                                    </button>
+                                    <button onClick={() => setMode('map')}
+                                            className={`flex-1 h-full text-[11px] uppercase tracking-widest rounded-full font-bold transition-all flex items-center justify-center ${mode === 'map' ? 'bg-white/20 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Map
+                                    </button>
+                                </div>
                             </div>
+
                         </div>
 
                     </div>
@@ -401,8 +410,9 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         <div
                             className="absolute bottom-[calc(env(safe-area-inset-bottom)+11rem)] left-4 z-10 pointer-events-auto hide-on-permission"
                             data-html2canvas-ignore={isCapturing}>
-                            <div
-                                className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90">
+                            <button
+                                onClick={() => setIsStampModalOpen(true)}
+                                className="bg-[#1C1C1E]/90 backdrop-blur-3xl border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-xs font-semibold text-white/90 hover:bg-[#1C1C1E] active:scale-95 transition-all cursor-pointer">
                                 <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
                                     <Sparkles
                                         className="w-3.5 h-3.5 text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]"/>
@@ -410,7 +420,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                 <span
                                     className="text-white font-bold text-sm drop-shadow-md">{stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).length}</span>
                                 <span className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Stamps</span>
-                            </div>
+                            </button>
                         </div>
 
                         {/* Unified Consumer Bottom (Sponsor Marquee + Bottom Bar) */}
@@ -429,6 +439,9 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                             }}
                             onOpenSettings={() => setIsSettingsOpen(true)}
                             collectedStampIds={stamps.filter(s => Gamification.getCollectedStamps().includes(s.id)).map(s => s.id)}
+                            isExploreOpen={isExploreOpen}
+                            onExploreOpenChange={setIsExploreOpen}
+                            initialExploreQuery={exploreQuery}
                         />
                     </>
                 )}
@@ -467,6 +480,18 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                     />
                 )}
 
+                {isStampModalOpen && (
+                    <StampModal
+                        stamps={stamps}
+                        collectedStampIds={Gamification.getCollectedStamps()}
+                        onClose={() => setIsStampModalOpen(false)}
+                        onFindStamps={() => {
+                            setIsStampModalOpen(false);
+                            setExploreQuery('stamp');
+                            setIsExploreOpen(true);
+                        }}
+                    />
+                )}
                 <NavigationSheet
                     isOpen={isNavSheetOpen}
                     onClose={() => setIsNavSheetOpen(false)}
@@ -546,8 +571,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         >
                             <div
                                 className="absolute inset-0 origin-center opacity-90 pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                                <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} isRadar={true}
-                                         mode={mode}/>
+                                <MapView graph={graph} activeRoute={activeRoute} location={location} stamps={stamps} isRadar={true} mode="satellite" />
                             </div>
 
                             {/* Expand hint overlay */}

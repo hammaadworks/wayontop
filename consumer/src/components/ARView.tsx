@@ -22,6 +22,12 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
     const [collectedStampIds, setCollectedStampIds] = React.useState<number[]>([]);
     const [justClaimedStamp, setJustClaimedStamp] = React.useState<Stamp | null>(null);
     const [infoStamp, setInfoStamp] = React.useState<Stamp | null>(null);
+    const [showCalibration, setShowCalibration] = React.useState(true);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => setShowCalibration(false), 6000);
+        return () => clearTimeout(timer);
+    }, []);
 
     React.useEffect(() => {
         setCollectedStampIds(Gamification.getCollectedStamps());
@@ -130,11 +136,13 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
             ) : null}
 
             {/* Figure 8 Calibration Tooltip */}
-            <div
-                className="absolute top-32 left-1/2 -translate-x-1/2 glass-pill px-5 py-2.5 pointer-events-none flex items-center z-10 animate-pulse">
-                <span
-                    className="text-[11px] font-medium tracking-widest uppercase text-white/80">{t('move_8_calibrate')}</span>
-            </div>
+            {showCalibration && (
+                <div
+                    className="absolute top-32 left-1/2 -translate-x-1/2 glass-pill px-5 py-2.5 pointer-events-none flex items-center z-10 animate-pulse">
+                    <span
+                        className="text-[11px] font-medium tracking-widest uppercase text-white/80">{t('move_8_calibrate')}</span>
+                </div>
+            )}
 
             {/* Stamp Claim UI Overlay (Pokemon Go Card Style) */}
             {nearbyStamp && !justClaimedStamp && !infoStamp && (

@@ -7,6 +7,9 @@ import Fuse from 'fuse.js';
 import type {GraphData, GraphNode} from '@wayontop/ui/lib/types';
 import {getPOIStyle} from '@wayontop/ui/lib/poiStyles';
 import { calculateRoute } from '@wayontop/ui/lib/routingClient';
+import { distanceInMeters } from '@wayontop/ui/lib/routing';
+import { Gamification } from '../lib/gamification';
+import { NodeSearchResultItem } from '@wayontop/ui/components/NodeSearchResultItem';
 
 interface NavigationSheetProps {
     isOpen: boolean;
@@ -79,9 +82,47 @@ export function NavigationSheet({
 
     const searchResults = useMemo(() => {
         const query = activeInput === 'from' ? fromQuery : toQuery;
-        if (!query || query === 'Your Location') return pois;
-        return fuse.search(query).map(res => res.item);
-    }, [activeInput, fromQuery, toQuery, pois, fuse]);
+        let results = (!query || query === 'Your Location') ? pois : fuse.search(query).map(res => res.item);
+
+        // Apply distance logic
+        let nodesWithStats = results.map(poi => {
+            const distance = location ? distanceInMeters(location.lat, location.lng, poi.lat, poi.lng) : undefined;
+            return {
+                ...poi,
+                distance
+            };
+        });
+        
+        if (location) {
+            nodesWithStats = nodesWithStats.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        }
+
+        return nodesWithStats.map(poi => {
+            let anchorName = null;
+            if (poi.category?.base_type === 'utility_minor' || poi.category?.base_type === 'utility_major') {
+                let nearestMajor = null;
+                let minMajorDist = Infinity;
+                
+                for (const potentialAnchor of pois) {
+                    if (potentialAnchor.category?.base_type === 'poi' || potentialAnchor.category?.base_type === 'gate') {
+                        const dist = distanceInMeters(poi.lat, poi.lng, potentialAnchor.lat, potentialAnchor.lng);
+                        if (dist < minMajorDist && dist < 150) {
+                            minMajorDist = dist;
+                            nearestMajor = potentialAnchor;
+                        }
+                    }
+                }
+                
+                if (nearestMajor) {
+                    anchorName = nearestMajor.name?.en || nearestMajor.searchName;
+                }
+            }
+            return {
+                ...poi,
+                anchorName
+            };
+        });
+    }, [activeInput, fromQuery, toQuery, pois, fuse, location]);
 
     const handleSelectNode = (node: any | 'current') => {
         if (activeInput === 'from') {
@@ -300,52 +341,32 @@ export function NavigationSheet({
                             )}
 
                             {searchResults.map(poi => {
-                                const {icon: Icon, bgClass, textClass} = getPOIStyle(poi);
+                                const isUndiscoveredStamp = poi.category?.base_type === 'stamp' && !Gamification.getCollectedStamps().includes(poi.id);
                                 return (
-                                    <button
+                                    <NodeSearchResultItem
                                         key={poi.id}
+                                        poi={poi}
+                                        onClick={() => {
+                                            if (wasKeyboardOpenRef.current) {
+                                                wasKeyboardOpenRef.current = false;
+                                                if (document.activeElement?.tagName === 'INPUT') {
+                                                    (document.activeElement as HTMLElement).blur();
+                                                }
+                                                return;
+                                            }
+                                            handleSelectNode(poi);
+                                        }}
                                         onPointerDown={(e) => {
-                                            // If on mobile (touch) and an input is currently focused (keyboard is open),
-                                            // we flag this tap so it only dismisses the keyboard instead of selecting.
                                             if (e.pointerType === 'touch' && document.activeElement?.tagName === 'INPUT') {
                                                 wasKeyboardOpenRef.current = true;
                                             } else {
                                                 wasKeyboardOpenRef.current = false;
                                             }
                                         }}
-                                        onClick={() => {
-                                            if (wasKeyboardOpenRef.current) {
-                                                wasKeyboardOpenRef.current = false;
-                                                // Explicitly blur to ensure keyboard closes smoothly
-                                                if (document.activeElement?.tagName === 'INPUT') {
-                                                    (document.activeElement as HTMLElement).blur();
-                                                }
-                                                return; // Stop here, don't select the node on the first tap
-                                            }
-                                            handleSelectNode(poi);
-                                        }}
-                                        className="w-full flex items-center gap-4 p-3 hover:bg-white/5 rounded-2xl transition-all border-b border-white/5 last:border-0 text-left"
-                                    >
-                                        <div
-                                            className={`w-10 h-10 rounded-full ${bgClass} flex items-center justify-center shrink-0`}>
-                                            <Icon className={`${textClass} w-5 h-5`}/>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span
-                                                className="font-semibold text-[16px] text-white tracking-tight">{t(poi.searchName)}</span>
-                                            <div className="flex gap-1.5 items-center mt-0.5">
-                                                {poi.category?.name?.en && (
-                                                    <span className="text-[12px] text-white/50 capitalize">{poi.category.name.en}</span>
-                                                )}
-                                                {poi.is_paid && (
-                                                    <>
-                                                        <span className="text-[10px] text-white/20">•</span>
-                                                        <span className="text-[11px] font-bold text-amber-400">₹ Paid</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </button>
+                                        t={t as any}
+                                        isUndiscoveredStamp={isUndiscoveredStamp}
+                                        event={poi.event_id ? graph?.events.find(e => e.id === poi.event_id) : undefined}
+                                    />
                                 );
                             })}
                         </div>

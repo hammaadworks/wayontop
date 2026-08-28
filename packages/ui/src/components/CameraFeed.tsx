@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
-import {CameraOff, Map, Settings, ZoomIn, ZoomOut} from 'lucide-react';
+import {CameraOff, Map, Settings} from 'lucide-react';
 
 interface CameraFeedProps {
     className?: string;
@@ -12,16 +12,9 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
     const trackRef = useRef<MediaStreamTrack | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Zoom state
-    const [zoom, setZoom] = useState<number>(1);
-    const [zoomCaps, setZoomCaps] = useState<{ min: number, max: number, step: number } | null>(null);
-
-    // Pinch tracking
-    const pinchStartDistRef = useRef<number | null>(null);
-    const pinchStartZoomRef = useRef<number>(1);
-
     useEffect(() => {
         let stream: MediaStream | null = null;
+        let isMounted = true;
 
         async function startCamera() {
             try {
@@ -33,9 +26,17 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
                 } catch (initialErr: any) {
                     // If zoom constraint is not supported (e.g. Safari or Firefox), fallback to standard
                     console.warn("Zoom constraint not supported, falling back to standard video", initialErr);
+                    if (!isMounted) return; // Prevent secondary request if already unmounted
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: {facingMode: 'environment'}
                     });
+                }
+
+                if (!isMounted) {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    return;
                 }
 
                 if (videoRef.current) {
@@ -47,18 +48,21 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
                 const track = stream.getVideoTracks()[0];
                 trackRef.current = track;
 
-                // Check hardware zoom capabilities
-                const capabilities = track.getCapabilities() as any;
-                if (capabilities.zoom) {
-                    const settings = track.getSettings() as any;
-                    setZoom(settings.zoom || capabilities.zoom.min);
-                    setZoomCaps({
-                        min: capabilities.zoom.min,
-                        max: capabilities.zoom.max,
-                        step: capabilities.zoom.step || 0.1
-                    });
+                // Check hardware zoom capabilities and force widest lens
+                if (typeof track.getCapabilities === 'function') {
+                    const capabilities = track.getCapabilities() as any;
+                    if (capabilities && capabilities.zoom) {
+                        try {
+                            await track.applyConstraints({
+                                advanced: [{zoom: capabilities.zoom.min} as any]
+                            });
+                        } catch (e) {
+                            console.warn("Failed to apply minimum zoom constraint", e);
+                        }
+                    }
                 }
             } catch (err: any) {
+                if (!isMounted) return;
                 console.error("Error accessing camera:", err);
                 setError('Unable to access camera. Please check permissions.');
             }
@@ -67,103 +71,43 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
         void startCamera();
 
         return () => {
+            isMounted = false;
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
         };
     }, []);
 
-    const handleZoomChange = useCallback(async (newZoom: number) => {
-        if (!trackRef.current || !zoomCaps) return;
-
-        // Clamp zoom value
-        const clampedZoom = Math.min(Math.max(newZoom, zoomCaps.min), zoomCaps.max);
-
-        try {
-            await trackRef.current.applyConstraints({
-                advanced: [{zoom: clampedZoom} as any]
-            });
-            setZoom(clampedZoom);
-        } catch (err) {
-            console.warn("Failed to apply zoom constraints", err);
-        }
-    }, [zoomCaps]);
-
-    // Touch handlers for pinch-to-zoom
-    const onTouchStart = (e: React.TouchEvent) => {
-        if (e.touches.length === 2 && zoomCaps) {
-            pinchStartDistRef.current = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
-            pinchStartZoomRef.current = zoom;
-        }
-    };
-
-    const onTouchMove = (e: React.TouchEvent) => {
-        if (e.touches.length === 2 && pinchStartDistRef.current !== null && zoomCaps) {
-            const currentDist = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
-
-            const scale = currentDist / pinchStartDistRef.current;
-            const newZoom = pinchStartZoomRef.current * scale;
-
-            // Debounce or directly apply if smooth enough. Let's try directly applying:
-            void handleZoomChange(newZoom);
-        }
-    };
-
-    const onTouchEnd = () => {
-        pinchStartDistRef.current = null;
-    };
-
     if (error) {
         const errorContent = (
-            <div className="fixed inset-0 z-[9999] bg-slate-900 overflow-y-auto w-full h-[100dvh]">
-                <div className="min-h-full flex flex-col items-center justify-center text-white p-6 py-12 text-center mx-auto max-w-md">
-                    <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 shrink-0">
-                        <CameraOff className="w-10 h-10 text-slate-400"/>
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black p-4 sm:p-6 overflow-hidden">
+                <div className="absolute inset-0 bg-mesh-dark opacity-60 pointer-events-none -z-10"></div>
+                
+                <div className="relative w-full max-w-[340px] p-6 glass-panel animate-in zoom-in-95 duration-500 flex flex-col rounded-3xl">
+                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-5 shrink-0 border border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                        <CameraOff className="w-8 h-8 text-red-400"/>
                     </div>
 
-                    <h3 className="text-2xl font-bold mb-3 tracking-tight">Camera Unavailable</h3>
-                    <p className="text-slate-400 mb-8">
-                        You can still navigate Lalbagh without AR! Use the Map view, or follow the steps below to enable the
-                        camera.
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-white text-center mb-2 tracking-tight">Camera Unavailable</h3>
+                    <p className="text-white/70 text-center text-[13px] leading-relaxed font-medium mb-6">
+                        We couldn't access your camera. You can still navigate Lalbagh using the Map view, or check your settings.
                     </p>
 
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 text-left w-full mb-8 shrink-0">
-                        <h4 className="text-amber-400 font-bold mb-4 flex items-center gap-2">
-                            <Settings className="w-5 h-5"/> How to Enable Camera
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left w-full mb-6">
+                        <h4 className="text-amber-400 font-bold text-sm mb-3 flex items-center gap-2">
+                            <Settings className="w-4 h-4"/> How to fix access
                         </h4>
 
-                        <div className="space-y-4 text-sm text-slate-300">
+                        <div className="space-y-3 text-xs text-slate-300">
                             <div>
-                                <p className="font-bold text-white mb-1">1. Browser Level (Site Settings)</p>
-                                <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
-                                    <li><span className="text-white">iOS:</span> Tap the <strong>aA</strong> icon in the
-                                        address bar → Website Settings → Camera → Allow
-                                    </li>
-                                    <li><span className="text-white">Android:</span> Tap the lock icon near the URL →
-                                        Permissions → Camera → Allow
-                                    </li>
-                                </ul>
+                                <p className="font-bold text-white mb-1">1. Browser Level</p>
+                                <p className="opacity-80">Tap the lock or aA icon near the URL bar, and Allow Camera access.</p>
                             </div>
-
                             <div>
-                                <p className="font-bold text-white mb-1">2. OS Level (Device Settings)</p>
-                                <ul className="list-disc list-inside ml-1 opacity-90 space-y-1">
-                                    <li><span className="text-white">iOS:</span> Settings → Safari/Chrome → Camera → Allow
-                                    </li>
-                                    <li><span className="text-white">Android:</span> Settings → Apps → Chrome → Permissions
-                                        → Camera → Allow
-                                    </li>
-                                </ul>
+                                <p className="font-bold text-white mb-1">2. Device Level</p>
+                                <p className="opacity-80">Open your phone Settings, find your browser app, and Allow Camera.</p>
                             </div>
                         </div>
-
-                        <p className="mt-5 text-xs text-slate-500">After changing settings, refresh the page.</p>
                     </div>
 
                     <button
@@ -171,12 +115,12 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
                             if (onClose) onClose();
                             else window.dispatchEvent(new CustomEvent('switch-view', {detail: {view: 'map'}}));
                         }}
-                        className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-8 rounded-full shadow-lg flex items-center gap-2 active:scale-95 transition-all w-full justify-center shrink-0"
+                        className="w-full relative overflow-hidden group bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 px-6 rounded-2xl shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 transition-all duration-300 text-sm flex items-center justify-center gap-2"
                     >
                         {onClose ? (
-                            <>Close Camera</>
+                            <>Close</>
                         ) : (
-                            <><Map className="w-5 h-5"/> Switch to Map View</>
+                            <><Map className="w-4 h-4"/> Switch to Map View</>
                         )}
                     </button>
                 </div>
@@ -189,12 +133,7 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
     // So we only enable zoom UI if hardware supports it.
 
     return (
-        <div
-            className={`absolute inset-0 w-full h-full overflow-hidden ${className}`}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-        >
+        <div className={`absolute inset-0 w-full h-full overflow-hidden ${className}`}>
             <video
                 ref={videoRef}
                 className="absolute inset-0 w-full h-full min-w-full min-h-full object-cover"
@@ -203,42 +142,6 @@ export function CameraFeed({className = '', onClose}: CameraFeedProps) {
                 muted
             />
 
-            {/* Zoom UI Overlay */}
-            {zoomCaps && (
-                <div
-                    className="absolute bottom-48 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10 z-20 pointer-events-auto shadow-lg">
-                    <button
-                        className="text-white/80 active:text-white active:scale-90 transition-all p-2"
-                        onClick={() => handleZoomChange(zoomCaps.min)} // Max zoom out
-                    >
-                        <ZoomOut className="w-5 h-5"/>
-                    </button>
-
-                    <div className="w-32 relative flex items-center">
-                        <input
-                            type="range"
-                            min={zoomCaps.min}
-                            max={zoomCaps.max}
-                            step={zoomCaps.step}
-                            value={zoom}
-                            onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-                            className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                        />
-                    </div>
-
-                    <button
-                        className="text-white/80 active:text-white active:scale-90 transition-all p-2"
-                        onClick={() => handleZoomChange(Math.min(zoomCaps.max, zoom + 1))} // Zoom in a bit
-                    >
-                        <ZoomIn className="w-5 h-5"/>
-                    </button>
-
-                    <div
-                        className="text-white/90 text-[11px] font-bold tracking-widest tabular-nums w-8 text-center bg-black/30 rounded-md py-1 ml-2">
-                        {zoom.toFixed(1)}x
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -5,6 +5,7 @@ import {Input} from './ui/input';
 import {Badge} from './ui/badge';
 import {distanceInMeters} from '../lib/routing';
 import {getPOIStyle} from '../lib/poiStyles';
+import { NodeSearchResultItem } from './NodeSearchResultItem';
 import type {GraphData, GraphNode} from '../lib/types';
 import {useTranslation} from 'react-i18next';
 
@@ -28,6 +29,7 @@ interface GlobalNodeSearchProps {
     onClose?: () => void;
     collectedStampIds?: number[];
     onSearchEvent?: (query: string) => void;
+    initialQuery?: string;
 }
 
 export function GlobalNodeSearch({
@@ -36,18 +38,43 @@ export function GlobalNodeSearch({
                                      onSelectNode,
                                      onClose,
                                      collectedStampIds = [],
-                                     onSearchEvent
+                                     onSearchEvent,
+                                     initialQuery = ''
                                  }: Readonly<GlobalNodeSearchProps>) {
     const {t} = useTranslation();
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(initialQuery);
     const debouncedQuery = useDebounce(searchQuery, 300);
     const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
+
+    useEffect(() => {
+        setSearchQuery(initialQuery);
+    }, [initialQuery]);
 
     useEffect(() => {
         if (debouncedQuery.trim() && onSearchEvent) {
             onSearchEvent(debouncedQuery.trim());
         }
     }, [debouncedQuery, onSearchEvent]);
+
+    const quickFilters = useMemo(() => {
+        if (!graph) return [];
+        
+        const counts = new Map<string, { label: string, count: number, category: any }>();
+        
+        graph.nodes.forEach(n => {
+            if (!n.category || n.category.base_type === 'intersection') return;
+            const label = n.category.name?.en;
+            if (!label) return;
+            if (!counts.has(label)) {
+                counts.set(label, { label, count: 0, category: n.category });
+            }
+            counts.get(label)!.count++;
+        });
+
+        const sorted = Array.from(counts.values()).sort((a, b) => b.count - a.count);
+        // Exclude stamp from top generic ones (we might add it explicitly if wanted, but here let's just show top 5 regular ones)
+        return sorted.filter(f => f.category.base_type !== 'stamp').slice(0, 5);
+    }, [graph]);
 
     const pois = useMemo(() => {
         if (!graph) return [];
@@ -165,138 +192,37 @@ export function GlobalNodeSearch({
 
                 {/* Quick Filters */}
                 <div className="flex items-center gap-4 mt-5 px-1 overflow-x-auto pb-2 scrollbar-hide">
-                    <button onClick={() => setSearchQuery('photo')}
-                            className="shrink-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full px-4 py-2 transition-all cursor-pointer">
-                        <Camera className="w-4 h-4 text-emerald-400"/>
-                        <span className="text-[13px] font-medium text-white">Photo Spots</span>
-                    </button>
-                    <button onClick={() => setSearchQuery('restroom')}
-                            className="shrink-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full px-4 py-2 transition-all cursor-pointer">
-                        <Droplets className="w-4 h-4 text-cyan-400"/>
-                        <span className="text-[13px] font-medium text-white">Restrooms</span>
-                    </button>
-                    <button onClick={() => setSearchQuery('food')}
-                            className="shrink-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full px-4 py-2 transition-all cursor-pointer">
-                        <Coffee className="w-4 h-4 text-orange-400"/>
-                        <span className="text-[13px] font-medium text-white">Food & Drink</span>
-                    </button>
+                    {quickFilters.map(filter => {
+                        const {icon: Icon, iconColor} = getPOIStyle({category: filter.category});
+                        return (
+                            <button key={filter.label} onClick={() => setSearchQuery(filter.label.toLowerCase())}
+                                    className="shrink-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full px-4 py-2 transition-all cursor-pointer">
+                                <Icon className={`w-4 h-4 ${iconColor}`}/>
+                                <span className="text-[13px] font-medium text-white">{t(filter.label)}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto bg-transparent">
                 <div className="pb-8 pt-2">
                     {searchResults.map((poi: any) => {
-                        const {icon: Icon, bgClass, textClass} = getPOIStyle(poi);
-                        
-                        // Handle Stamp display override
                         const isUndiscoveredStamp = poi.category?.base_type === 'stamp' && !collectedStampIds.includes(poi.id);
-
                         return (
-                            <div
+                            <NodeSearchResultItem
                                 key={poi.id}
-                                role="button"
-                                tabIndex={0}
+                                poi={poi}
                                 onClick={() => {
                                     onSelectNode(poi);
                                     onClose?.();
                                 }}
-                                className="bg-transparent hover:bg-white/5 active:bg-white/10 px-4 py-3.5 transition-all cursor-pointer flex items-center justify-between border-b border-white/5 last:border-0"
-                            >
-                                <div className="flex items-center gap-4 w-full">
-                                    {/* Avatar / Icon */}
-                                    <div className="relative shrink-0">
-                                        {poi.image_url && !isUndiscoveredStamp ? (
-                                            <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 shadow-md">
-                                                <img src={poi.image_url} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                        ) : (
-                                            <div className={`w-12 h-12 rounded-full ${bgClass} flex items-center justify-center border border-white/10`}>
-                                                {isUndiscoveredStamp ? (
-                                                    <span className="text-white/80 font-black text-xl">?</span>
-                                                ) : (
-                                                    <Icon className={`${textClass} w-6 h-6`}/>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="flex flex-col min-w-0 flex-1">
-                                        {/* Title Row */}
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className={`font-medium text-[16px] tracking-tight truncate ${poi.status === 'construction' ? 'line-through text-white/50' : 'text-white'}`}>
-                                                {t(poi.searchName)}
-                                            </h4>
-                                            
-                                            {/* Badges */}
-                                            {poi.event_id && (() => {
-                                                const event = graph?.events.find(e => e.id === poi.event_id);
-                                                if (event && event.badge_name) {
-                                                    return (
-                                                        <Badge 
-                                                            variant="secondary" 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedEvent(event);
-                                                            }}
-                                                            className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0 cursor-pointer transition-colors"
-                                                        >
-                                                            ⭐ {event.badge_name}
-                                                        </Badge>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                            {poi.is_paid && (
-                                                <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
-                                                    ₹ Paid
-                                                </Badge>
-                                            )}
-                                            {poi.status === 'construction' && (
-                                                <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
-                                                    🚧 Closed
-                                                </Badge>
-                                            )}
-                                            {isUndiscoveredStamp && (
-                                                <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
-                                                    ✨ Undiscovered
-                                                </Badge>
-                                            )}
-                                            {poi.category?.base_type === 'stamp' && !isUndiscoveredStamp && (
-                                                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
-                                                    🏆 Collected
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Subtitle Row */}
-                                        <div className="flex items-center gap-1.5 truncate text-white/60 text-[13px]">
-                                            {poi.distance !== undefined && (
-                                                <span className="text-emerald-400/90 font-medium">
-                                                    {Math.round(poi.distance)}m away
-                                                </span>
-                                            )}
-                                            {isUndiscoveredStamp && (
-                                                <>
-                                                    <span className="text-white/20">•</span>
-                                                    <span>Go there to reveal and collect!</span>
-                                                </>
-                                            )}
-                                            {poi.category?.base_type === 'stamp' && !isUndiscoveredStamp && (
-                                                <>
-                                                    <span className="text-white/20">•</span>
-                                                    <span>View in your collection</span>
-                                                </>
-                                            )}
-                                            {!isUndiscoveredStamp && poi.category?.base_type !== 'stamp' && poi.anchorName && (
-                                                <>
-                                                    <span className="text-white/20">•</span>
-                                                    <span className="truncate">near {t(poi.anchorName)}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                t={t as any}
+                                isUndiscoveredStamp={isUndiscoveredStamp}
+                                isSelectedEvent={false}
+                                onSelectEvent={setSelectedEvent}
+                                event={poi.event_id ? graph?.events.find(e => e.id === poi.event_id) : undefined}
+                            />
                         );
                     })}
                     {searchResults.length === 0 && (
