@@ -1,10 +1,10 @@
-import {LocateFixed, Pencil, Play, Redo2, Square, Undo2, MousePointer2, MousePointerClick} from 'lucide-react';
+import {useState, useEffect} from 'react';
+import {LocateFixed, Pencil, Play, Redo2, Square, Undo2, MousePointer2, MousePointerClick, ArrowRight, Eraser} from 'lucide-react';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {toast} from 'sonner';
 
 interface MapFloatingControlsProps {
     mapRef: React.RefObject<any>;
-    bearing: number;
     canUndo: boolean;
     canRedo: boolean;
     undo: () => void;
@@ -18,11 +18,13 @@ interface MapFloatingControlsProps {
     isLocked: boolean;
     intersectionsClickable: boolean;
     setIntersectionsClickable: (val: boolean) => void;
+    setTestRoutePath: (path: any) => void;
+    setSelectedNode: (node: any) => void;
+    setSelectedEdge: (edge: any) => void;
 }
 
 export function MapFloatingControls({
                                         mapRef,
-                                        bearing,
                                         canUndo,
                                         canRedo,
                                         undo,
@@ -35,8 +37,26 @@ export function MapFloatingControls({
                                         setEdgeStartNode,
                                         isLocked,
                                         intersectionsClickable,
-                                        setIntersectionsClickable
+                                        setIntersectionsClickable,
+                                        setTestRoutePath,
+                                        setSelectedNode,
+                                        setSelectedEdge
                                     }: Readonly<MapFloatingControlsProps>) {
+    const [localBearing, setLocalBearing] = useState(0);
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        const map = mapRef.current.getMap();
+        if (!map) return;
+        
+        setLocalBearing(map.getBearing());
+        const onRotate = () => setLocalBearing(map.getBearing());
+        map.on('rotate', onRotate);
+        return () => {
+            map.off('rotate', onRotate);
+        };
+    }, [mapRef]);
+
     const getDirection = (b: number) => {
         const normalized = (b + 360) % 360;
         const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -52,14 +72,6 @@ export function MapFloatingControls({
                 className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-4 md:left-6 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black/60 backdrop-blur-3xl rounded-full">
                 
                 <Button variant="ghost" size="icon"
-                        className={`rounded-full w-10 h-10 transition-all border ${intersectionsClickable ? 'bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border-indigo-500/30' : 'bg-slate-500/20 text-slate-400 hover:text-slate-300 border-transparent hover:border-slate-500/30'}`}
-                        onClick={() => setIntersectionsClickable(!intersectionsClickable)}
-                        title={intersectionsClickable ? "Intersection nodes are clickable" : "Intersection nodes are unclickable"}
-                >
-                    {intersectionsClickable ? <MousePointerClick className="w-5 h-5 drop-shadow-md" /> : <MousePointer2 className="w-5 h-5 drop-shadow-md opacity-50" />}
-                </Button>
-
-                <Button variant="ghost" size="icon"
                         className="rounded-full w-10 h-10 flex flex-col items-center justify-center p-0 bg-slate-500/20 hover:bg-slate-500/40 transition-all border border-transparent hover:border-slate-500/30 shadow-[0_0_15px_rgba(100,116,139,0.2)]"
                         onClick={() => {
                             if (mapRef.current) {
@@ -67,13 +79,22 @@ export function MapFloatingControls({
                             }
                         }}>
                     <span
-                        className={`text-[12px] font-black leading-none drop-shadow-md ${getDirection(bearing) === 'N' ? 'text-red-500' : 'text-slate-300'}`}>
-                        {getDirection(bearing)}
+                        className={`text-[12px] font-black leading-none drop-shadow-md ${getDirection(localBearing) === 'N' ? 'text-red-500' : 'text-slate-300'}`}>
+                        {getDirection(localBearing)}
                     </span>
                     <span className="text-[8px] font-bold leading-none text-emerald-400 mt-0.5 drop-shadow-sm">
-                        {Math.round((bearing + 360) % 360)}°
+                        {Math.round((localBearing + 360) % 360)}°
                     </span>
                 </Button>
+
+                <Button variant="ghost" size="icon"
+                        className={`rounded-full w-10 h-10 transition-all border ${intersectionsClickable ? 'bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border-indigo-500/30' : 'bg-slate-500/20 text-slate-400 hover:text-slate-300 border-transparent hover:border-slate-500/30'}`}
+                        onClick={() => setIntersectionsClickable(!intersectionsClickable)}
+                        title={intersectionsClickable ? "Intersection nodes are clickable" : "Intersection nodes are unclickable"}
+                >
+                    {intersectionsClickable ? <MousePointerClick className="w-5 h-5 drop-shadow-md" /> : <MousePointer2 className="w-5 h-5 drop-shadow-md opacity-50" />}
+                </Button>
+
                 <Button variant="ghost" size="icon" disabled={!canUndo || isLocked}
                         className="rounded-full w-10 h-10 bg-slate-500/20 text-slate-300 hover:text-emerald-400 hover:bg-slate-500/40 transition-all border border-transparent hover:border-emerald-500/30 shadow-[0_0_15px_rgba(100,116,139,0.2)] disabled:opacity-30"
                         onClick={undo}>
@@ -136,6 +157,40 @@ export function MapFloatingControls({
                     {recording ? <Square className="w-5 h-5 drop-shadow-md"/> :
                         <Play className="w-5 h-5 drop-shadow-md ml-0.5"/>}
                 </Button>
+                {isLocked ? (
+                    <Button variant="ghost" size="icon"
+                            className={`rounded-full w-10 h-10 transition-all border ${mode === 'test_route' ? 'bg-indigo-500 text-white border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.8)]' : 'bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/40 border-transparent hover:border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]'}`}
+                            onClick={() => {
+                                if (mode === 'test_route') {
+                                    setMode('view');
+                                    setTestRoutePath(null);
+                                    setSelectedNode(null);
+                                } else {
+                                    setMode('test_route');
+                                    setEdgeStartNode(null);
+                                    setTestRoutePath(null);
+                                    setSelectedNode(null);
+                                }
+                            }}>
+                        <ArrowRight className="w-5 h-5 drop-shadow-md"/>
+                    </Button>
+                ) : (
+                    <Button variant="ghost" size="icon"
+                            className={`rounded-full w-10 h-10 transition-all border ${mode === 'erase' ? 'bg-red-600 text-white border-red-400 shadow-[0_0_20px_rgba(220,38,38,0.8)]' : 'bg-red-600/20 text-red-400 hover:text-red-300 hover:bg-red-600/40 border-transparent hover:border-red-600/30 shadow-[0_0_15px_rgba(220,38,38,0.2)]'}`}
+                            onClick={() => {
+                                if (mode === 'erase') {
+                                    setMode('view');
+                                } else {
+                                    setMode('erase');
+                                    setEdgeStartNode(null);
+                                    setTestRoutePath(null);
+                                    setSelectedNode(null);
+                                    setSelectedEdge(null);
+                                }
+                            }}>
+                        <Eraser className="w-5 h-5 drop-shadow-md"/>
+                    </Button>
+                )}
             </div>
         </>
     );

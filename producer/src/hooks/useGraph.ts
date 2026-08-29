@@ -120,21 +120,25 @@ export function useGraph(currentVenue: Venue | null) {
             { data: nodesData, error: nodesError },
             { data: edgesData, error: edgesError },
             { data: catsData, error: catsError },
+            { data: eventsData, error: eventsError },
             { data: blob, error: blobError }
         ] = await Promise.all([
             supabase.from('nodes').select('*, category:node_categories(*)').eq('venue_key', currentVenue.key),
             supabase.from('edges').select('*').eq('venue_key', currentVenue.key),
             supabase.from('node_categories').select('*'),
+            supabase.from('events').select('*').eq('venue_key', currentVenue.key),
             supabase.from('venue_content').select('data, updated_at').eq('venue_key', currentVenue.key).eq('content_type', 'graph').single()
         ]);
 
         if (nodesError) toast.error('Failed to load nodes: ' + nodesError.message);
         if (edgesError) toast.error('Failed to load edges: ' + edgesError.message);
         if (catsError) toast.error('Failed to load categories: ' + catsError.message);
+        if (eventsError) toast.error('Failed to load events: ' + eventsError.message);
 
         remoteData.nodes = nodesData || [];
         remoteData.edges = (edgesData || []).map(e => ({...e, from: e.from_node_id, to: e.to_node_id}));
         remoteData.categories = catsData || [];
+        remoteData.events = eventsData || [];
 
         if (blobError && blobError.code !== 'PGRST116') {
             toast.error('Failed to load legacy graph data: ' + blobError.message);
@@ -173,7 +177,7 @@ export function useGraph(currentVenue: Venue | null) {
 
             setSyncState('saving');
             const graphStamps = localData.nodes
-                .filter((n: any) => n.category?.base_type === 'stamp' || n.has_stamp)
+                .filter((n: any) => n.category?.base_type === 'stamp')
                 .map((n: any) => ({
                     id: n.id,
                     name: n.name || 'Hidden Stamp',
@@ -348,7 +352,7 @@ export function useGraph(currentVenue: Venue | null) {
                 const { 
                     id: fakeId, category_id, lat, lng, name, description, 
                     synonyms, image_url, status, is_paid, event_id,
-                    has_stamp, active_from, active_to, extra_info, tags 
+                    extra_info
                 } = tempNode as any;
                 
                 const insertPayload = {
@@ -362,11 +366,7 @@ export function useGraph(currentVenue: Venue | null) {
                     status: status ?? 'active', 
                     is_paid: is_paid ?? false, 
                     event_id: event_id ?? null,
-                    has_stamp: has_stamp ?? false, 
-                    active_from: active_from ?? null, 
-                    active_to: active_to ?? null, 
                     extra_info: extra_info ?? null, 
-                    tags: tags ?? [],
                     venue_key: currentVenue.key
                 };
 
@@ -388,7 +388,7 @@ export function useGraph(currentVenue: Venue | null) {
                         const { 
                             id, category_id, lat, lng, name, description, 
                             synonyms, image_url, status, is_paid, event_id,
-                            has_stamp, active_from, active_to, extra_info, tags 
+                            extra_info
                         } = n;
                         
                         return {
@@ -403,11 +403,7 @@ export function useGraph(currentVenue: Venue | null) {
                             status: status ?? 'active', 
                             is_paid: is_paid ?? false, 
                             event_id: event_id ?? null,
-                            has_stamp: has_stamp ?? false, 
-                            active_from: active_from ?? null, 
-                            active_to: active_to ?? null, 
                             extra_info: extra_info ?? null, 
-                            tags: tags ?? [],
                             venue_key: currentVenue.key
                         };
                     }));

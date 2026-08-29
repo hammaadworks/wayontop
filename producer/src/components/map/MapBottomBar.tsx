@@ -71,8 +71,9 @@ export function MapBottomBar({
             />
 
             <div
-                className="glass-pill p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 grid grid-cols-6 gap-1 items-center w-full bg-black/60 backdrop-blur-3xl rounded-[2rem]">
+                className="glass-pill p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-white/10 grid grid-cols-5 gap-1 items-center w-full bg-black/60 backdrop-blur-3xl rounded-[2rem]">
 
+                {/* 1. View / Edit Mode */}
                 <Button variant="ghost"
                         className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${!isLocked ? 'bg-amber-600/20 text-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.3)]' : 'bg-emerald-600/20 text-emerald-400'}`}
                         onClick={() => {
@@ -94,19 +95,12 @@ export function MapBottomBar({
                         className="text-[10px] font-bold leading-tight text-center">{isLocked ? 'View Mode' : 'Edit Mode'}</span>
                 </Button>
 
-                <Button variant="ghost"
-                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'add_node' ? 'bg-emerald-600/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-white hover:text-white hover:bg-white/10'}`}
-                        onClick={() => {
-                            if (mode === 'add_node') {
-                                setMode('view');
-                            } else {
-                                setMode('add_node');
-                                setEdgeStartNode(null);
-                            }
-                        }}>
-                    <MapPin className="w-5 h-5"/> <span className="text-[10px] font-bold">Add Node</span>
-                </Button>
+                {/* 2. Mass Comm (SponsorManager) */}
+                <div className="flex items-center justify-center w-full">
+                    <SponsorManager data={data} setData={setData} venueKey={venueKey}/>
+                </div>
 
+                {/* 3. Save Button */}
                 <div className="flex items-center justify-center w-full">
                     {(() => {
                         const buttonConfig = {
@@ -185,41 +179,24 @@ export function MapBottomBar({
                     })()}
                 </div>
 
-                <div className="flex items-center justify-center w-full">
-                    <SponsorManager data={data} setData={setData} venueKey={venueKey}/>
-                </div>
+                {/* 4. Add Node */}
+                <Button variant="ghost"
+                        className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'add_node' ? 'bg-emerald-600/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-white hover:text-white hover:bg-white/10'}`}
+                        onClick={() => {
+                            if (mode === 'add_node') {
+                                setMode('view');
+                            } else {
+                                setMode('add_node');
+                                setEdgeStartNode(null);
+                            }
+                        }}>
+                    <MapPin className="w-5 h-5"/> <span className="text-[10px] font-bold">Add Node</span>
+                </Button>
+
+                {/* 5. Node Types (CategoryManager) */}
                 <div className="flex items-center justify-center w-full">
                     <CategoryManager data={data} setData={setData}/>
                 </div>
-
-                {isLocked ? (
-                    <Button variant="ghost"
-                            className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'test_route' ? 'bg-emerald-600/20 text-emerald-400' : 'text-white hover:text-white hover:bg-white/10'}`}
-                            onClick={() => {
-                                setMode('test_route');
-                                setEdgeStartNode(null);
-                                setTestRoutePath(null);
-                                setSelectedNode(null);
-                            }}>
-                        <ArrowRight className="w-5 h-5"/> <span className="text-[10px] font-bold">Route</span>
-                    </Button>
-                ) : (
-                    <Button variant="ghost"
-                            className={`rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 ${mode === 'erase' ? 'bg-red-600/20 text-red-400 shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'text-white hover:text-white hover:bg-white/10'}`}
-                            onClick={() => {
-                                if (mode === 'erase') {
-                                    setMode('view');
-                                } else {
-                                    setMode('erase');
-                                    setEdgeStartNode(null);
-                                    setTestRoutePath(null);
-                                    setSelectedNode(null);
-                                    setSelectedEdge(null);
-                                }
-                            }}>
-                        <Eraser className="w-5 h-5"/> <span className="text-[10px] font-bold">Eraser</span>
-                    </Button>
-                )}
             </div>
         </div>
     );

@@ -252,7 +252,7 @@ export function SponsorManager({data, setData, venueKey}: Readonly<SponsorManage
                 className="rounded-[1.5rem] w-full flex flex-col items-center justify-center gap-1 h-16 text-white hover:bg-white/10 cursor-pointer outline-none bg-transparent border-0"
             >
                 <Megaphone className="w-5 h-5"/>
-                <span className="text-[10px] font-bold">Sponsor</span>
+                <span className="text-[10px] font-bold text-center leading-tight">Mass Comm</span>
             </button>
 
             {isOpen && createPortal(

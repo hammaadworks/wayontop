@@ -7,7 +7,7 @@ import {Switch} from '@wayontop/ui/components/ui/switch';
 import {BaseModal} from '@wayontop/ui/components/BaseModal';
 import {toast} from 'sonner';
 import {supabase} from '@wayontop/ui/lib/supabase';
-import type {GraphNode, NodeCategory, LocalizedText} from '@wayontop/ui/lib/types';
+import type {GraphNode, NodeCategory, LocalizedText, MapEvent} from '@wayontop/ui/lib/types';
 import * as LucideIcons from 'lucide-react';
 
 interface NodeWizardProps {
@@ -15,7 +15,7 @@ interface NodeWizardProps {
     updateNode: (id: number, updates: Partial<GraphNode>) => void;
     deleteNode: (id: number) => void;
     setTestingStamp: (node: GraphNode) => void;
-    availableTags?: string[];
+    events: MapEvent[];
     categories: NodeCategory[];
     onClose: () => void;
 }
@@ -25,14 +25,13 @@ export function NodeWizard({
     updateNode,
     deleteNode,
     setTestingStamp,
-    availableTags = [],
+    events = [],
     categories,
     onClose
 }: Readonly<NodeWizardProps>) {
     const [step, setStep] = useState(1);
     const [lang, setLang] = useState<'en' | 'kn' | 'es'>('en');
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [tagInput, setTagInput] = useState('');
 
     const safeName = node.name || {en: '', kn: '', es: ''};
 
@@ -111,9 +110,28 @@ export function NodeWizard({
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between bg-black/40 border border-white/10 h-8 rounded-md px-2.5 mt-1">
-                            <span className="text-[10px] font-bold text-slate-300">CONTAINS STAMP?</span>
-                            <Switch className="scale-[0.7] origin-right" checked={!!node.has_stamp} onCheckedChange={(c) => updateNode(node.id, {has_stamp: c})}/>
+                        <div className="flex flex-col gap-1 mt-1">
+                            <span className="text-[10px] font-bold text-slate-300 uppercase">Event Assignment</span>
+                            <div className="relative">
+                                <select
+                                    value={node.event_id || 0}
+                                    onChange={e => {
+                                        const eventId = parseInt(e.target.value);
+                                        updateNode(node.id, {event_id: eventId === 0 ? undefined : eventId});
+                                    }}
+                                    className="w-full h-8 rounded-md border border-white/10 bg-black/60 px-2.5 text-xs font-bold text-fuchsia-400 appearance-none focus:outline-none focus:border-fuchsia-500/50"
+                                >
+                                    <option value="0">None (Permanent)</option>
+                                    {events.map(ev => (
+                                        <option key={ev.id} value={ev.id}>
+                                            {ev.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <ChevronRight className="w-4 h-4 rotate-90"/>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-between bg-black/40 border border-white/10 h-8 rounded-md px-2.5">
@@ -180,78 +198,19 @@ export function NodeWizard({
                                 className="text-xs bg-black/60 border border-white/10 text-white focus:border-emerald-500/50 rounded-md p-2 h-16 resize-none shadow-inner"
                             />
                         </div>
-
-                        <div className="flex gap-2">
-                            <div className="flex-1 flex flex-col bg-black/40 border border-white/10 rounded-md p-1.5">
-                                <span className="text-[9px] font-bold text-slate-400">ACTIVE FROM</span>
-                                <Input type="date" value={node.active_from ? node.active_from.split('T')[0] : ''} onChange={e => updateNode(node.id, {active_from: e.target.value ? new Date(e.target.value).toISOString() : undefined})} className="h-6 text-[10px] font-bold bg-transparent border-0 p-0 text-white [&::-webkit-calendar-picker-indicator]:invert" />
-                            </div>
-                            <div className="flex-1 flex flex-col bg-black/40 border border-white/10 rounded-md p-1.5">
-                                <span className="text-[9px] font-bold text-slate-400">ACTIVE TO</span>
-                                <Input type="date" value={node.active_to ? node.active_to.split('T')[0] : ''} onChange={e => updateNode(node.id, {active_to: e.target.value ? new Date(e.target.value).toISOString() : undefined})} className="h-6 text-[10px] font-bold bg-transparent border-0 p-0 text-white [&::-webkit-calendar-picker-indicator]:invert" />
-                            </div>
-                        </div>
                     </div>
                 )}
 
                 {step === 3 && (
-                    <div className="flex flex-col gap-2 animate-in slide-in-from-right-4 fade-in duration-300 flex-1">
-                        <span className="text-[10px] font-bold text-slate-300">TAGS</span>
-                        <div className="flex flex-wrap gap-1.5 min-h-6">
-                            {(node.tags || []).map((t: string) => (
-                                <div key={t} className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 text-[10px] font-bold">
-                                    {t}
-                                    <button className="hover:text-white" onClick={() => updateNode(node.id, {tags: (node.tags || []).filter(tag => tag !== t)})}>
-                                        <X className="w-3 h-3"/>
-                                    </button>
-                                </div>
-                            ))}
-                            {(!node.tags || node.tags.length === 0) && (
-                                <span className="text-xs text-slate-500 italic">No tags added</span>
-                            )}
-                        </div>
-                        
-                        <div className="flex flex-col gap-1 mt-auto pb-2">
-                            <Input
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                placeholder="Type tag and press Enter..."
-                                className="h-8 text-xs font-bold bg-black/60 border-white/10 text-white focus:border-emerald-500/50 shadow-inner px-2.5"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        const newTag = tagInput.trim().toLowerCase();
-                                        if (newTag) {
-                                            const currentTags = node.tags || [];
-                                            if (!currentTags.includes(newTag)) {
-                                                updateNode(node.id, {tags: [...currentTags, newTag]});
-                                            }
-                                            setTagInput('');
-                                        }
-                                    }
-                                }}
-                            />
-                            {availableTags && availableTags.length > 0 && (
-                                <div className="flex w-full overflow-x-auto gap-1.5 pb-1 mt-1 snap-x touch-pan-x [&::-webkit-scrollbar]:hidden">
-                                    {availableTags
-                                        .filter(t => t.toLowerCase().includes(tagInput.toLowerCase()) && !(node.tags || []).includes(t))
-                                        .map(t => (
-                                            <button key={t} onClick={() => {
-                                                    updateNode(node.id, {tags: [...(node.tags || []), t]});
-                                                    setTagInput('');
-                                                }}
-                                                className="snap-start shrink-0 bg-white/5 hover:bg-white/10 text-slate-300 px-2.5 py-1 rounded-full text-[10px] font-bold border border-white/10 transition-colors">
-                                                + {t}
-                                            </button>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {(node.has_stamp || node.category?.base_type === 'stamp') && (
+                    <div className="flex flex-col gap-2 animate-in slide-in-from-right-4 fade-in duration-300 flex-1 justify-center">
+                        {node.category?.base_type === 'stamp' ? (
                             <Button className="w-full bg-linear-to-r from-pink-500 to-emerald-500 text-white text-[11px] font-black tracking-widest h-8 border-0 shadow-[0_0_10px_rgba(16,185,129,0.3)] rounded-md mt-2" onClick={() => setTestingStamp(node)}>
                                 <Camera className="w-3.5 h-3.5 mr-1.5"/> TEST AR DROP
                             </Button>
+                        ) : (
+                            <div className="text-center text-slate-400 text-xs italic">
+                                Nothing else to configure for this node type.
+                            </div>
                         )}
                     </div>
                 )}

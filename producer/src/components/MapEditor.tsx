@@ -177,12 +177,21 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     });
     const [intersectionsClickable, setIntersectionsClickable] = useState(false);
     const [mapSkin, setMapSkin] = useState<'satellite' | 'animated'>('satellite');
-    const [zoom, setZoom] = useState(currentVenue.zoom);
+    const zoomRef = useRef(currentVenue.zoom);
+    const [zoomTiers, setZoomTiers] = useState({
+        showVenuePin: currentVenue.zoom < PRODUCER_MAP_ZOOM_TIERS.VENUE_PIN_MAX,
+        showMajorPins: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_PINS_MIN,
+        showAllPins: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_PINS_MIN,
+        showRoutes: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.ROUTES_MIN,
+        showMajorNames: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_NAMES_MIN,
+        showAllNames: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_NAMES_MIN,
+        showSponsorZones: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN,
+        showSponsorLogos: currentVenue.zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN,
+    });
     const [selectedSponsorForModal, setSelectedSponsorForModal] = useState<any>(null);
 
     const [recording, setRecording] = useState(false);
     const {currentLocation, currentAccuracy, rawTrace, setRawTrace} = useGeolocation(recording, setData);
-    const [bearing, setBearing] = useState(0);
     const [pipVisible, setPipVisible] = useState(false);
 
 
@@ -397,8 +406,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
             });
         }
     }, [currentVenue]);
-
-    const availableTags: string[] = [];
 
     const handleMapClick = (latlng: { lat: number, lng: number }) => {
         if (mode === 'add_node') {
@@ -756,14 +763,16 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     const latestFns = useRef({updateNodePosition, handleNodeClick, handleMapClick});
     latestFns.current = {updateNodePosition, handleNodeClick, handleMapClick};
 
-    const showVenuePin = zoom < PRODUCER_MAP_ZOOM_TIERS.VENUE_PIN_MAX;
-    const showMajorPins = zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_PINS_MIN;
-    const showAllPins = zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_PINS_MIN;
-    const showRoutes = zoom >= PRODUCER_MAP_ZOOM_TIERS.ROUTES_MIN;
-    const showMajorNames = zoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_NAMES_MIN;
-    const showAllNames = zoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_NAMES_MIN;
-    const showSponsorZones = zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN;
-    const showSponsorLogos = zoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN;
+    const {
+        showVenuePin,
+        showMajorPins,
+        showAllPins,
+        showRoutes,
+        showMajorNames,
+        showAllNames,
+        showSponsorZones,
+        showSponsorLogos
+    } = zoomTiers;
 
     const sponsorMarkerData = useMemo(() => {
         return (data.sponsorZones || []).flatMap(zone => {
@@ -807,7 +816,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
     useEffect(() => {
         const raf = requestAnimationFrame(() => calculateCollisions());
         return () => cancelAnimationFrame(raf);
-    }, [zoom, collisionNodes, showMajorNames, showAllNames, showSponsorLogos, calculateCollisions]);
+    }, [zoomTiers, collisionNodes, showMajorNames, showAllNames, showSponsorLogos, calculateCollisions]);
 
     const nodeMarkers = useMemo(() => {
         if (!showMajorPins) return null;
@@ -1098,8 +1107,33 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                         bearing: 0
                     }}
                     onMove={(e) => {
-                        setZoom(e.viewState.zoom);
-                        setBearing(e.viewState.bearing);
+                        const newZoom = e.viewState.zoom;
+                        zoomRef.current = newZoom;
+                        setZoomTiers(prev => {
+                            const newTiers = {
+                                showVenuePin: newZoom < PRODUCER_MAP_ZOOM_TIERS.VENUE_PIN_MAX,
+                                showMajorPins: newZoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_PINS_MIN,
+                                showAllPins: newZoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_PINS_MIN,
+                                showRoutes: newZoom >= PRODUCER_MAP_ZOOM_TIERS.ROUTES_MIN,
+                                showMajorNames: newZoom >= PRODUCER_MAP_ZOOM_TIERS.MAJOR_NAMES_MIN,
+                                showAllNames: newZoom >= PRODUCER_MAP_ZOOM_TIERS.ALL_NAMES_MIN,
+                                showSponsorZones: newZoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_ZONES_AND_RADIUS_MIN,
+                                showSponsorLogos: newZoom >= PRODUCER_MAP_ZOOM_TIERS.SPONSOR_LOGOS_MIN,
+                            };
+                            if (
+                                prev.showVenuePin !== newTiers.showVenuePin ||
+                                prev.showMajorPins !== newTiers.showMajorPins ||
+                                prev.showAllPins !== newTiers.showAllPins ||
+                                prev.showRoutes !== newTiers.showRoutes ||
+                                prev.showMajorNames !== newTiers.showMajorNames ||
+                                prev.showAllNames !== newTiers.showAllNames ||
+                                prev.showSponsorZones !== newTiers.showSponsorZones ||
+                                prev.showSponsorLogos !== newTiers.showSponsorLogos
+                            ) {
+                                return newTiers;
+                            }
+                            return prev;
+                        });
                     }}
                     mapStyle={mapSkin === 'satellite' ? SATELLITE_STYLE : ANIMATED_MAP_STYLE}
                     style={{width: '100%', height: '100%', zIndex: 0}}
@@ -1466,7 +1500,6 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
 
             <MapFloatingControls
                 mapRef={mapRef}
-                bearing={bearing}
                 canUndo={canUndo}
                 canRedo={canRedo}
                 undo={undo}
@@ -1480,6 +1513,9 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 isLocked={isLocked}
                 intersectionsClickable={intersectionsClickable}
                 setIntersectionsClickable={setIntersectionsClickable}
+                setTestRoutePath={setTestRoutePath}
+                setSelectedNode={setSelectedNode}
+                setSelectedEdge={setSelectedEdge}
             />
 
             <EditorPanels
@@ -1496,7 +1532,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setTestingStamp={setTestingStamp}
                 testRoutePath={testRoutePath}
                 setTestRoutePath={setTestRoutePath}
-                availableTags={availableTags}
+                events={data.events || []}
                 categories={data.categories || []}
                 selectedTrace={selectedTrace}
                 setSelectedTrace={setSelectedTrace}

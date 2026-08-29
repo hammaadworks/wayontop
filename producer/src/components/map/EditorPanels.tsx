@@ -21,7 +21,7 @@ interface EditorPanelsProps {
     setTestingStamp: (node: any) => void;
     testRoutePath?: { path: any[]; totalDistance: number } | null;
     setTestRoutePath?: (path: any) => void;
-    availableTags?: string[];
+    events: import('@wayontop/ui/lib/types').MapEvent[];
     selectedTrace?: any;
     setSelectedTrace?: (val: any) => void;
     deleteTrace?: (index: number) => void;
@@ -31,7 +31,7 @@ interface EditorPanelsProps {
 export function EditorPanels({
                                  mode, selectedNode, setSelectedNode, selectedEdge, setSelectedEdge,
                                  deleteNode, deleteEdge, updateEdge, updateNode, isLocked,
-                                 setTestingStamp, testRoutePath, setTestRoutePath, availableTags,
+                                 setTestingStamp, testRoutePath, setTestRoutePath, events,
                                  selectedTrace, setSelectedTrace, deleteTrace, categories
                              }: Readonly<EditorPanelsProps>) {
     const [tagInput, setTagInput] = useState('');
@@ -49,7 +49,6 @@ export function EditorPanels({
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-1.5 mb-0.5">
                                         <span className="uppercase text-[9px] font-black text-emerald-400 tracking-widest">{selectedNode.category?.base_type || 'poi'}</span>
-                                        {selectedNode.has_stamp && <Gem className="w-3 h-3 text-fuchsia-400 ml-1"/>}
                                     </div>
                                     <div className="text-sm font-black tracking-tight">{selectedNode.name?.en || 'Unnamed Node'}</div>
                                 </div>
@@ -64,7 +63,7 @@ export function EditorPanels({
                                 setSelectedNode(null);
                             }}
                             setTestingStamp={setTestingStamp}
-                            availableTags={availableTags}
+                            events={events}
                             categories={categories}
                             onClose={() => setSelectedNode(null)}
                         />
