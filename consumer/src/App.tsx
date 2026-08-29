@@ -858,16 +858,18 @@ export default function App() {
                     onFinish={() => setSplashFinished(true)} 
                 />
             )}
-            <div className="w-full h-full">
-                <MainApp
-                    venueKey={venueKey}
-                    handleVenueChange={handleVenueChange}
-                    availableVenues={availableVenues}
-                    prefetchedGraph={prefetchedGraph}
-                    prefetchedStamps={prefetchedStamps}
-                    enableVenueSwitcher={remoteFeatureFlags.enableVenueSwitcher}
-                />
-            </div>
+            <PermissionGate requiredPermissions="location">
+                <div className="w-full h-full">
+                    <MainApp
+                        venueKey={venueKey}
+                        handleVenueChange={handleVenueChange}
+                        availableVenues={availableVenues}
+                        prefetchedGraph={prefetchedGraph}
+                        prefetchedStamps={prefetchedStamps}
+                        enableVenueSwitcher={remoteFeatureFlags.enableVenueSwitcher}
+                    />
+                </div>
+            </PermissionGate>
             {loadError && splashFinished && (
                 <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/90 p-6 text-white backdrop-blur-xl">
                     <div className="glass-panel w-full max-w-sm p-6 text-center">
