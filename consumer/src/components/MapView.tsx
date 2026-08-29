@@ -30,6 +30,97 @@ type MapViewProps = Readonly<{
     selectedNodeId?: number | null;
 }>;
 
+const animatedStyle: any = {
+    version: 8,
+    name: "Lalbagh Map",
+    metadata: {app: "wayon.top Consumer", theme: "animated"},
+    sources: {
+        'osm': {
+            type: 'raster',
+            tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; OpenStreetMap Contributors',
+            maxzoom: 18,
+            scheme: "xyz"
+        }
+    },
+    layers: [
+        {
+            id: 'osm-base',
+            type: 'raster',
+            source: 'osm',
+            layout: {visibility: "visible"},
+            paint: {
+                "raster-opacity": 1,
+                "raster-saturation": -0.2,
+                "raster-contrast": 0.05,
+                "raster-fade-duration": 300
+            }
+        }
+    ]
+};
+
+const satelliteStyle: any = {
+    version: 8,
+    name: "Lalbagh Satellite",
+    metadata: {app: "wayon.top Consumer", theme: "satellite"},
+    sources: {
+        'satellite': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: '&copy; Esri',
+            maxzoom: 19,
+            scheme: "xyz"
+        }
+    },
+    layers: [
+        {
+            id: 'satellite-base',
+            type: 'raster',
+            source: 'satellite',
+            layout: {visibility: "visible"},
+            paint: {
+                "raster-opacity": 1,
+                "raster-contrast": 0.15,
+                "raster-saturation": 0.2,
+                "raster-brightness-min": 0.05,
+                "raster-fade-duration": 300
+            }
+        }
+    ]
+};
+
+const ALL_PATHS_PAINT = {
+    'line-color': '#eab308',
+    'line-width': 3,
+    'line-opacity': 0.8
+};
+const ALL_PATHS_LAYOUT: any = {
+    'line-cap': 'round',
+    'line-join': 'round'
+};
+
+const ROUTE_GLOW_PAINT = {
+    'line-color': '#10b981',
+    'line-width': 14,
+    'line-opacity': 0.3
+};
+const ROUTE_GLOW_LAYOUT: any = {
+    'line-cap': 'round',
+    'line-join': 'round'
+};
+
+const ROUTE_CORE_PAINT = {
+    'line-color': '#34d399',
+    'line-width': 6,
+    'line-opacity': 1
+};
+const ROUTE_CORE_LAYOUT: any = {
+    'line-cap': 'round',
+    'line-join': 'round'
+};
+
 export function MapView({graph, activeRoute, stamps = [], location, isRadar = false, mode = 'map', onSelectNode, selectedNodeId}: MapViewProps) {
     const { i18n } = useTranslation();
     const collectedStampIds = Gamification.getCollectedStamps();
@@ -188,66 +279,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
 
     if (!graph) return <div className="h-full w-full bg-slate-200 animate-pulse"></div>;
 
-    const animatedStyle: any = {
-        version: 8,
-        name: "Lalbagh Map",
-        metadata: {app: "wayon.top Consumer", theme: "animated"},
-        sources: {
-            'osm': {
-                type: 'raster',
-                tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-                attribution: '&copy; OpenStreetMap Contributors',
-                maxzoom: 18,
-                scheme: "xyz"
-            }
-        },
-        layers: [
-            {
-                id: 'osm-base',
-                type: 'raster',
-                source: 'osm',
-                layout: {visibility: "visible"},
-                paint: {
-                    "raster-opacity": 1,
-                    "raster-saturation": -0.2,
-                    "raster-contrast": 0.05,
-                    "raster-fade-duration": 300
-                }
-            }
-        ]
-    };
 
-    const satelliteStyle = {
-        version: 8,
-        name: "Lalbagh Satellite",
-        metadata: {app: "wayon.top Consumer", theme: "satellite"},
-        sources: {
-            'satellite': {
-                type: 'raster',
-                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                tileSize: 256,
-                attribution: '&copy; Esri',
-                maxzoom: 19,
-                scheme: "xyz"
-            }
-        },
-        layers: [
-            {
-                id: 'satellite-base',
-                type: 'raster',
-                source: 'satellite',
-                layout: {visibility: "visible"},
-                paint: {
-                    "raster-opacity": 1,
-                    "raster-contrast": 0.15,
-                    "raster-saturation": 0.2,
-                    "raster-brightness-min": 0.05,
-                    "raster-fade-duration": 300
-                }
-            }
-        ]
-    };
     return (
         <div className="relative w-full h-full">
 
@@ -295,15 +327,8 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                         <Layer
                             id="all-paths-line"
                             type="line"
-                            paint={{
-                                'line-color': '#eab308',
-                                'line-width': 5,
-                                'line-opacity': 0.8
-                            }}
-                            layout={{
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            }}
+                            paint={ALL_PATHS_PAINT}
+                            layout={ALL_PATHS_LAYOUT}
                         />
                     </Source>
                 )}
@@ -314,15 +339,8 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                         <Layer
                             id="route-glow-line"
                             type="line"
-                            paint={{
-                                'line-color': '#10b981',
-                                'line-width': 14,
-                                'line-opacity': 0.3
-                            }}
-                            layout={{
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            }}
+                            paint={ROUTE_GLOW_PAINT}
+                            layout={ROUTE_GLOW_LAYOUT}
                         />
                     </Source>
                 )}
@@ -332,15 +350,8 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                         <Layer
                             id="route-line"
                             type="line"
-                            paint={{
-                                'line-color': '#34d399',
-                                'line-width': 6,
-                                'line-opacity': 1
-                            }}
-                            layout={{
-                                'line-cap': 'round',
-                                'line-join': 'round'
-                            }}
+                            paint={ROUTE_CORE_PAINT}
+                            layout={ROUTE_CORE_LAYOUT}
                         />
                     </Source>
                 )}
