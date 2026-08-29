@@ -62,6 +62,19 @@ export function GlobalNodeSearch({
     const quickFilters = useMemo(() => {
         if (!graph) return [];
         
+        // A. Pinned Categories
+        const venueCategoryIds = new Set(graph.nodes.map(n => n.category_id));
+        const pinned = graph.categories
+            .filter(c => c.is_pinned && venueCategoryIds.has(c.id))
+            .map(c => ({ label: getNodeCategoryName(c, language), type: 'category' as const, category: c }));
+
+        // B. Active Events
+        const now = new Date().toISOString();
+        const activeEvents = (graph.events || [])
+            .filter(e => e.is_active && now >= e.start_date && now <= e.end_date)
+            .map(e => ({ label: e.name, type: 'event' as const, event: e }));
+
+        // C. Top Frequent Categories
         const counts = new Map<string, { label: string, count: number, category: any }>();
         
         graph.nodes.forEach(n => {
@@ -75,8 +88,15 @@ export function GlobalNodeSearch({
         });
 
         const sorted = Array.from(counts.values()).sort((a, b) => b.count - a.count);
-        // Exclude stamp from top generic ones (we might add it explicitly if wanted, but here let's just show top 5 regular ones)
-        return sorted.filter(f => f.category.base_type !== 'stamp').slice(0, 5);
+        // Exclude intersection, stamp, and ANY category that is already in the `pinned` array
+        const pinnedCodes = new Set(graph.categories.filter(c => c.is_pinned).map(c => c.code));
+        
+        const frequent = sorted
+            .filter(f => f.category.base_type !== 'stamp' && f.category.base_type !== 'intersection' && !pinnedCodes.has(f.category.code))
+            .slice(0, 5)
+            .map(c => ({ label: c.label, type: 'category' as const, category: c.category }));
+            
+        return [...pinned, ...activeEvents, ...frequent];
     }, [graph, language]);
 
     const pois = useMemo(() => {
@@ -98,6 +118,13 @@ export function GlobalNodeSearch({
             if (n.category?.base_type === 'stamp' && !collectedStampIds.includes(n.id)) {
                 primaryName = 'Mystery Stamp';
                 searchAliases = ['stamp', 'game', 'mystery', 'collectible'];
+            }
+
+            if (n.event_id) {
+                const ev = graph.events?.find(e => e.id === n.event_id);
+                if (ev) {
+                    searchAliases.push(ev.name);
+                }
             }
 
             return {
@@ -196,12 +223,21 @@ export function GlobalNodeSearch({
                 {/* Quick Filters */}
                 <div className="flex items-center gap-4 mt-5 px-1 overflow-x-auto pb-2 scrollbar-hide">
                     {quickFilters.map(filter => {
+                        if (filter.type === 'event') {
+                            return (
+                                <button key={filter.label} onClick={() => setSearchQuery(filter.label.toLowerCase())}
+                                        className="shrink-0 flex items-center gap-2 bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30 rounded-full px-4 py-2 transition-all cursor-pointer">
+                                    <span className="text-[13px] font-medium">{filter.label}</span>
+                                </button>
+                            );
+                        }
+                        
                         const {icon: Icon, iconColor} = getPOIStyle({category: filter.category});
                         return (
                             <button key={filter.label} onClick={() => setSearchQuery(filter.label.toLowerCase())}
                                     className="shrink-0 flex items-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full px-4 py-2 transition-all cursor-pointer">
                                 <Icon className={`w-4 h-4 ${iconColor}`}/>
-                                <span className="text-[13px] font-medium text-white">{t(filter.label)}</span>
+                                <span className="text-[13px] font-medium text-white">{filter.label}</span>
                             </button>
                         );
                     })}

@@ -32,13 +32,14 @@ import {SplashScreen} from './components/SplashScreen';
 
 type MainAppProps = Readonly<{
     venueKey: string;
-    setVenueKey: any;
+    handleVenueChange: (venue: string | null) => void;
     availableVenues: string[];
     prefetchedGraph: GraphData | null;
     prefetchedStamps: Stamp[] | null;
+    enableVenueSwitcher: boolean;
 }>;
 
-function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefetchedStamps}: MainAppProps) {
+function MainApp({venueKey, handleVenueChange, availableVenues, prefetchedGraph, prefetchedStamps, enableVenueSwitcher}: MainAppProps) {
     const [mode, setMode] = useState<'ar' | 'map' | 'satellite'>('satellite');
     const [graph, setGraph] = useState<GraphData | null>(null);
     const [targetNode, setTargetNode] = useState<GraphNode | null>(null);
@@ -387,7 +388,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {FEATURE_FLAGS.enableVenueSwitcher && (
+                                {enableVenueSwitcher && (
                                     <div
                                         className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -400,7 +401,7 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                                                 <p className="text-white/50 text-[13px] font-medium">Exploring: {venueKey}</p>
                                             </div>
                                         </div>
-                                        <Select value={venueKey} onValueChange={setVenueKey}>
+                                        <Select value={venueKey} onValueChange={handleVenueChange}>
                                             <SelectTrigger
                                                 className="w-[130px] bg-white/10 text-white border-0 rounded-full font-bold h-9 focus:ring-0 focus:ring-offset-0 capitalize">
                                                 <SelectValue placeholder="Select Venue"/>
@@ -654,15 +655,43 @@ export default function App() {
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [loadAttempt, setLoadAttempt] = useState(0);
+    const [remoteFeatureFlags, setRemoteFeatureFlags] = useState({
+        enableVenueSwitcher: FEATURE_FLAGS.enableVenueSwitcher || import.meta.env.DEV || localStorage.getItem('FF_VENUE_SWITCHER') === 'true'
+    });
 
-    const handleVenueChange = (newVenue: string) => {
+    const handleVenueChange = (newVenue: string | null) => {
+        if (!newVenue) return;
         setVenueKey(newVenue);
         localStorage.setItem(LAST_VENUE_STORAGE_KEY, newVenue);
     };
 
+    // 0. Fetch Feature Flags
+    useEffect(() => {
+        supabase.from('global_settings').select('key, value')
+            .then(res => {
+                if (res.error) {
+                    console.error("Failed to load feature flags", res.error);
+                    return;
+                }
+                if (res.data) {
+                    const flags: Record<string, any> = {};
+                    res.data.forEach(row => {
+                        flags[row.key] = row.value === 'true' || row.value === true;
+                    });
+                    
+                    setRemoteFeatureFlags(prev => ({
+                        ...prev,
+                        enableVenueSwitcher: 'enable_venue_switcher' in flags 
+                            ? flags.enable_venue_switcher 
+                            : prev.enableVenueSwitcher
+                    }));
+                }
+            });
+    }, []);
+
     // 1. Fetch available venues list
     useEffect(() => {
-        if (FEATURE_FLAGS.enableVenueSwitcher) {
+        if (remoteFeatureFlags.enableVenueSwitcher) {
             supabase.from('venues').select('key').eq('public', true)
                 .then(res => {
                     if (res.data && res.data.length > 0) {
@@ -690,7 +719,7 @@ export default function App() {
                 localStorage.setItem(LAST_VENUE_STORAGE_KEY, INITIAL_VENUE);
             }
         }
-    }, []);
+    }, [remoteFeatureFlags.enableVenueSwitcher]);
 
     // 2. Prefetch data outside the permissions gate (Optimistic Data Loading)
     useEffect(() => {
@@ -832,10 +861,11 @@ export default function App() {
             <div className="w-full h-full">
                 <MainApp
                     venueKey={venueKey}
-                    setVenueKey={handleVenueChange}
+                    handleVenueChange={handleVenueChange}
                     availableVenues={availableVenues}
                     prefetchedGraph={prefetchedGraph}
                     prefetchedStamps={prefetchedStamps}
+                    enableVenueSwitcher={remoteFeatureFlags.enableVenueSwitcher}
                 />
             </div>
             {loadError && splashFinished && (

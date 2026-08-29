@@ -14,8 +14,10 @@ interface SponsorMarqueeProps {
 
 const defaultSponsor: Sponsor = {
     id: "0",
-    name: 'wayon.top',
-    tagline: 'We build navigation for the real world. Get your venue mapped today and unlock spatial intelligence.'
+    name: 'Lalbagh',
+    tagline: 'Official Lalbagh Mass Communication',
+    logo_asset: '/favicon.svg',
+    creative_asset: '/attention.png'
 };
 
 export function SponsorMarquee({
@@ -115,7 +117,7 @@ export function SponsorMarquee({
 
     const adText = currentZoneSponsors.length > 0
         ? `Welcome to the ${currentZone?.name || 'Sponsor'} zone! Tap to see special offers.`
-        : 'Feeling lost? Tap here to learn about wayon.top';
+        : (displaySponsor.tagline || 'Official Lalbagh Mass Communication');
 
     return (
         <>

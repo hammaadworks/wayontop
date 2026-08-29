@@ -1,4 +1,4 @@
-import {Coins} from 'lucide-react';
+import {DollarSign} from 'lucide-react';
 import {cn} from '../lib/utils';
 import {getPOIStyle} from '../lib/poiStyles';
 import type {NodeBaseType, NodeCategory} from '../lib/types';
@@ -114,8 +114,8 @@ export function MapNodeMarker({
                 {/* Paid Superscript Indicator */}
                 {isPaid && (
                     <div
-                        className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-amber-400 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                        <Coins className="w-2.5 h-2.5 text-black" strokeWidth={3}/>
+                        className="absolute -top-1 -right-1 z-20 flex items-center justify-center w-4 h-4 bg-emerald-500 rounded-full border border-black/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                        <DollarSign className="w-2.5 h-2.5 text-white" strokeWidth={3}/>
                     </div>
                 )}
 

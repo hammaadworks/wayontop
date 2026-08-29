@@ -29,6 +29,7 @@ export interface NodeCategory {
     synonyms: LocalizedList;      
     description?: LocalizedText;  // Fallback description for generic nodes
     image_url?: string;           // Fallback image for the category before relying on icon_key
+    is_pinned?: boolean;          // Pinned to Consumer Explore View
 }
 
 export interface GraphNode {
@@ -53,11 +54,7 @@ export interface GraphNode {
     venue_key?: string;           // Added for venue scope
 
     // Newly added fields for Wizard
-    has_stamp?: boolean;
-    active_from?: string;
-    active_to?: string;
     extra_info?: LocalizedText | any;
-    tags?: string[];
 }
 
 export interface GraphEdge {

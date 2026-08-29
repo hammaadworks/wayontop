@@ -74,8 +74,8 @@ export function NodeSearchResultItem({
                         </Badge>
                     )}
                     {poi.is_paid && (
-                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
-                            ₹ Paid
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0 text-[9px] uppercase tracking-widest shrink-0">
+                            $ Paid
                         </Badge>
                     )}
                     {poi.status === 'construction' && (

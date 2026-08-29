@@ -55,13 +55,26 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
     }, [selectedNodeId, graph, stamps]);
 
     const actualSkin = mode === 'satellite' ? 'satellite' : 'animated';
-    const [zoom, setZoom] = useState(isRadar ? 16.5 : 16);
+    const zoomRef = useRef(isRadar ? 16.5 : 16);
+    const [zoomTiers, setZoomTiers] = useState({
+        showMajorNames: zoomRef.current >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN,
+        showAllNames: zoomRef.current >= MAP_ZOOM_TIERS.ALL_NAMES_MIN,
+        showAllPins: zoomRef.current >= MAP_ZOOM_TIERS.ALL_PINS_MIN,
+        showMajorPins: zoomRef.current >= MAP_ZOOM_TIERS.MAJOR_PINS_MIN,
+    });
 
     useEffect(() => {
         if (isRadar && location && mapRef.current) {
             mapRef.current.jumpTo({
                 center: [location.lng, location.lat],
                 zoom: 16.5
+            });
+            zoomRef.current = 16.5;
+            setZoomTiers({
+                showMajorNames: 16.5 >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN,
+                showAllNames: 16.5 >= MAP_ZOOM_TIERS.ALL_NAMES_MIN,
+                showAllPins: 16.5 >= MAP_ZOOM_TIERS.ALL_PINS_MIN,
+                showMajorPins: 16.5 >= MAP_ZOOM_TIERS.MAJOR_PINS_MIN,
             });
         }
     }, [location, isRadar]);
@@ -82,11 +95,11 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
     const {
         visibleLabels,
         calculateCollisions
-    } = useMarkerCollision(mapRef, nodesAndStamps, zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN);
+    } = useMarkerCollision(mapRef, nodesAndStamps, zoomTiers.showMajorNames);
 
     useEffect(() => {
         calculateCollisions();
-    }, [zoom, nodesAndStamps, calculateCollisions]);
+    }, [zoomTiers.showMajorNames, nodesAndStamps, calculateCollisions]);
 
     const routeGeoJSON = useMemo(() => {
         if (!activeRoute || !graph) return null;
@@ -254,7 +267,27 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                 dragRotate={true}
                 maxPitch={85}
                 maxZoom={22}
-                onMove={e => setZoom(e.viewState.zoom)}
+                onMove={e => {
+                    const newZoom = e.viewState.zoom;
+                    zoomRef.current = newZoom;
+                    setZoomTiers(prev => {
+                        const newTiers = {
+                            showMajorNames: newZoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN,
+                            showAllNames: newZoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN,
+                            showAllPins: newZoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN,
+                            showMajorPins: newZoom >= MAP_ZOOM_TIERS.MAJOR_PINS_MIN,
+                        };
+                        if (
+                            prev.showMajorNames !== newTiers.showMajorNames ||
+                            prev.showAllNames !== newTiers.showAllNames ||
+                            prev.showAllPins !== newTiers.showAllPins ||
+                            prev.showMajorPins !== newTiers.showMajorPins
+                        ) {
+                            return newTiers;
+                        }
+                        return prev;
+                    });
+                }}
             >
                 {/* Underlying Paths */}
                 {allPathsGeoJSON && (
@@ -263,10 +296,9 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                             id="all-paths-line"
                             type="line"
                             paint={{
-                                'line-color': '#94a3b8',
-                                'line-width': 1.5,
-                                'line-opacity': 0.25,
-                                'line-dasharray': [2, 2]
+                                'line-color': '#eab308',
+                                'line-width': 5,
+                                'line-opacity': 0.8
                             }}
                             layout={{
                                 'line-cap': 'round',
@@ -318,13 +350,13 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                     const baseType = n.category?.base_type || 'poi';
                     if (baseType === 'intersection') return false;
                     const isMajorNode = baseType === 'poi' || baseType === 'gate';
-                    if (!isMajorNode && zoom < MAP_ZOOM_TIERS.ALL_PINS_MIN) return false;
-                    if (isMajorNode && zoom < MAP_ZOOM_TIERS.MAJOR_PINS_MIN) return false;
+                    if (!isMajorNode && !zoomTiers.showAllPins) return false;
+                    if (isMajorNode && !zoomTiers.showMajorPins) return false;
                     return true;
                 }).map(node => {
                     const baseType = node.category?.base_type || 'poi';
                     const isMajorNode = baseType === 'poi' || baseType === 'gate';
-                    const showThisMarkerName = isMajorNode ? zoom >= MAP_ZOOM_TIERS.MAJOR_NAMES_MIN : zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN;
+                    const showThisMarkerName = isMajorNode ? zoomTiers.showMajorNames : zoomTiers.showAllNames;
                     return (
                         <Marker key={node.id} longitude={node.lng} latitude={node.lat} anchor="center">
                             <div
@@ -358,7 +390,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                 })}
 
                 {/* Stamps */}
-                {zoom >= MAP_ZOOM_TIERS.ALL_PINS_MIN && stamps.filter(s => !collectedStampIds.includes(s.id)).map(stamp => (
+                {zoomTiers.showAllPins && stamps.filter(s => !collectedStampIds.includes(s.id)).map(stamp => (
                     <Marker key={stamp.id} longitude={stamp.lng} latitude={stamp.lat} anchor="center">
                         <div
                             role="button"
@@ -379,7 +411,7 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                                 }
                             }}
                         >
-                            <MapNodeMarker type="stamp" name={stamp.name || ''} isZoomedIn={zoom >= MAP_ZOOM_TIERS.ALL_NAMES_MIN}
+                            <MapNodeMarker type="stamp" name={stamp.name || ''} isZoomedIn={zoomTiers.showAllNames}
                                 isLabelVisible={visibleLabels.has(stamp.id)}
                                 isSelected={activePopup === Number(stamp.id)}
                                 imageUrl={stamp.image_url}
