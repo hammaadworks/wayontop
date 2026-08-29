@@ -91,6 +91,25 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
         prevRawRef.current = rawRotation;
     }, [rawRotation]);
 
+    const notifiedStampRef = React.useRef<number | null>(null);
+
+    React.useEffect(() => {
+        if (nearbyStamp && !justClaimedStamp && !infoStamp && !isFacingStamp) {
+            if (notifiedStampRef.current !== nearbyStamp.id) {
+                notifiedStampRef.current = nearbyStamp.id;
+                window.dispatchEvent(new CustomEvent('sponsor-toast', {
+                    detail: {
+                        message: t('stamp_nearby_hint', 'Stamp nearby!'),
+                        description: t('stamp_nearby_look', 'Look around in AR to find it.'),
+                        duration: 4000
+                    }
+                }));
+            }
+        } else if (!nearbyStamp) {
+            notifiedStampRef.current = null;
+        }
+    }, [nearbyStamp, isFacingStamp, justClaimedStamp, infoStamp, t]);
+
     return (
         <div
             className="absolute inset-0 h-full w-full bg-black flex flex-col items-center justify-center overflow-hidden">
@@ -117,7 +136,7 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
                         >
                             {/* 3D Arrow Layering */}
                             <Navigation
-                                className="w-48 h-48 text-emerald-400 opacity-90 drop-shadow-[0_20px_30px_rgba(16,185,129,0.8)]"
+                                className="w-48 h-48 text-emerald-400 opacity-90 drop-shadow-[0_20px_30px_rgba(16,185,129,0.8)] -rotate-45"
                                 strokeWidth={1.5}
                                 fill="url(#emerald-gradient)"
                             />
@@ -145,20 +164,7 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
             )}
 
             {/* Stamp Claim UI Overlay (Pokemon Go Card Style) */}
-            {nearbyStamp && !justClaimedStamp && !infoStamp && (
-                <>
-                    {!isFacingStamp ? (
-                        <div
-                            className="absolute bottom-40 z-30 flex flex-col items-center animate-pulse pointer-events-none">
-                            <div
-                                className="glass-panel px-6 py-3 bg-amber-500/20 border-amber-500/50 rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] flex items-center gap-2">
-                                <Gem className="w-5 h-5 text-amber-400"/>
-                                <p className="text-amber-400 font-bold text-sm tracking-wide">
-                                    {t('stamp_nearby_hint', 'Stamp nearby! Look around in AR to find it.')}
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
+            {nearbyStamp && !justClaimedStamp && !infoStamp && isFacingStamp && (
                         <div
                             className="absolute bottom-40 z-30 flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 pointer-events-auto">
                             <div
@@ -192,8 +198,6 @@ export function ARView({targetNode, targetCoordinate, location, stamps = []}: AR
                                 </div>
                             </div>
                         </div>
-                    )}
-                </>
             )}
 
             {/* Celebration UI */}

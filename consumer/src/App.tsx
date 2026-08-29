@@ -9,7 +9,7 @@ import {Sheet, SheetContent, SheetTitle, SheetTrigger} from '@wayontop/ui/compon
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@wayontop/ui/components/ui/select';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {supabase, fetchAllPages} from '@wayontop/ui/lib/supabase';
-import {getNextRouteCoordinate, getRouteCoordinateSegments, pointToLineSegment} from '@wayontop/ui/lib/routing';
+import {getNextRouteCoordinate, getRouteCoordinateSegments, pointToLineSegment, distanceInMeters} from '@wayontop/ui/lib/routing';
 import { calculateRoute } from '@wayontop/ui/lib/routingClient';
 import { getNodeName, getNodeDescription } from '@wayontop/ui/lib/utils';
 import {useLocation} from './hooks/useLocation';
@@ -173,6 +173,37 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
         return nextCoordinate ? {lat: nextCoordinate[1], lng: nextCoordinate[0]} : targetNode;
     }, [routeCoordinates, location, targetNode]);
 
+    const remainingDistance = useMemo(() => {
+        if (!activeRoute || !routeCoordinates.length) return 0;
+        if (!location) return activeRoute.totalDistance;
+
+        let nearestSegmentIndex = 0;
+        let nearestDistance = Infinity;
+        let nearestPoint = { x: location.lng, y: location.lat };
+
+        for (let i = 0; i < routeCoordinates.length - 1; i++) {
+            const [fromLng, fromLat] = routeCoordinates[i];
+            const [toLng, toLat] = routeCoordinates[i + 1];
+            const snap = pointToLineSegment(location.lng, location.lat, fromLng, fromLat, toLng, toLat);
+            if (snap.dist < nearestDistance) {
+                nearestDistance = snap.dist;
+                nearestSegmentIndex = i;
+                nearestPoint = { x: snap.x, y: snap.y };
+            }
+        }
+
+        const [nextLng, nextLat] = routeCoordinates[nearestSegmentIndex + 1];
+        let dist = distanceInMeters(nearestPoint.y, nearestPoint.x, nextLat, nextLng);
+
+        for (let i = nearestSegmentIndex + 1; i < routeCoordinates.length - 1; i++) {
+            const [fromLng, fromLat] = routeCoordinates[i];
+            const [toLng, toLat] = routeCoordinates[i + 1];
+            dist += distanceInMeters(fromLat, fromLng, toLat, toLng);
+        }
+
+        return dist;
+    }, [activeRoute, routeCoordinates, location]);
+
     const [isRerouting, setIsRerouting] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
 
@@ -180,6 +211,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
     useEffect(() => {
         if (!activeRoute || !graph || !location || !targetNode || isRerouting) return;
         
+        const distToCenter = Math.hypot(location.lat - 12.9500, location.lng - 77.5850);
+        const IS_OUT_OF_BOUNDS = distToCenter > 0.02; // Roughly 2km
+        if (IS_OUT_OF_BOUNDS) return;
+
         const coordinates = routeCoordinates;
         if (coordinates.length < 2) return;
 
@@ -454,10 +489,10 @@ function MainApp({venueKey, setVenueKey, availableVenues, prefetchedGraph, prefe
                         <div className="bg-[#1C1C1E]/95 backdrop-blur-3xl border-t border-white/10 px-7 pt-6 pb-[calc(env(safe-area-inset-bottom)+24px)] rounded-t-[36px] shadow-[0_-20px_50px_rgba(0,0,0,0.6)] flex items-center justify-between">
                             <div className="flex flex-col min-w-0 pr-4">
                                 <div className="flex items-end gap-2">
-                                    <h2 className="text-emerald-400 font-black text-4xl leading-none tracking-tighter drop-shadow-sm">{Math.max(1, Math.round(activeRoute.totalDistance / 1.4 / 60))}</h2>
+                                    <h2 className="text-emerald-400 font-black text-4xl leading-none tracking-tighter drop-shadow-sm">{Math.max(1, Math.round(remainingDistance / 1.4 / 60))}</h2>
                                     <span className="text-xl font-bold text-emerald-400/80 mb-0.5 tracking-tight">min</span>
                                 </div>
-                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(activeRoute.totalDistance)} m • {t(getNodeName(targetNode, i18n.language))}</p>
+                                <p className="text-white/60 font-semibold text-[15px] mt-2 truncate">{Math.round(remainingDistance)} m • {t(getNodeName(targetNode, i18n.language))}</p>
                             </div>
                             <Button 
                                 onClick={cancelRoute}

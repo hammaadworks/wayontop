@@ -14,7 +14,7 @@ export function StampCollection({ stamps, onClose, onStampSelect }: StampCollect
     const collectedCount = stamps.filter(s => collectedStampIds.includes(s.id)).length;
     
     return (
-        <div className="fixed inset-0 z-[90] bg-[#f8f9fa] flex flex-col animate-in slide-in-from-bottom-full duration-500 font-sans">
+        <div className="fixed inset-0 z-[9999] bg-[#f8f9fa] flex flex-col animate-in slide-in-from-bottom-full duration-500 font-sans">
             {/* Header */}
             <div className="pt-14 pb-4 px-6 flex items-center justify-between bg-white border-b border-slate-100 shadow-sm z-10">
                 <button 

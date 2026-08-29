@@ -1,4 +1,4 @@
-import {LocateFixed, Pencil, Play, Redo2, Square, Undo2} from 'lucide-react';
+import {LocateFixed, Pencil, Play, Redo2, Square, Undo2, MousePointer2, MousePointerClick} from 'lucide-react';
 import {Button} from '@wayontop/ui/components/ui/button';
 import {toast} from 'sonner';
 
@@ -16,6 +16,8 @@ interface MapFloatingControlsProps {
     setMode: (mode: any) => void;
     setEdgeStartNode: (node: any) => void;
     isLocked: boolean;
+    intersectionsClickable: boolean;
+    setIntersectionsClickable: (val: boolean) => void;
 }
 
 export function MapFloatingControls({
@@ -31,7 +33,9 @@ export function MapFloatingControls({
                                         mode,
                                         setMode,
                                         setEdgeStartNode,
-                                        isLocked
+                                        isLocked,
+                                        intersectionsClickable,
+                                        setIntersectionsClickable
                                     }: Readonly<MapFloatingControlsProps>) {
     const getDirection = (b: number) => {
         const normalized = (b + 360) % 360;
@@ -46,6 +50,15 @@ export function MapFloatingControls({
             {/* Left Floating Action Buttons */}
             <div
                 className="absolute bottom-[calc(env(safe-area-inset-bottom)+7rem)] left-4 md:left-6 z-10 flex flex-col gap-2 items-center p-1.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10 bg-black/60 backdrop-blur-3xl rounded-full">
+                
+                <Button variant="ghost" size="icon"
+                        className={`rounded-full w-10 h-10 transition-all border ${intersectionsClickable ? 'bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 border-indigo-500/30' : 'bg-slate-500/20 text-slate-400 hover:text-slate-300 border-transparent hover:border-slate-500/30'}`}
+                        onClick={() => setIntersectionsClickable(!intersectionsClickable)}
+                        title={intersectionsClickable ? "Intersection nodes are clickable" : "Intersection nodes are unclickable"}
+                >
+                    {intersectionsClickable ? <MousePointerClick className="w-5 h-5 drop-shadow-md" /> : <MousePointer2 className="w-5 h-5 drop-shadow-md opacity-50" />}
+                </Button>
+
                 <Button variant="ghost" size="icon"
                         className="rounded-full w-10 h-10 flex flex-col items-center justify-center p-0 bg-slate-500/20 hover:bg-slate-500/40 transition-all border border-transparent hover:border-slate-500/30 shadow-[0_0_15px_rgba(100,116,139,0.2)]"
                         onClick={() => {

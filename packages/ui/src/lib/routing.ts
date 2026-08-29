@@ -32,7 +32,7 @@ export function getBearing(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export type RouteCoordinate = [lng: number, lat: number];
 
-function getEdgeGeometryForDirection(edge: GraphData['edges'][number], fromNode: GraphNode): RouteCoordinate[] {
+export function getEdgeGeometryForDirection(edge: GraphData['edges'][number], fromNode: GraphNode): RouteCoordinate[] {
   if (!edge.geometry?.length) return [];
   return edge.from === fromNode.id ? edge.geometry : [...edge.geometry].reverse();
 }

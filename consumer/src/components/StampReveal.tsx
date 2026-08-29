@@ -123,11 +123,11 @@ export function StampReveal({stamp, onClose, initialScratched = false}: StampRev
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden sm:p-6 animate-in fade-in duration-500">
+            className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md overflow-hidden sm:p-6 animate-in fade-in duration-500">
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-12 right-6 z-[110] bg-black/40 backdrop-blur-md rounded-full p-3 text-white hover:bg-black/60 transition-colors shadow-lg"
+                className="absolute top-12 right-6 z-[10000] bg-black/40 backdrop-blur-md rounded-full p-3 text-white hover:bg-black/60 transition-colors shadow-lg"
             >
                 <X className="w-6 h-6"/>
             </button>

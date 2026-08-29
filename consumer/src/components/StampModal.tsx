@@ -16,7 +16,7 @@ export function StampModal({stamps, collectedStampIds, onClose, onFindStamps}: R
     const progressPercent = totalCount > 0 ? (collectedCount / totalCount) * 100 : 0;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
             <div className="w-full max-w-sm bg-[#1C1C1E] border border-amber-500/20 rounded-3xl overflow-hidden shadow-2xl shadow-amber-900/20 animate-in zoom-in-95 duration-300">
                 {/* Header */}
                 <div className="relative p-6 text-center border-b border-white/5 bg-gradient-to-b from-amber-500/10 to-transparent">

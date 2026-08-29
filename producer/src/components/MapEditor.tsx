@@ -175,6 +175,7 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
         openSponsors: true,
         trace: true
     });
+    const [intersectionsClickable, setIntersectionsClickable] = useState(false);
     const [mapSkin, setMapSkin] = useState<'satellite' | 'animated'>('satellite');
     const [zoom, setZoom] = useState(currentVenue.zoom);
     const [selectedSponsorForModal, setSelectedSponsorForModal] = useState<any>(null);
@@ -836,26 +837,30 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                     draggable={mode === 'view' && !isLocked}
                     onDragEnd={(e) => latestFns.current.updateNodePosition(node.id, e.lngLat.lat, e.lngLat.lng)}
                     onClick={(e) => {
+                        if (!intersectionsClickable && baseType === 'intersection') return;
                         e.originalEvent.stopPropagation();
                         latestFns.current.handleNodeClick(node);
                     }}
+                    style={{ pointerEvents: (!intersectionsClickable && baseType === 'intersection') ? 'none' : 'auto' }}
                 >
-                    <MapNodeMarker
-                        type={baseType || 'poi'}
-                        category={node.category}
-                        name={fallbackNameStr}
-                        isZoomedIn={showThisMarkerName}
-                        isLabelVisible={visibleLabels.has(node.id)}
-                        isSelected={isSelected}
-                        opacity={opacity}
-                        isPaid={node.is_paid}
-                        imageUrl={node.image_url || node.category?.image_url}
-                    />
+                    <div className={!intersectionsClickable && baseType === 'intersection' ? 'pointer-events-none' : ''}>
+                        <MapNodeMarker
+                            type={baseType || 'poi'}
+                            category={node.category}
+                            name={fallbackNameStr}
+                            isZoomedIn={showThisMarkerName}
+                            isLabelVisible={visibleLabels.has(node.id)}
+                            isSelected={isSelected}
+                            opacity={opacity}
+                            isPaid={node.is_paid}
+                            imageUrl={node.image_url || node.category?.image_url}
+                        />
+                    </div>
                 </Marker>
             );
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, autoLinkStartNode, autoLinkNodes, mode, isLocked, showMajorNames, showAllNames, showMajorPins, showAllPins, visibleLabels]);
+    }, [data.nodes, layers.pois, layers.tracks, selectedNode, edgeStartNode, autoLinkStartNode, autoLinkNodes, mode, isLocked, showMajorNames, showAllNames, showMajorPins, showAllPins, visibleLabels, intersectionsClickable]);
 
     const sponsorMarkers = useMemo(() => {
         if (!showSponsorLogos) return null;
@@ -1473,6 +1478,8 @@ export function MapEditor({currentVenue, onBack}: Readonly<{ currentVenue: Venue
                 setMode={setMode}
                 setEdgeStartNode={setEdgeStartNode}
                 isLocked={isLocked}
+                intersectionsClickable={intersectionsClickable}
+                setIntersectionsClickable={setIntersectionsClickable}
             />
 
             <EditorPanels

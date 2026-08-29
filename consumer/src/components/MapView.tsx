@@ -7,7 +7,7 @@ import type * as GeoJSON from 'geojson';
 import type {GraphData, GraphNode, Stamp} from '@wayontop/ui/lib/types';
 import type {LocationData} from '../hooks/useLocation';
 import {Gamification} from '../lib/gamification';
-import {findNearestEdgePoint, getRouteCoordinateSegments, distanceInMeters} from '@wayontop/ui/lib/routing';
+import {findNearestEdgePoint, getRouteCoordinateSegments, distanceInMeters, getEdgeGeometryForDirection} from '@wayontop/ui/lib/routing';
 import {MapNodeMarker} from '@wayontop/ui/components/MapNodeMarker';
 import {useMarkerCollision} from '@wayontop/ui/hooks/useMarkerCollision';
 import {CONSUMER_MAP_ZOOM_TIERS as MAP_ZOOM_TIERS, LALBAGH_GEOFENCE_RADIUS_METERS} from '@wayontop/ui/lib/constants';
@@ -111,18 +111,17 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
         graph.nodes.forEach(n => nodeMap.set(n.id, n));
 
         graph.edges.forEach(edge => {
-            if (edge.is_hidden) return;
-            const fromNode = nodeMap.get(edge.from);
-            const toNode = nodeMap.get(edge.to);
-            if (fromNode && toNode) {
-                features.push({
-                    type: "Feature",
-                    geometry: {
-                        type: "LineString",
-                        coordinates: [[fromNode.lng, fromNode.lat], ...(edge.geometry || []), [toNode.lng, toNode.lat]]
-                    },
-                    properties: {}
-                });
+            if (!edge.is_hidden) {
+                const fromNode = nodeMap.get(edge.from);
+                const toNode = nodeMap.get(edge.to);
+                if (fromNode && toNode) {
+                    const coords = [[fromNode.lng, fromNode.lat], ...getEdgeGeometryForDirection(edge, fromNode), [toNode.lng, toNode.lat]];
+                    features.push({
+                        type: 'Feature',
+                        geometry: {type: 'LineString', coordinates: coords},
+                        properties: {}
+                    });
+                }
             }
         });
 
@@ -131,6 +130,39 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
             features
         } as GeoJSON.FeatureCollection<GeoJSON.LineString>;
     }, [graph]);
+
+    useEffect(() => {
+        if (routeGeoJSON && routeGeoJSON.features.length > 0 && mapRef.current) {
+            let minLng = Infinity;
+            let minLat = Infinity;
+            let maxLng = -Infinity;
+            let maxLat = -Infinity;
+            let hasCoords = false;
+
+            routeGeoJSON.features.forEach(feature => {
+                if (feature.geometry.type === 'LineString') {
+                    feature.geometry.coordinates.forEach(coord => {
+                        minLng = Math.min(minLng, coord[0]);
+                        maxLng = Math.max(maxLng, coord[0]);
+                        minLat = Math.min(minLat, coord[1]);
+                        maxLat = Math.max(maxLat, coord[1]);
+                        hasCoords = true;
+                    });
+                }
+            });
+
+            if (hasCoords) {
+                mapRef.current.fitBounds(
+                    [
+                        [minLng, minLat],
+                        [maxLng, maxLat]
+                    ],
+                    { padding: 80, duration: 1200 }
+                );
+            }
+        }
+    }, [routeGeoJSON]);
+
 
     const snappedLocation = useMemo(() => {
         if (!location || !graph) return location;
@@ -244,16 +276,34 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                     </Source>
                 )}
 
-                {/* Route */}
+                {/* Route Glow */}
+                {routeGeoJSON && (
+                    <Source id="route-glow-source" type="geojson" data={routeGeoJSON}>
+                        <Layer
+                            id="route-glow-line"
+                            type="line"
+                            paint={{
+                                'line-color': '#10b981',
+                                'line-width': 14,
+                                'line-opacity': 0.3
+                            }}
+                            layout={{
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            }}
+                        />
+                    </Source>
+                )}
+                {/* Route Core */}
                 {routeGeoJSON && (
                     <Source id="route-source" type="geojson" data={routeGeoJSON}>
                         <Layer
                             id="route-line"
                             type="line"
                             paint={{
-                                'line-color': '#fbbf24',
+                                'line-color': '#34d399',
                                 'line-width': 6,
-                                'line-opacity': 0.8
+                                'line-opacity': 1
                             }}
                             layout={{
                                 'line-cap': 'round',
