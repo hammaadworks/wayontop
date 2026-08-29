@@ -409,7 +409,8 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                             onClick={() => { 
                                 if (!isRadar) {
                                     setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
-                                    if (onSelectNode) onSelectNode(stamp as unknown as GraphNode);
+                                    const actualNode = graph?.nodes.find(n => n.id === stamp.id);
+                                    if (onSelectNode && actualNode) onSelectNode(actualNode);
                                 }
                             }}
                             onKeyDown={(e) => {
@@ -417,7 +418,8 @@ export function MapView({graph, activeRoute, stamps = [], location, isRadar = fa
                                     e.preventDefault();
                                     if (!isRadar) {
                                         setActivePopup(activePopup === Number(stamp.id) ? null : stamp.id);
-                                        if (onSelectNode) onSelectNode(stamp as unknown as GraphNode);
+                                        const actualNode = graph?.nodes.find(n => n.id === stamp.id);
+                                        if (onSelectNode && actualNode) onSelectNode(actualNode);
                                     }
                                 }
                             }}

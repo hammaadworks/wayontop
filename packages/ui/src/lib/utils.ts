@@ -30,6 +30,10 @@ export function getNodeDescription(node: GraphNode | null | undefined, lang: str
     if (!node) return '';
     const desc = getLocalizedText(node.description, lang);
     if (desc) return desc;
+    
+    const extraDesc = typeof node.extra_info === 'string' ? node.extra_info : getLocalizedText(node.extra_info, lang);
+    if (extraDesc) return extraDesc;
+
     return getLocalizedText(node.category?.description, lang) || '';
 }
 

@@ -19,15 +19,14 @@ export function POICard({ poi, onClose, onNavigate }: POICardProps) {
   const [isRevealed, setIsRevealed] = useState(false);
 
   const isStamp = poi.category?.base_type === 'stamp';
-  const isUncollectedStamp = isStamp && !Gamification.getCollectedStamps().includes(poi.id);
-  const showMystery = isUncollectedStamp && !isRevealed;
+  const showMystery = false; // Bypassed mystery logic on map click per user request
 
-  const title = showMystery ? 'Mystery Stamp' : getNodeName(poi, i18n.language);
-  const desc = showMystery ? 'Go to this location in the real world to reveal and collect this stamp! Or use a hint to reveal it now.' : getNodeDescription(poi, i18n.language);
+  const title = getNodeName(poi, i18n.language);
+  const desc = getNodeDescription(poi, i18n.language);
   const actualImgUrl = poi.image_url || poi.category?.image_url;
 
-  // If there's an image and description, or it's a stamp, allow expanding to full screen
-  const hasFullCard = !!(actualImgUrl && desc) || isStamp;
+  // If there's an image OR description, or it's a stamp, allow expanding to full screen
+  const hasFullCard = !!(actualImgUrl || desc) || isStamp;
 
   const renderBadges = () => (
     <div className="flex gap-2 mt-1.5 flex-wrap">
