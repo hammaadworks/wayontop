@@ -68,18 +68,49 @@ async function requestCamera(): Promise<PermState> {
 
 function requestLocation(): Promise<PermState> {
     return new Promise(resolve => {
+        if (!navigator.geolocation) {
+            // Geolocation is entirely missing (likely due to HTTP instead of HTTPS)
+            // On iOS Safari, geolocation requires a secure context.
+            // We resolve 'granted' here so that in DEV mode, the app can render and use the mock location.
+            resolve('granted');
+            return;
+        }
+
+        let isResolved = false;
+
+        // Safari iOS often ignores the browser timeout when enableHighAccuracy is true,
+        // hanging indefinitely. We enforce our own JS timeout here.
+        // We use 15 seconds to ensure the user has enough time to read the native OS permission prompt,
+        // since this setTimeout starts immediately and does not pause for the prompt.
+        const fallbackTimeout = setTimeout(() => {
+            if (!isResolved) {
+                isResolved = true;
+                resolve('granted'); // Assume granted if it times out
+            }
+        }, 15000);
+
         navigator.geolocation.getCurrentPosition(
-            () => resolve('granted'),
-            (err: GeolocationPositionError) => {
-                // code 1: PERMISSION_DENIED
-                // code 2: POSITION_UNAVAILABLE
-                // code 3: TIMEOUT
-                if (err.code === err.PERMISSION_DENIED) {
-                    resolve('denied');
-                } else {
-                    // If we get timeout or unavailable, the user actually GRANTED permission,
-                    // but the hardware failed to get a location. The gate should let them through.
+            () => {
+                if (!isResolved) {
+                    isResolved = true;
+                    clearTimeout(fallbackTimeout);
                     resolve('granted');
+                }
+            },
+            (err: GeolocationPositionError) => {
+                if (!isResolved) {
+                    isResolved = true;
+                    clearTimeout(fallbackTimeout);
+                    // code 1: PERMISSION_DENIED
+                    // code 2: POSITION_UNAVAILABLE
+                    // code 3: TIMEOUT
+                    if (err.code === err.PERMISSION_DENIED) {
+                        resolve('denied');
+                    } else {
+                        // If we get timeout or unavailable, the user actually GRANTED permission,
+                        // but the hardware failed to get a location. The gate should let them through.
+                        resolve('granted');
+                    }
                 }
             },
             {enableHighAccuracy: true, timeout: 6000}
@@ -211,8 +242,10 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
 
     // ---- The one tap that does everything ----
     const onGrantTap = async () => {
-        // If compass is the ONLY thing blocking us, Safari blocks retries without a reload.
-        if (requiredPermissions === 'all' && gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
+        // Safari securely caches permissions (especially "Remember for a day").
+        // If they were already denied, tapping "Check Again" will silently fail.
+        // We MUST reload the page so Safari reads the fresh settings from the aA menu.
+        if (gateState.location === 'denied' || (requiredPermissions === 'all' && gateState.compass === 'denied')) {
             window.location.reload();
             return;
         }
@@ -313,8 +346,9 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
             if (browser === 'Safari') {
                 return (
                     <ul className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] mt-2">
-                        <li>Tap the button left of the URL bar &gt; three dots ... &gt; Allow Location</li>
-                        <li>Still blocked? Open iPhone Settings &gt; Safari &gt; Allow Location</li>
+                        <li>Tap the <strong>aA</strong> button in your URL bar</li>
+                        <li>Tap <strong>Website Settings</strong> &gt; <strong>Location</strong> &gt; <strong>Allow</strong></li>
+                        <li>Tap the <strong>Reload Page</strong> button below</li>
                     </ul>
                 );
             } else {
@@ -396,8 +430,10 @@ export function PermissionGate({children, isProducerApp, requiredPermissions = i
                                 return <RefreshCw className="w-5 h-5 animate-spin text-primary"/>;
                             }
                             if (isPrimaryDenied) {
-                                if (requiredPermissions === 'all' && gateState.compass === 'denied' && gateState.location === 'granted' && gateState.camera !== 'unknown') {
-                                    return hasAttemptedReload ? 'Compass Blocked' : 'Reload Page';
+                                // Safari securely caches denials (especially "Remember for a day"). 
+                                // The ONLY way to check again after the user fixes it in aA settings is to reload.
+                                if (gateState.location === 'denied' || (requiredPermissions === 'all' && gateState.compass === 'denied')) {
+                                    return 'Reload Page';
                                 }
                                 return 'Check Again';
                             }
